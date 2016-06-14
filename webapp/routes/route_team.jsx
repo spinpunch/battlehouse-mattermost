@@ -53,7 +53,7 @@ function doChannelChange(state, replace, callback) {
     callback();
 }
 
-function preNeedsTeam(nextState, replace, callback) {
+export function preNeedsTeam(nextState, replace, callback) {
     // First check to make sure you're in the current team
     // for the current url.
     const teamName = nextState.params.team;
@@ -120,7 +120,7 @@ function onPermalinkEnter(nextState) {
     GlobalActions.emitPostFocusEvent(postId);
 }
 
-export default [{
+export default {
     path: ':team',
     onEnter: preNeedsTeam,
     indexRoute: {onEnter: (nextState, replace) => replace('/' + nextState.params.team + '/channels/town-square')},
@@ -170,4 +170,4 @@ export default [{
             ]
         }
     ]
-}];
+};
