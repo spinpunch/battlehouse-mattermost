@@ -19,15 +19,15 @@ BUILD_HASH_ENTERPRISE = none
 ifneq ($(wildcard $(BUILD_ENTERPRISE_DIR)/.),)
 	ifeq ($(BUILD_ENTERPRISE),true)
 		BUILD_ENTERPRISE_READY = true
-		BUILD_TYPE_NAME = enterprise
+		BUILD_TYPE_NAME = bh-enterprise
 		BUILD_HASH_ENTERPRISE = $(shell cd $(BUILD_ENTERPRISE_DIR) && git rev-parse HEAD)
 	else
 		BUILD_ENTERPRISE_READY = false
-		BUILD_TYPE_NAME = team
+		BUILD_TYPE_NAME = bh
 	endif
 else
 	BUILD_ENTERPRISE_READY = false
-	BUILD_TYPE_NAME = team
+	BUILD_TYPE_NAME = bh
 endif
 BUILD_WEBAPP_DIR = ./webapp
 
