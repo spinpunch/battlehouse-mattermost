@@ -108,7 +108,7 @@ stop-docker:
 		echo stopping mattermost-postgres; \
 		docker stop mattermost-postgres > /dev/null; \
 	fi
-	
+
 	@if [ $(shell docker ps -a | grep -ci mattermost-openldap) -eq 1 ]; then \
 		echo stopping mattermost-openldap; \
 		docker stop mattermost-openldap > /dev/null; \
@@ -139,7 +139,7 @@ check-client-style:
 	@echo Checking client style
 
 	cd $(BUILD_WEBAPP_DIR) && $(MAKE) check-style
-	
+
 check-server-style:
 	@echo Running GOFMT
 	$(eval GOFMT_OUTPUT := $(shell gofmt -d -s api/ model/ store/ utils/ manualtesting/ einterfaces/ mattermost.go 2>&1))
