@@ -17,6 +17,7 @@ import (
 	"image/png"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -639,13 +640,35 @@ func doLogin(c *Context, w http.ResponseWriter, r *http.Request, user *model.Use
 		Path:     "/",
 		MaxAge:   maxAge,
 		Expires:  expiresAt,
-		HttpOnly: true,
+		HttpOnly: false, // battlehouse: JavaScript needs access to the token
+		Domain:   cookieDomain(c),
 		Secure:   secure,
 	}
 
 	http.SetCookie(w, sessionCookie)
 
 	c.Session = *session
+}
+
+// battlehouse: cookies should be available to all subdomains of the host's toplevel domain
+func cookieDomain(c *Context) string {
+	siteUrl, _ := url.Parse(c.GetSiteURL())
+	host := siteUrl.Host
+	if strings.Contains(siteUrl.Host, ":") {
+		host, _, _ = net.SplitHostPort(host)
+	}
+
+	ret := host
+
+	// strip all subdomains, leaving only only toplevel domain:
+	// "foo.bar" -> "foo.bar"
+	// "asdf.foo.bar" -> "foo.bar"
+	fields := strings.Split(host, ".")
+	if len(fields) >= 2 {
+		ret = strings.Join(fields[len(fields)-2:len(fields)], ".")
+	}
+
+	return ret
 }
 
 func revokeSession(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -705,7 +728,8 @@ func attachDeviceId(c *Context, w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   maxAge,
 		Expires:  expiresAt,
-		HttpOnly: true,
+		HttpOnly: false, // battlehouse: JavaScript needs access to the token
+		Domain:   cookieDomain(c),
 		Secure:   secure,
 	}
 
