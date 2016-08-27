@@ -97,7 +97,15 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	teamId := ""
 	var team *model.Team
 	shouldSendWelcomeEmail := true
-	user.EmailVerified = false
+
+	// allow API caller to say the email is already verified
+
+	// user.EmailVerified = false
+	if(user.EmailVerified) {
+		// if API caller says email is already verified, cancel welcome email
+		shouldSendWelcomeEmail = false
+
+	}
 
 	if len(hash) > 0 {
 		data := r.URL.Query().Get("d")
