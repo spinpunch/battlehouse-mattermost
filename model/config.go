@@ -79,6 +79,7 @@ type ServiceSettings struct {
 	WebsocketSecurePort               *int
 	WebsocketPort                     *int
 	WebserverMode                     *string
+	WebserverRoot                     *string
 	EnableCustomEmoji                 *bool
 	RestrictCustomEmojiCreation       *string
 }
@@ -724,6 +725,11 @@ func (o *Config) SetDefaults() {
 		*o.ServiceSettings.WebserverMode = "gzip"
 	} else if *o.ServiceSettings.WebserverMode == "regular" {
 		*o.ServiceSettings.WebserverMode = "gzip"
+	}
+
+	if o.ServiceSettings.WebserverRoot == nil {
+		o.ServiceSettings.WebserverRoot = new(string)
+		*o.ServiceSettings.WebserverRoot = "root.html"
 	}
 
 	if o.ServiceSettings.EnableCustomEmoji == nil {

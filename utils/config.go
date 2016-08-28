@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	l4g "github.com/alecthomas/log4go"
 
@@ -23,6 +24,7 @@ const (
 	MODE_BETA       = "beta"
 	MODE_PROD       = "prod"
 	LOG_ROTATE_SIZE = 10000
+	CLIENT_DIR      = "webapp/dist"
 )
 
 var Cfg *model.Config = &model.Config{}
@@ -119,6 +121,16 @@ func GetLogFileLocation(fileLocation string) string {
 	} else {
 		return fileLocation
 	}
+}
+
+func GetWebserverRoot(config *model.Config) string {
+	// if path starts with "/", use absolute path
+	if strings.HasPrefix(*config.ServiceSettings.WebserverRoot, "/") {
+		return *config.ServiceSettings.WebserverRoot
+	} else {
+		// otherwise, treat as relative to CLIENT_DIR
+		return FindDir(CLIENT_DIR)+*config.ServiceSettings.WebserverRoot
+	}		
 }
 
 func SaveConfig(fileName string, config *model.Config) *model.AppError {
