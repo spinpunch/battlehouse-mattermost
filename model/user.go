@@ -235,7 +235,6 @@ func (u *User) Sanitize(options map[string]bool) {
 }
 
 func (u *User) ClearNonProfileFields() {
-	u.UpdateAt = 0
 	u.Password = ""
 	u.AuthData = new(string)
 	*u.AuthData = ""
@@ -249,6 +248,22 @@ func (u *User) ClearNonProfileFields() {
 	u.LastPasswordUpdate = 0
 	u.LastPictureUpdate = 0
 	u.FailedAttempts = 0
+}
+
+func (u *User) SanitizeProfile(isSystemAdmin, pwdupdate, fullname, email bool) {
+	options := map[string]bool{}
+	options["passwordupdate"] = pwdupdate
+
+	if isSystemAdmin {
+		options["fullname"] = true
+		options["email"] = true
+	} else {
+		options["fullname"] = fullname
+		options["email"] = email
+		u.ClearNonProfileFields()
+	}
+
+	u.Sanitize(options)
 }
 
 func (u *User) MakeNonNil() {
@@ -370,6 +385,24 @@ func (u *User) IsLDAPUser() bool {
 	if u.AuthService == USER_AUTH_SERVICE_LDAP {
 		return true
 	}
+	return false
+}
+
+func (u *User) StatusAllowsPushNotification(status *Status) bool {
+	props := u.NotifyProps
+
+	if props["push"] == "none" {
+		return false
+	}
+
+	if pushStatus, ok := props["push_status"]; pushStatus == STATUS_ONLINE || !ok {
+		return true
+	} else if pushStatus == STATUS_AWAY && (status.Status == STATUS_AWAY || status.Status == STATUS_OFFLINE) {
+		return true
+	} else if pushStatus == STATUS_OFFLINE && status.Status == STATUS_OFFLINE {
+		return true
+	}
+
 	return false
 }
 

@@ -47,20 +47,6 @@ func NewSqlOAuthStore(sqlStore *SqlStore) OAuthStore {
 	return as
 }
 
-func (as SqlOAuthStore) UpgradeSchemaIfNeeded() {
-	as.CreateColumnIfNotExists("OAuthApps", "IsTrusted", "tinyint(1)", "boolean", "0")
-	as.CreateColumnIfNotExists("OAuthApps", "IconURL", "varchar(512)", "varchar(512)", "")
-	as.CreateColumnIfNotExists("OAuthAccessData", "ClientId", "varchar(26)", "varchar(26)", "")
-	as.CreateColumnIfNotExists("OAuthAccessData", "UserId", "varchar(26)", "varchar(26)", "")
-	as.CreateColumnIfNotExists("OAuthAccessData", "ExpiresAt", "bigint", "bigint", "0")
-
-	// ADDED for 3.3 REMOVE for 3.7
-	if as.DoesColumnExist("OAuthAccessData", "AuthCode") {
-		as.RemoveIndexIfExists("idx_oauthaccessdata_auth_code", "OAuthAccessData")
-		as.RemoveColumnIfExists("OAuthAccessData", "AuthCode")
-	}
-}
-
 func (as SqlOAuthStore) CreateIndexesIfNotExists() {
 	as.CreateIndexIfNotExists("idx_oauthapps_creator_id", "OAuthApps", "CreatorId")
 	as.CreateIndexIfNotExists("idx_oauthaccessdata_client_id", "OAuthAccessData", "ClientId")
@@ -211,6 +197,29 @@ func (as SqlOAuthStore) GetApps() StoreChannel {
 	return storeChannel
 }
 
+func (as SqlOAuthStore) GetAuthorizedApps(userId string) StoreChannel {
+	storeChannel := make(StoreChannel)
+
+	go func() {
+		result := StoreResult{}
+
+		var apps []*model.OAuthApp
+
+		if _, err := as.GetReplica().Select(&apps,
+			`SELECT o.* FROM OAuthApps AS o INNER JOIN
+			Preferences AS p ON p.Name=o.Id AND p.UserId=:UserId`, map[string]interface{}{"UserId": userId}); err != nil {
+			result.Err = model.NewLocAppError("SqlOAuthStore.GetAuthorizedApps", "store.sql_oauth.get_apps.find.app_error", nil, "err="+err.Error())
+		}
+
+		result.Data = apps
+
+		storeChannel <- result
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
 func (as SqlOAuthStore) DeleteApp(id string) StoreChannel {
 	storeChannel := make(StoreChannel)
 
@@ -284,6 +293,33 @@ func (as SqlOAuthStore) GetAccessData(token string) StoreChannel {
 			result.Err = model.NewLocAppError("SqlOAuthStore.GetAccessData", "store.sql_oauth.get_access_data.app_error", nil, err.Error())
 		} else {
 			result.Data = &accessData
+		}
+
+		storeChannel <- result
+		close(storeChannel)
+
+	}()
+
+	return storeChannel
+}
+
+func (as SqlOAuthStore) GetAccessDataByUserForApp(userId, clientId string) StoreChannel {
+
+	storeChannel := make(StoreChannel)
+
+	go func() {
+		result := StoreResult{}
+
+		var accessData []*model.AccessData
+
+		if _, err := as.GetReplica().Select(&accessData,
+			"SELECT * FROM OAuthAccessData WHERE UserId = :UserId AND ClientId = :ClientId",
+			map[string]interface{}{"UserId": userId, "ClientId": clientId}); err != nil {
+			result.Err = model.NewLocAppError("SqlOAuthStore.GetAccessDataByUserForApp",
+				"store.sql_oauth.get_access_data_by_user_for_app.app_error", nil,
+				"user_id="+userId+" client_id="+clientId)
+		} else {
+			result.Data = accessData
 		}
 
 		storeChannel <- result

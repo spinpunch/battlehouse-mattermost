@@ -166,6 +166,10 @@ class UserStoreClass extends EventEmitter {
         return this.direct_profiles;
     }
 
+    saveDirectProfile(profile) {
+        this.direct_profiles[profile.id] = profile;
+    }
+
     saveDirectProfiles(profiles) {
         this.direct_profiles = profiles;
     }
@@ -330,7 +334,7 @@ class UserStoreClass extends EventEmitter {
 }
 
 var UserStore = new UserStoreClass();
-UserStore.setMaxListeners(15);
+UserStore.setMaxListeners(16);
 
 UserStore.dispatchToken = AppDispatcher.register((payload) => {
     var action = payload.action;

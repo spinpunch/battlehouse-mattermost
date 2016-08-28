@@ -930,17 +930,7 @@ func getInitialLoad(c *Context, w http.ResponseWriter, r *http.Request) {
 			profiles := dp.Data.(map[string]*model.User)
 
 			for k, p := range profiles {
-				options := utils.Cfg.GetSanitizeOptions()
-				options["passwordupdate"] = false
-
-				if c.IsSystemAdmin() {
-					options["fullname"] = true
-					options["email"] = true
-				} else {
-					p.ClearNonProfileFields()
-				}
-
-				p.Sanitize(options)
+				p.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
 				profiles[k] = p
 			}
 
@@ -964,7 +954,7 @@ func getInitialLoad(c *Context, w http.ResponseWriter, r *http.Request) {
 	if c.IsSystemAdmin() {
 		il.LicenseCfg = utils.ClientLicense
 	} else {
-		il.LicenseCfg = utils.GetSantizedClientLicense()
+		il.LicenseCfg = utils.GetSanitizedClientLicense()
 	}
 
 	w.Write([]byte(il.ToJson()))
@@ -1016,17 +1006,7 @@ func getProfilesForDirectMessageList(c *Context, w http.ResponseWriter, r *http.
 		profiles := result.Data.(map[string]*model.User)
 
 		for k, p := range profiles {
-			options := utils.Cfg.GetSanitizeOptions()
-			options["passwordupdate"] = false
-
-			if c.IsSystemAdmin() {
-				options["fullname"] = true
-				options["email"] = true
-			} else {
-				p.ClearNonProfileFields()
-			}
-
-			p.Sanitize(options)
+			p.SanitizeProfile(c.IsSystemAdmin(), false, false, false)
 			profiles[k] = p
 		}
 
@@ -1056,17 +1036,7 @@ func getProfiles(c *Context, w http.ResponseWriter, r *http.Request) {
 		profiles := result.Data.(map[string]*model.User)
 
 		for k, p := range profiles {
-			options := utils.Cfg.GetSanitizeOptions()
-			options["passwordupdate"] = false
-
-			if c.IsSystemAdmin() {
-				options["fullname"] = true
-				options["email"] = true
-			} else {
-				p.ClearNonProfileFields()
-			}
-
-			p.Sanitize(options)
+			p.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
 			profiles[k] = p
 		}
 
@@ -1088,17 +1058,7 @@ func getDirectProfiles(c *Context, w http.ResponseWriter, r *http.Request) {
 		profiles := result.Data.(map[string]*model.User)
 
 		for k, p := range profiles {
-			options := utils.Cfg.GetSanitizeOptions()
-			options["passwordupdate"] = false
-
-			if c.IsSystemAdmin() {
-				options["fullname"] = true
-				options["email"] = true
-			} else {
-				p.ClearNonProfileFields()
-			}
-
-			p.Sanitize(options)
+			p.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
 			profiles[k] = p
 		}
 
@@ -1344,6 +1304,16 @@ func uploadProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	Srv.Store.User().UpdateLastPictureUpdate(c.Session.UserId)
 
+	if result := <-Srv.Store.User().Get(c.Session.UserId); result.Err != nil {
+		l4g.Error(utils.T("api.user.get_me.getting.error"), c.Session.UserId)
+	} else {
+		user := result.Data.(*model.User)
+		user.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
+		message := model.NewWebSocketEvent("", "", c.Session.UserId, model.WEBSOCKET_EVENT_USER_UPDATED)
+		message.Add("user", user)
+		go Publish(message)
+	}
+
 	c.LogAudit("")
 
 	// write something as the response since jQuery expects a json response
@@ -1386,6 +1356,13 @@ func updateUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		if rusers[0].Username != rusers[1].Username {
 			go sendEmailChangeUsername(c, rusers[1].Username, rusers[0].Username, rusers[0].Email, c.GetSiteURL())
 		}
+
+		updatedUser := rusers[0]
+		updatedUser.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
+
+		message := model.NewWebSocketEvent("", "", user.Id, model.WEBSOCKET_EVENT_USER_UPDATED)
+		message.Add("user", updatedUser)
+		go Publish(message)
 
 		rusers[0].Password = ""
 		rusers[0].AuthData = new(string)

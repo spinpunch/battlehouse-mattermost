@@ -14,6 +14,7 @@ export default class SelectTeamModal extends React.Component {
 
         this.doSubmit = this.doSubmit.bind(this);
         this.doCancel = this.doCancel.bind(this);
+        this.compare = this.compare.bind(this);
     }
 
     doSubmit(e) {
@@ -23,25 +24,40 @@ export default class SelectTeamModal extends React.Component {
     doCancel() {
         this.props.onModalDismissed();
     }
+    compare(a, b) {
+        if (a.display_name < b.display_name) {
+            return -1;
+        }
+        if (a.display_name > b.display_name) {
+            return 1;
+        }
+        return 0;
+    }
+
     render() {
         if (this.props.teams == null) {
             return <div/>;
         }
 
-        var options = [];
+        const options = [];
+        const teamsArray = [];
 
-        for (var key in this.props.teams) {
-            if (this.props.teams.hasOwnProperty(key)) {
-                var team = this.props.teams[key];
-                options.push(
-                    <option
-                        key={'opt_' + team.id}
-                        value={team.id}
-                    >
-                        {team.name}
-                    </option>
-                );
-            }
+        Reflect.ownKeys(this.props.teams).forEach((key) => {
+            teamsArray.push(this.props.teams[key]);
+        });
+
+        teamsArray.sort(this.compare);
+
+        for (let i = 0; i < teamsArray.length; i++) {
+            const team = teamsArray[i];
+            options.push(
+                <option
+                    key={'opt_' + team.id}
+                    value={team.id}
+                >
+                    {team.display_name}
+                </option>
+            );
         }
 
         return (

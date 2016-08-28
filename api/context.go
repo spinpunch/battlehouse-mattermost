@@ -294,7 +294,7 @@ func (c *Context) LogAuditWithUserId(userId, extraInfo string) {
 func (c *Context) LogError(err *model.AppError) {
 
 	// filter out endless reconnects
-	if c.Path == "/api/v3/users/websocket" && err.StatusCode == 401 {
+	if c.Path == "/api/v3/users/websocket" && err.StatusCode == 401 || err.Id == "web.check_browser_compatibility.app_error" {
 		c.LogDebug(err)
 	} else {
 		l4g.Error(utils.T("api.context.log.error"), c.Path, err.Where, err.StatusCode,
@@ -511,12 +511,7 @@ func Handle404(w http.ResponseWriter, r *http.Request) {
 	err.Translate(utils.T)
 	err.StatusCode = http.StatusNotFound
 
-	// filter out old paths that are poluting the log file
-	if strings.Contains(r.URL.Path, "/api/v1/") {
-		l4g.Debug("%v: code=404 ip=%v", r.URL.Path, GetIpAddress(r))
-	} else {
-		l4g.Error("%v: code=404 ip=%v", r.URL.Path, GetIpAddress(r))
-	}
+	l4g.Debug("%v: code=404 ip=%v", r.URL.Path, GetIpAddress(r))
 
 	if IsApiCall(r) {
 		w.WriteHeader(err.StatusCode)

@@ -79,7 +79,10 @@ function handleReconnect() {
     if (Client.teamId) {
         AsyncClient.getChannels();
         AsyncClient.getPosts(ChannelStore.getCurrentId());
+        AsyncClient.getTeamMembers(TeamStore.getCurrentId());
+        AsyncClient.getProfiles();
     }
+
     getStatuses();
     ErrorStore.clearLastError();
     ErrorStore.emitChange();
@@ -123,6 +126,10 @@ function handleEvent(msg) {
 
     case SocketEvents.USER_REMOVED:
         handleUserRemovedEvent(msg);
+        break;
+
+    case SocketEvents.USER_UPDATED:
+        handleUserUpdatedEvent(msg);
         break;
 
     case SocketEvents.CHANNEL_VIEWED:
@@ -183,6 +190,7 @@ function handlePostDeleteEvent(msg) {
 }
 
 function handleNewUserEvent() {
+    AsyncClient.getTeamMembers(TeamStore.getCurrentId());
     AsyncClient.getProfiles();
     AsyncClient.getDirectProfiles();
     AsyncClient.getChannelExtraInfo();
@@ -234,6 +242,16 @@ function handleUserRemovedEvent(msg) {
         }
     } else if (ChannelStore.getCurrentId() === msg.channel_id) {
         AsyncClient.getChannelExtraInfo();
+    }
+}
+
+function handleUserUpdatedEvent(msg) {
+    if (UserStore.getCurrentId() !== msg.user_id) {
+        UserStore.saveProfile(msg.data.user);
+        if (UserStore.hasDirectProfile(msg.user_id)) {
+            UserStore.saveDirectProfile(msg.data.user);
+        }
+        UserStore.emitChange(msg.user_id);
     }
 }
 
