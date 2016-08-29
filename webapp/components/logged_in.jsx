@@ -51,6 +51,7 @@ export default class LoggedIn extends React.Component {
 
         // Because current CSS requires the root tag to have specific stuff
         $('#root').attr('class', 'channel-view');
+        $('#root').addClass('channel-view-root'); // battlehouse.com customization
 
         // Device tracking setup
         var iOS = (/(iPad|iPhone|iPod)/g).test(navigator.userAgent);

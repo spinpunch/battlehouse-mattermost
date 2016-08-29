@@ -354,7 +354,7 @@
     .signup-team__container {
         font-size: .9em;
         margin-bottom: 30px;
-        padding: 60px 10px 0;
+        padding: 40px 10px 0; // for battlehouse.com header
 
         .signup-team__name {
             font-size: 2em;
@@ -980,6 +980,8 @@
 
     .channel__wrap {
         .row {
+            margin-right: 0 !important; // battlehouse.com
+            margin-left: 0 !important; // battlehouse.com
             &.header {
                 display: block;
             }

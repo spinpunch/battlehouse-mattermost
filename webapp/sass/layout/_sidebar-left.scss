@@ -7,6 +7,7 @@
     position: absolute;
     width: 220px;
     z-index: 5;
+    top: 0; bottom: 0; height: auto; // for battlehouse.com header
 
     &.sidebar--padded {
         padding-top: 44px;

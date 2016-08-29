@@ -17,11 +17,14 @@ body {
 
     > .container-fluid {
         overflow: auto;
+        top: 60px; // for battlehouse.com header
     }
 
     .inner-wrap {
+        width: 100%; // for battlehouse.com header
         > .row {
             &.content {
+                margin-right: 0; margin-left: 0; // for battlehouse.com header
                 margin-bottom: -89px;
                 min-height: 100%;
             }
@@ -30,10 +33,13 @@ body {
 }
 
 .inner-wrap {
-    height: 100%;
+    top: 0; bottom: 0; position: absolute; height: auto; overflow: hidden; // for battlehouse.com header
+    left: 0; width: auto; // for battlehouse.com header
+    // margin-left: 15px;
 
     > .row {
         &.main {
+            margin-right: 0; margin-left: 0; // for battlehouse.com header
             height: 100%;
             position: relative;
         }
@@ -42,14 +48,19 @@ body {
 
 .container-fluid {
     @include legacy-pie-clearfix;
-    height: 100%;
-    position: relative;
+    position: absolute; top: 0; bottom: 0; height: auto; width: 100%; // for battlehouse.com header
+}
+
+.channel-view-root {
+    top: 60px !important; // for battlehouse.com header
 }
 
 .channel-view {
     @include clearfix;
-    height: 100%;
-    position: relative;
+    top: 0; bottom: 0; height: auto; // for battlehouse.com header
+    position: absolute; // for battlehouse.com header
+    width: 100%; // for battlehouse.com header
+    overflow: visible; // for battlehouse.com header
 }
 
 img {
