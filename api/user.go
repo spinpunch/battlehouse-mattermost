@@ -453,7 +453,14 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 	deviceId := props["device_id"]
 	ldapOnly := props["ldap_only"] == "true"
 
-	if len(password) == 0 {
+	// Battlehouse Login additions
+	// BHLogin needs to be able to create sessions for legacy accounts, using only the raw bcrypt hash
+	// this is insecure, so require bh_api_secret to be provided (proving that the call comes from the BHLogin server)
+	BHApiSecret := props["bh_api_secret"]
+	rawBcrypt := props["bcrypt"]
+
+	if (len(password) == 0 && len(rawBcrypt) == 0) ||
+		(len(rawBcrypt) != 0 && (len(BHApiSecret) == 0 || BHApiSecret != *utils.Cfg.ServiceSettings.BHApiSecret)) {
 		c.Err = model.NewLocAppError("login", "api.user.login.blank_pwd.app_error", nil, "")
 		c.Err.StatusCode = http.StatusBadRequest
 		return
@@ -486,7 +493,7 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// and then authenticate them
-	if user, err = authenticateUser(user, password, mfaToken); err != nil {
+	if user, err = authenticateUser(user, password, mfaToken, rawBcrypt); err != nil {
 		c.LogAuditWithUserId(user.Id, "failure")
 		c.Err = err
 		return
@@ -2026,7 +2033,7 @@ func emailToOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 		user = result.Data.(*model.User)
 	}
 
-	if err := checkPasswordAndAllCriteria(user, password, ""); err != nil {
+	if err := checkPasswordAndAllCriteria(user, password, "", ""); err != nil {
 		c.LogAuditWithUserId(user.Id, "failed - bad authentication")
 		c.Err = err
 		return
@@ -2145,7 +2152,7 @@ func emailToLdap(c *Context, w http.ResponseWriter, r *http.Request) {
 		user = result.Data.(*model.User)
 	}
 
-	if err := checkPasswordAndAllCriteria(user, emailPassword, ""); err != nil {
+	if err := checkPasswordAndAllCriteria(user, emailPassword, "", ""); err != nil {
 		c.LogAuditWithUserId(user.Id, "failed - bad authentication")
 		c.Err = err
 		return

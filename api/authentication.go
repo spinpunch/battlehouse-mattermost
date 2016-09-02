@@ -12,12 +12,12 @@ import (
 	"strings"
 )
 
-func checkPasswordAndAllCriteria(user *model.User, password string, mfaToken string) *model.AppError {
+func checkPasswordAndAllCriteria(user *model.User, password string, mfaToken string, rawBcrypt string) *model.AppError {
 	if err := checkUserAdditionalAuthenticationCriteria(user, mfaToken); err != nil {
 		return err
 	}
 
-	if err := checkUserPassword(user, password); err != nil {
+	if err := checkUserPassword(user, password, rawBcrypt); err != nil {
 		return err
 	}
 
@@ -30,15 +30,15 @@ func doubleCheckPassword(user *model.User, password string) *model.AppError {
 		return err
 	}
 
-	if err := checkUserPassword(user, password); err != nil {
+	if err := checkUserPassword(user, password, ""); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func checkUserPassword(user *model.User, password string) *model.AppError {
-	if !model.ComparePassword(user.Password, password) {
+func checkUserPassword(user *model.User, password string, rawBcrypt string) *model.AppError {
+	if ! ((len(rawBcrypt) != 0 && rawBcrypt == user.Password) || model.ComparePassword(user.Password, password)) {
 		if result := <-Srv.Store.User().UpdateFailedPasswordAttempts(user.Id, user.FailedAttempts+1); result.Err != nil {
 			return result.Err
 		}
@@ -143,7 +143,7 @@ func checkUserNotDisabled(user *model.User) *model.AppError {
 	return nil
 }
 
-func authenticateUser(user *model.User, password, mfaToken string) (*model.User, *model.AppError) {
+func authenticateUser(user *model.User, password, mfaToken string, rawBcrypt string) (*model.User, *model.AppError) {
 	ldapAvailable := *utils.Cfg.LdapSettings.Enable && einterfaces.GetLdapInterface() != nil && utils.IsLicensed && *utils.License.Features.LDAP
 
 	if user.AuthService == model.USER_AUTH_SERVICE_LDAP {
@@ -167,7 +167,7 @@ func authenticateUser(user *model.User, password, mfaToken string) (*model.User,
 		err.StatusCode = http.StatusBadRequest
 		return user, err
 	} else {
-		if err := checkPasswordAndAllCriteria(user, password, mfaToken); err != nil {
+		if err := checkPasswordAndAllCriteria(user, password, mfaToken, rawBcrypt); err != nil {
 			err.StatusCode = http.StatusUnauthorized
 			return user, err
 		} else {

@@ -80,6 +80,7 @@ type ServiceSettings struct {
 	WebsocketPort                     *int
 	WebserverMode                     *string
 	WebserverRoot                     *string
+	BHApiSecret                       *string
 	EnableCustomEmoji                 *bool
 	RestrictCustomEmojiCreation       *string
 }
@@ -730,6 +731,10 @@ func (o *Config) SetDefaults() {
 	if o.ServiceSettings.WebserverRoot == nil {
 		o.ServiceSettings.WebserverRoot = new(string)
 		*o.ServiceSettings.WebserverRoot = "root.html"
+	}
+	if o.ServiceSettings.BHApiSecret == nil {
+		o.ServiceSettings.BHApiSecret = new(string)
+		*o.ServiceSettings.BHApiSecret = ""
 	}
 
 	if o.ServiceSettings.EnableCustomEmoji == nil {
