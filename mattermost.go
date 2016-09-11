@@ -550,7 +550,7 @@ func cmdCreateUser() {
 			}
 		}
 
-		ruser, err := api.CreateUser(user)
+		ruser, err := api.CreateUser(user, false)
 		if err != nil {
 			if err.Id != "store.sql_user.save.email_exists.app_error" {
 				l4g.Error("%v", err)

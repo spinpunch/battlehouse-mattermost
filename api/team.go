@@ -169,7 +169,7 @@ func createTeamFromSignup(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		teamSignup.User.EmailVerified = true
 
-		ruser, err := CreateUser(&teamSignup.User)
+		ruser, err := CreateUser(&teamSignup.User, false)
 		if err != nil {
 			c.Err = err
 			return

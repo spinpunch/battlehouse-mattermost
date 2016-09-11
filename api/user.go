@@ -170,7 +170,9 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ruser, err := CreateUser(user)
+	skipTutorial := r.URL.Query().Get("skipTutorial") == "1"
+
+	ruser, err := CreateUser(user, skipTutorial)
 	if err != nil {
 		c.Err = err
 		return
@@ -236,7 +238,7 @@ func IsVerifyHashRequired(user *model.User, team *model.Team, hash string) bool 
 	return shouldVerifyHash
 }
 
-func CreateUser(user *model.User) (*model.User, *model.AppError) {
+func CreateUser(user *model.User, skipTutorial bool) (*model.User, *model.AppError) {
 
 	user.Roles = ""
 
@@ -270,7 +272,11 @@ func CreateUser(user *model.User) (*model.User, *model.AppError) {
 			}
 		}
 
-		pref := model.Preference{UserId: ruser.Id, Category: model.PREFERENCE_CATEGORY_TUTORIAL_STEPS, Name: ruser.Id, Value: "0"}
+		tutorialStep := "0"
+		if skipTutorial {
+			tutorialStep = "999"
+		}
+		pref := model.Preference{UserId: ruser.Id, Category: model.PREFERENCE_CATEGORY_TUTORIAL_STEPS, Name: ruser.Id, Value: tutorialStep}
 		if presult := <-Srv.Store.Preference().Save(&model.Preferences{pref}); presult.Err != nil {
 			l4g.Error(utils.T("api.user.create_user.tutorial.error"), presult.Err.Message)
 		}
@@ -331,7 +337,7 @@ func CreateOAuthUser(c *Context, w http.ResponseWriter, r *http.Request, service
 
 	user.EmailVerified = true
 
-	ruser, err := CreateUser(user)
+	ruser, err := CreateUser(user, false)
 	if err != nil {
 		c.Err = err
 		return nil
