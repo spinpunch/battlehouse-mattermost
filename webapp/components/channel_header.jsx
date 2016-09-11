@@ -15,7 +15,6 @@ import ChannelNotificationsModal from './channel_notifications_modal.jsx';
 import DeleteChannelModal from './delete_channel_modal.jsx';
 import RenameChannelModal from './rename_channel_modal.jsx';
 import ToggleModalButton from './toggle_modal_button.jsx';
-import StatusIcon from './status_icon.jsx';
 
 import ChannelStore from 'stores/channel_store.jsx';
 import UserStore from 'stores/user_store.jsx';
@@ -30,9 +29,7 @@ import Client from 'client/web_client.jsx';
 import * as AsyncClient from 'utils/async_client.jsx';
 import {getFlaggedPosts} from 'actions/post_actions.jsx';
 
-import Constants from 'utils/constants.jsx';
-const UserStatuses = Constants.UserStatuses;
-const ActionTypes = Constants.ActionTypes;
+import {ActionTypes, Constants, Preferences} from 'utils/constants.jsx';
 
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
@@ -66,7 +63,8 @@ export default class ChannelHeader extends React.Component {
             memberChannel: ChannelStore.getMember(this.props.channelId),
             users: extraInfo.members,
             userCount: extraInfo.member_count,
-            currentUser: UserStore.getCurrentUser()
+            currentUser: UserStore.getCurrentUser(),
+            enableFormatting: PreferenceStore.getBool(Preferences.CATEGORY_ADVANCED_SETTINGS, 'formatting', true)
         };
     }
 
@@ -87,7 +85,6 @@ export default class ChannelHeader extends React.Component {
         SearchStore.addSearchChangeListener(this.onListenerChange);
         PreferenceStore.addChangeListener(this.onListenerChange);
         UserStore.addChangeListener(this.onListenerChange);
-        UserStore.addStatusesChangeListener(this.onListenerChange);
         $('.sidebar--left .dropdown-menu').perfectScrollbar();
         document.addEventListener('keydown', this.openRecentMentions);
     }
@@ -98,7 +95,6 @@ export default class ChannelHeader extends React.Component {
         SearchStore.removeSearchChangeListener(this.onListenerChange);
         PreferenceStore.removeChangeListener(this.onListenerChange);
         UserStore.removeChangeListener(this.onListenerChange);
-        UserStore.removeStatusesChangeListener(this.onListenerChange);
         document.removeEventListener('keydown', this.openRecentMentions);
     }
 
@@ -182,21 +178,6 @@ export default class ChannelHeader extends React.Component {
         this.setState({
             showRenameChannelModal: false
         });
-    }
-
-    getTeammateStatus() {
-        const channel = this.state.channel;
-
-        // get status for direct message channels
-        if (channel.type === 'D') {
-            const currentUserId = this.state.currentUser.id;
-            const teammate = this.state.users.find((user) => user.id !== currentUserId);
-            if (teammate) {
-                return UserStore.getStatus(teammate.id);
-            }
-            return UserStatuses.OFFLINE;
-        }
-        return null;
     }
 
     showManagementOptions(channel, isAdmin, isSystemAdmin) {
@@ -543,6 +524,13 @@ export default class ChannelHeader extends React.Component {
             }
         }
 
+        let headerText;
+        if (this.state.enableFormatting) {
+            headerText = TextFormatting.formatText(channel.header, {singleline: true, mentionHighlight: false, siteURL: Utils.getSiteURL()});
+        } else {
+            headerText = channel.header;
+        }
+
         return (
             <div
                 id='channel-header'
@@ -562,7 +550,7 @@ export default class ChannelHeader extends React.Component {
                                             data-toggle='dropdown'
                                             aria-expanded='true'
                                         >
-                                            <strong className='heading'><StatusIcon status={this.getTeammateStatus()}/>{channelTitle} </strong>
+                                            <strong className='heading'>{channelTitle} </strong>
                                             <span className='fa fa-chevron-down header-dropdown__icon'/>
                                         </a>
                                         <ul
@@ -581,9 +569,9 @@ export default class ChannelHeader extends React.Component {
                                         ref='headerOverlay'
                                     >
                                         <div
-                                            onClick={TextFormatting.handleClick}
+                                            onClick={Utils.handleFormattedTextClick}
                                             className='description'
-                                            dangerouslySetInnerHTML={{__html: TextFormatting.formatText(channel.header, {singleline: true, mentionHighlight: false})}}
+                                            dangerouslySetInnerHTML={{__html: headerText}}
                                         />
                                     </OverlayTrigger>
                                 </div>

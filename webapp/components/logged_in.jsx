@@ -18,6 +18,9 @@ const BACKSPACE_CHAR = 8;
 
 import React from 'react';
 
+// import the EmojiStore so that it'll register to receive the results of the listEmojis call further down
+import 'stores/emoji_store.jsx';
+
 export default class LoggedIn extends React.Component {
     constructor(params) {
         super(params);
@@ -82,10 +85,7 @@ export default class LoggedIn extends React.Component {
         // Update segment indentify
         if (global.window.mm_config.SegmentDeveloperKey != null && global.window.mm_config.SegmentDeveloperKey !== '') {
             global.window.analytics.identify(user.id, {
-                name: user.nickname,
-                email: user.email,
                 createdAt: user.create_at,
-                username: user.username,
                 id: user.id
             });
         }

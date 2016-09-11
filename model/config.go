@@ -11,6 +11,7 @@ import (
 
 const (
 	CONN_SECURITY_NONE     = ""
+	CONN_SECURITY_PLAIN    = "PLAIN"
 	CONN_SECURITY_TLS      = "TLS"
 	CONN_SECURITY_STARTTLS = "STARTTLS"
 
@@ -119,6 +120,7 @@ type LogSettings struct {
 	FileFormat             string
 	FileLocation           string
 	EnableWebhookDebugging bool
+	EnableDiagnostics      *bool
 }
 
 type PasswordSettings struct {
@@ -791,6 +793,11 @@ func (o *Config) SetDefaults() {
 		*o.LocalizationSettings.AvailableLocales = ""
 	}
 
+	if o.LogSettings.EnableDiagnostics == nil {
+		o.LogSettings.EnableDiagnostics = new(bool)
+		*o.LogSettings.EnableDiagnostics = true
+	}
+
 	if o.SamlSettings.Enable == nil {
 		o.SamlSettings.Enable = new(bool)
 		*o.SamlSettings.Enable = false
@@ -975,7 +982,7 @@ func (o *Config) IsValid() *AppError {
 		return NewLocAppError("Config.IsValid", "model.config.is_valid.file_salt.app_error", nil, "")
 	}
 
-	if !(o.EmailSettings.ConnectionSecurity == CONN_SECURITY_NONE || o.EmailSettings.ConnectionSecurity == CONN_SECURITY_TLS || o.EmailSettings.ConnectionSecurity == CONN_SECURITY_STARTTLS) {
+	if !(o.EmailSettings.ConnectionSecurity == CONN_SECURITY_NONE || o.EmailSettings.ConnectionSecurity == CONN_SECURITY_TLS || o.EmailSettings.ConnectionSecurity == CONN_SECURITY_STARTTLS || o.EmailSettings.ConnectionSecurity == CONN_SECURITY_PLAIN) {
 		return NewLocAppError("Config.IsValid", "model.config.is_valid.email_security.app_error", nil, "")
 	}
 
@@ -1024,14 +1031,6 @@ func (o *Config) IsValid() *AppError {
 			return NewLocAppError("Config.IsValid", "model.config.is_valid.ldap_basedn", nil, "")
 		}
 
-		if *o.LdapSettings.FirstNameAttribute == "" {
-			return NewLocAppError("Config.IsValid", "model.config.is_valid.ldap_firstname", nil, "")
-		}
-
-		if *o.LdapSettings.LastNameAttribute == "" {
-			return NewLocAppError("Config.IsValid", "model.config.is_valid.ldap_lastname", nil, "")
-		}
-
 		if *o.LdapSettings.EmailAttribute == "" {
 			return NewLocAppError("Config.IsValid", "model.config.is_valid.ldap_email", nil, "")
 		}
@@ -1064,14 +1063,6 @@ func (o *Config) IsValid() *AppError {
 
 		if len(*o.SamlSettings.UsernameAttribute) == 0 {
 			return NewLocAppError("Config.IsValid", "model.config.is_valid.saml_username_attribute.app_error", nil, "")
-		}
-
-		if len(*o.SamlSettings.FirstNameAttribute) == 0 {
-			return NewLocAppError("Config.IsValid", "model.config.is_valid.saml_first_name_attribute.app_error", nil, "")
-		}
-
-		if len(*o.SamlSettings.LastNameAttribute) == 0 {
-			return NewLocAppError("Config.IsValid", "model.config.is_valid.saml_last_name_attribute.app_error", nil, "")
 		}
 
 		if *o.SamlSettings.Verify {

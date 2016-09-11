@@ -4,9 +4,10 @@
 package store
 
 import (
+	"time"
+
 	l4g "github.com/alecthomas/log4go"
 	"github.com/mattermost/platform/model"
-	"time"
 )
 
 type StoreResult struct {
@@ -153,6 +154,7 @@ type UserStore interface {
 	PermanentDelete(userId string) StoreChannel
 	AnalyticsUniqueUserCount(teamId string) StoreChannel
 	GetUnreadCount(userId string) StoreChannel
+	GetUnreadCountForChannel(userId string, channelId string) StoreChannel
 }
 
 type SessionStore interface {
@@ -274,6 +276,7 @@ type StatusStore interface {
 	Get(userId string) StoreChannel
 	GetOnlineAway() StoreChannel
 	GetOnline() StoreChannel
+	GetAllFromTeam(teamId string) StoreChannel
 	ResetAll() StoreChannel
 	GetTotalActiveUsersCount() StoreChannel
 	UpdateLastActivityAt(userId string, lastActivityAt int64) StoreChannel

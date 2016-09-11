@@ -37,7 +37,16 @@ export default class EditPostModal extends React.Component {
         this.onModalHide = this.onModalHide.bind(this);
         this.onModalKeyDown = this.onModalKeyDown.bind(this);
 
-        this.state = {editText: '', originalText: '', title: '', post_id: '', channel_id: '', comments: 0, refocusId: ''};
+        this.state = {
+            editText: '',
+            originalText: '',
+            title: '',
+            post_id: '',
+            channel_id: '',
+            comments: 0,
+            refocusId: '',
+            ctrlSend: PreferenceStore.getBool(Constants.Preferences.CATEGORY_ADVANCED_SETTINGS, 'send_on_ctrl_enter')
+        };
     }
 
     handleEdit() {
@@ -88,11 +97,11 @@ export default class EditPostModal extends React.Component {
         if (!this.state.ctrlSend && e.which === KeyCodes.ENTER && !e.shiftKey && !e.altKey) {
             e.preventDefault();
             ReactDOM.findDOMNode(this.refs.editbox).blur();
-            this.handleEdit(e);
+            this.handleEdit();
         } else if (this.state.ctrlSend && e.ctrlKey && e.which === KeyCodes.ENTER) {
             e.preventDefault();
             ReactDOM.findDOMNode(this.refs.editbox).blur();
-            this.handleSubmit(e);
+            this.handleEdit();
         }
     }
 
@@ -112,7 +121,7 @@ export default class EditPostModal extends React.Component {
 
     handleKeyDown(e) {
         if (this.state.ctrlSend && e.keyCode === KeyCodes.ENTER && e.ctrlKey === true) {
-            this.handleEdit(e);
+            this.handleEdit();
         }
     }
 
@@ -204,7 +213,6 @@ export default class EditPostModal extends React.Component {
                                 className='close'
                                 data-dismiss='modal'
                                 aria-label='Close'
-                                onClick={this.handleEditClose}
                             >
                                 <span aria-hidden='true'>{'×'}</span>
                             </button>

@@ -471,6 +471,15 @@ export default class Client {
             end(this.handleResponse.bind(this, 'ldapSyncNow', success, error));
     }
 
+    ldapTest(success, error) {
+        request.
+            post(`${this.getAdminRoute()}/ldap_test`).
+            set(this.defaultHeaders).
+            type('application/json').
+            accept('application/json').
+            end(this.handleResponse.bind(this, 'ldap_test', success, error));
+    }
+
     // Team Routes Section
 
     createTeamFromSignup(teamSignup, success, error) {
@@ -949,6 +958,15 @@ export default class Client {
             end(this.handleResponse.bind(this, 'getAudits', success, error));
     }
 
+    getRecentlyActiveUsers(id, success, error) {
+        request.
+        get(`${this.getAdminRoute()}/recently_active_users/${id}`).
+        set(this.defaultHeaders).
+        type('application/json').
+        accept('application/json').
+        end(this.handleResponse.bind(this, 'getRecentlyActiveUsers', success, error));
+    }
+
     getDirectProfiles(success, error) {
         request.
             get(`${this.getUsersRoute()}/direct_profiles`).
@@ -992,6 +1010,16 @@ export default class Client {
             type('application/json').
             accept('application/json').
             end(this.handleResponse.bind(this, 'getStatuses', success, error));
+    }
+
+    setActiveChannel(id, success, error) {
+        request.
+            post(`${this.getUsersRoute()}/status/set_active_channel`).
+            set(this.defaultHeaders).
+            type('application/json').
+            accept('application/json').
+            send({channel_id: id}).
+            end(this.handleResponse.bind(this, 'setActiveChannel', success, error));
     }
 
     verifyEmail(uid, hid, success, error) {
@@ -1163,12 +1191,13 @@ export default class Client {
         this.track('api', 'api_channels_delete');
     }
 
-    updateLastViewedAt(channelId, success, error) {
+    updateLastViewedAt(channelId, active, success, error) {
         request.
             post(`${this.getChannelNeededRoute(channelId)}/update_last_viewed_at`).
             set(this.defaultHeaders).
             type('application/json').
             accept('application/json').
+            send({active}).
             end(this.handleResponse.bind(this, 'updateLastViewedAt', success, error));
     }
 
@@ -1571,6 +1600,16 @@ export default class Client {
         accept('application/json').
         send().
         end(this.handleResponse.bind(this, 'deauthorizeOAuthApp', success, error));
+    }
+
+    regenerateOAuthAppSecret(id, success, error) {
+        request.
+        post(`${this.getOAuthRoute()}/${id}/regen_secret`).
+        set(this.defaultHeaders).
+        type('application/json').
+        accept('application/json').
+        send().
+        end(this.handleResponse.bind(this, 'regenerateOAuthAppSecret', success, error));
     }
 
     // Routes for Hooks

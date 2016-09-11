@@ -4,6 +4,7 @@
 package api
 
 import (
+	"fmt"
 	l4g "github.com/alecthomas/log4go"
 
 	"github.com/mattermost/platform/einterfaces"
@@ -61,6 +62,10 @@ func InvalidateCacheForChannel(channelId string) {
 
 func (h *Hub) Register(webConn *WebConn) {
 	h.register <- webConn
+
+	msg := model.NewWebSocketEvent("", "", webConn.UserId, model.WEBSOCKET_EVENT_HELLO)
+	msg.Add("server_version", fmt.Sprintf("%v.%v.%v", model.CurrentVersion, model.BuildNumber, utils.CfgHash))
+	go Publish(msg)
 }
 
 func (h *Hub) Unregister(webConn *WebConn) {
@@ -100,7 +105,7 @@ func (h *Hub) Start() {
 				}
 
 				if !found {
-					go SetStatusOffline(userId)
+					go SetStatusOffline(userId, false)
 				}
 			case userId := <-h.invalidateUser:
 				for webCon := range h.connections {

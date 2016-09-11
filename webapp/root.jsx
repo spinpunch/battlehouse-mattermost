@@ -7,6 +7,7 @@ require('perfect-scrollbar/jquery')($);
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {Router, browserHistory} from 'react-router/es6';
+import PDFJS from 'pdfjs-dist';
 import * as GlobalActions from 'actions/global_actions.jsx';
 import * as Websockets from 'actions/websocket_actions.jsx';
 import BrowserStore from 'stores/browser_store.jsx';
@@ -16,9 +17,12 @@ import * as I18n from 'i18n/i18n.jsx';
 import 'bootstrap-colorpicker/dist/css/bootstrap-colorpicker.css';
 import 'google-fonts/google-fonts.css';
 import 'sass/styles.scss';
+import 'katex/dist/katex.min.css';
 
 // Import the root of our routing tree
 import rRoot from 'routes/route_root.jsx';
+
+PDFJS.disableWorker = true;
 
 // This is for anything that needs to be done for ALL react components.
 // This runs before we start to render anything.

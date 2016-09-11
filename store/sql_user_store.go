@@ -132,8 +132,6 @@ func (us SqlUserStore) Update(user *model.User, trustedUpdateData bool) StoreCha
 				user.Email = oldUser.Email
 			} else if user.IsLDAPUser() && !trustedUpdateData {
 				if user.Username != oldUser.Username ||
-					user.FirstName != oldUser.FirstName ||
-					user.LastName != oldUser.LastName ||
 					user.Email != oldUser.Email {
 					result.Err = model.NewLocAppError("SqlUserStore.Update", "store.sql_user.update.can_not_change_ldap.app_error", nil, "user_id="+user.Id)
 					storeChannel <- result
@@ -911,6 +909,25 @@ func (us SqlUserStore) GetUnreadCount(userId string) StoreChannel {
 
 		if count, err := us.GetReplica().SelectInt("SELECT SUM(CASE WHEN c.Type = 'D' THEN (c.TotalMsgCount - cm.MsgCount) ELSE cm.MentionCount END) FROM Channels c INNER JOIN ChannelMembers cm ON cm.ChannelId = c.Id AND cm.UserId = :UserId", map[string]interface{}{"UserId": userId}); err != nil {
 			result.Err = model.NewLocAppError("SqlUserStore.GetMentionCount", "store.sql_user.get_unread_count.app_error", nil, err.Error())
+		} else {
+			result.Data = count
+		}
+
+		storeChannel <- result
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
+func (us SqlUserStore) GetUnreadCountForChannel(userId string, channelId string) StoreChannel {
+	storeChannel := make(StoreChannel)
+
+	go func() {
+		result := StoreResult{}
+
+		if count, err := us.GetReplica().SelectInt("SELECT SUM(CASE WHEN c.Type = 'D' THEN (c.TotalMsgCount - cm.MsgCount) ELSE cm.MentionCount END) FROM Channels c INNER JOIN ChannelMembers cm ON c.Id = :ChannelId AND cm.ChannelId = :ChannelId AND cm.UserId = :UserId", map[string]interface{}{"ChannelId": channelId, "UserId": userId}); err != nil {
+			result.Err = model.NewLocAppError("SqlUserStore.GetMentionCountForChannel", "store.sql_user.get_unread_count_for_channel.app_error", nil, err.Error())
 		} else {
 			result.Data = count
 		}

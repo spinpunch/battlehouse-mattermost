@@ -161,6 +161,18 @@ func TestEmailTest(t *testing.T) {
 	}
 }
 
+func TestLdapTest(t *testing.T) {
+	th := Setup().InitBasic().InitSystemAdmin()
+
+	if _, err := th.BasicClient.TestLdap(utils.Cfg); err == nil {
+		t.Fatal("Shouldn't have permissions")
+	}
+
+	if _, err := th.SystemAdminClient.TestLdap(utils.Cfg); err == nil {
+		t.Fatal("should have errored")
+	}
+}
+
 func TestGetTeamAnalyticsStandard(t *testing.T) {
 	th := Setup().InitBasic().InitSystemAdmin()
 	th.CreatePrivateChannel(th.BasicClient, th.BasicTeam)
@@ -513,5 +525,20 @@ func TestAdminLdapSyncNow(t *testing.T) {
 
 	if _, err := Client.LdapSyncNow(); err != nil {
 		t.Fatal("Returned Failure")
+	}
+}
+
+func TestGetRecentlyActiveUsers(t *testing.T) {
+	th := Setup().InitBasic()
+
+	user1Id := th.BasicUser.Id
+	user2Id := th.BasicUser2.Id
+
+	if userMap, err := th.BasicClient.GetRecentlyActiveUsers(th.BasicTeam.Id); err != nil {
+		t.Fatal(err)
+	} else if len(userMap.Data.(map[string]*model.User)) != 2 {
+		t.Fatal("should have been 2")
+	} else if userMap.Data.(map[string]*model.User)[user1Id].Id != user1Id || userMap.Data.(map[string]*model.User)[user2Id].Id != user2Id {
+		t.Fatal("should have been valid")
 	}
 }

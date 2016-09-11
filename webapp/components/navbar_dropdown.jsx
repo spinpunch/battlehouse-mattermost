@@ -205,7 +205,7 @@ export default class NavbarDropdown extends React.Component {
             config.EnableIncomingWebhooks === 'true' ||
             config.EnableOutgoingWebhooks === 'true' ||
             config.EnableCommands === 'true' ||
-            config.EnableOAuthServiceProvider === 'true';
+            (config.EnableOAuthServiceProvider === 'true' && (isSystemAdmin || config.EnableOnlyAdminIntegrations !== 'true'));
         if (integrationsEnabled && (isAdmin || config.EnableOnlyAdminIntegrations !== 'true')) {
             integrationsLink = (
                 <li>
@@ -347,7 +347,7 @@ export default class NavbarDropdown extends React.Component {
                     >
                         <FormattedMessage
                             id='navbar_dropdown.nativeApps'
-                            defaultMessage='Download Native Apps'
+                            defaultMessage='Download Apps'
                         />
                     </Link>
                 </li>

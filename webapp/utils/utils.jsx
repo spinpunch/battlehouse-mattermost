@@ -86,9 +86,14 @@ export function getCookie(name) {
 
 var requestedNotificationPermission = false;
 
-export function notifyMe(title, body, channel, teamId) {
+export function notifyMe(title, body, channel, teamId, duration) {
     if (!('Notification' in window)) {
         return;
+    }
+
+    let notificationDuration = Constants.DEFAULT_NOTIFICATION_DURATION;
+    if (duration != null) {
+        notificationDuration = duration;
     }
 
     if (Notification.permission === 'granted' || (Notification.permission === 'default' && !requestedNotificationPermission)) {
@@ -97,7 +102,7 @@ export function notifyMe(title, body, channel, teamId) {
         Notification.requestPermission((permission) => {
             if (permission === 'granted') {
                 try {
-                    var notification = new Notification(title, {body, tag: body, icon: icon50});
+                    var notification = new Notification(title, {body, tag: body, icon: icon50, requireInteraction: notificationDuration === 0});
                     notification.onclick = () => {
                         window.focus();
                         if (channel) {
@@ -108,9 +113,12 @@ export function notifyMe(title, body, channel, teamId) {
                             browserHistory.push(TeamStore.getCurrentTeamUrl() + '/channels/town-square');
                         }
                     };
-                    setTimeout(() => {
-                        notification.close();
-                    }, 5000);
+
+                    if (notificationDuration > 0) {
+                        setTimeout(() => {
+                            notification.close();
+                        }, notificationDuration);
+                    }
                 } catch (e) {
                     console.error(e); //eslint-disable-line no-console
                 }
@@ -1343,4 +1351,28 @@ export function isValidPassword(password) {
 
 export function getSiteURL() {
     return global.mm_config.SiteURL || window.location.origin;
+}
+
+export function handleFormattedTextClick(e) {
+    const mentionAttribute = e.target.getAttributeNode('data-mention');
+    const hashtagAttribute = e.target.getAttributeNode('data-hashtag');
+    const linkAttribute = e.target.getAttributeNode('data-link');
+
+    if (mentionAttribute) {
+        e.preventDefault();
+
+        searchForTerm(mentionAttribute.value);
+    } else if (hashtagAttribute) {
+        e.preventDefault();
+
+        searchForTerm(hashtagAttribute.value);
+    } else if (linkAttribute) {
+        const MIDDLE_MOUSE_BUTTON = 1;
+
+        if (!(e.button === MIDDLE_MOUSE_BUTTON || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey)) {
+            e.preventDefault();
+
+            browserHistory.push(linkAttribute.value);
+        }
+    }
 }

@@ -201,7 +201,7 @@ func TestLogin(t *testing.T) {
 	store.Must(Srv.Store.User().VerifyEmail(user3.Id))
 
 	if _, err := Client.Login(user3.Id, user3.Password); err == nil {
-		t.Fatal("LDAP user should not be able to log in with LDAP disabled")
+		t.Fatal("AD/LDAP user should not be able to log in with AD/LDAP disabled")
 	}
 }
 
@@ -218,7 +218,7 @@ func TestLoginByLdap(t *testing.T) {
 	store.Must(Srv.Store.User().VerifyEmail(ruser.Data.(*model.User).Id))
 
 	if _, err := Client.LoginByLdap(ruser.Data.(*model.User).Id, user.Password); err == nil {
-		t.Fatal("should've failed to log in with non-ldap user")
+		t.Fatal("should have failed to log in with non AD/LDAP user")
 	}
 }
 
@@ -434,6 +434,13 @@ func TestGetDirectProfiles(t *testing.T) {
 
 	th.BasicClient.Must(th.BasicClient.CreateDirectChannel(th.BasicUser2.Id))
 
+	prevShowEmail := utils.Cfg.PrivacySettings.ShowEmailAddress
+	defer func() {
+		utils.Cfg.PrivacySettings.ShowEmailAddress = prevShowEmail
+	}()
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = true
+
 	if result, err := th.BasicClient.GetDirectProfiles(""); err != nil {
 		t.Fatal(err)
 	} else {
@@ -446,6 +453,34 @@ func TestGetDirectProfiles(t *testing.T) {
 		if users[th.BasicUser2.Id] == nil {
 			t.Fatal("missing expected user")
 		}
+
+		for _, user := range users {
+			if user.Email == "" {
+				t.Fatal("problem with show email")
+			}
+		}
+	}
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = false
+
+	if result, err := th.BasicClient.GetDirectProfiles(""); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.(map[string]*model.User)
+
+		if len(users) != 1 {
+			t.Fatal("map was wrong length")
+		}
+
+		if users[th.BasicUser2.Id] == nil {
+			t.Fatal("missing expected user")
+		}
+
+		for _, user := range users {
+			if user.Email != "" {
+				t.Fatal("problem with show email")
+			}
+		}
 	}
 }
 
@@ -454,6 +489,13 @@ func TestGetProfilesForDirectMessageList(t *testing.T) {
 
 	th.BasicClient.Must(th.BasicClient.CreateDirectChannel(th.BasicUser2.Id))
 
+	prevShowEmail := utils.Cfg.PrivacySettings.ShowEmailAddress
+	defer func() {
+		utils.Cfg.PrivacySettings.ShowEmailAddress = prevShowEmail
+	}()
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = true
+
 	if result, err := th.BasicClient.GetProfilesForDirectMessageList(th.BasicTeam.Id); err != nil {
 		t.Fatal(err)
 	} else {
@@ -461,6 +503,30 @@ func TestGetProfilesForDirectMessageList(t *testing.T) {
 
 		if len(users) < 1 {
 			t.Fatal("map was wrong length")
+		}
+
+		for _, user := range users {
+			if user.Email == "" {
+				t.Fatal("problem with show email")
+			}
+		}
+	}
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = false
+
+	if result, err := th.BasicClient.GetProfilesForDirectMessageList(th.BasicTeam.Id); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.(map[string]*model.User)
+
+		if len(users) < 1 {
+			t.Fatal("map was wrong length")
+		}
+
+		for _, user := range users {
+			if user.Email != "" {
+				t.Fatal("problem with show email")
+			}
 		}
 	}
 }
@@ -1492,7 +1558,7 @@ func TestLDAPToEmail(t *testing.T) {
 
 	m["email"] = user.Email
 	if _, err := Client.LDAPToEmail(m); err == nil {
-		t.Fatal("should have failed - user is not an LDAP user")
+		t.Fatal("should have failed - user is not an AD/LDAP user")
 	}
 }
 

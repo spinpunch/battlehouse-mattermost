@@ -4,6 +4,7 @@
 import UserProfile from './user_profile.jsx';
 import FileAttachmentList from './file_attachment_list.jsx';
 import PendingPostOptions from 'components/post_view/components/pending_post_options.jsx';
+import PostMessageContainer from 'components/post_view/components/post_message_container.jsx';
 import ProfilePicture from 'components/profile_picture.jsx';
 
 import TeamStore from 'stores/team_store.jsx';
@@ -12,7 +13,6 @@ import UserStore from 'stores/user_store.jsx';
 import * as GlobalActions from 'actions/global_actions.jsx';
 import {flagPost, unflagPost} from 'actions/post_actions.jsx';
 
-import * as TextFormatting from 'utils/text_formatting.jsx';
 import * as Utils from 'utils/utils.jsx';
 import * as PostUtils from 'utils/post_utils.jsx';
 
@@ -30,6 +30,7 @@ export default class RhsComment extends React.Component {
         super(props);
 
         this.handlePermalink = this.handlePermalink.bind(this);
+        this.removePost = this.removePost.bind(this);
         this.flagPost = this.flagPost.bind(this);
         this.unflagPost = this.unflagPost.bind(this);
 
@@ -39,6 +40,23 @@ export default class RhsComment extends React.Component {
     handlePermalink(e) {
         e.preventDefault();
         GlobalActions.showGetPostLinkModal(this.props.post);
+    }
+
+    removePost() {
+        GlobalActions.emitRemovePost(this.props.post);
+    }
+
+    createRemovePostButton() {
+        return (
+            <a
+                href='#'
+                className='post__remove theme'
+                type='button'
+                onClick={this.removePost}
+            >
+                {'×'}
+            </a>
+        );
     }
 
     shouldComponentUpdate(nextProps) {
@@ -182,7 +200,10 @@ export default class RhsComment extends React.Component {
                     <a
                         href='#'
                         role='menuitem'
-                        onClick={() => GlobalActions.showDeletePostModal(post, 0)}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            GlobalActions.showDeletePostModal(post, 0);
+                        }}
                     >
                         <FormattedMessage
                             id='rhs_comment.del'
@@ -234,13 +255,7 @@ export default class RhsComment extends React.Component {
         }
         let loading;
         let postClass = '';
-        let message = (
-            <div
-                ref='message_holder'
-                onClick={TextFormatting.handleClick}
-                dangerouslySetInnerHTML={{__html: TextFormatting.formatText(post.message)}}
-            />
-        );
+        let message = <PostMessageContainer post={post}/>;
 
         if (post.state === Constants.POST_FAILED) {
             postClass += ' post-fail';
@@ -350,6 +365,21 @@ export default class RhsComment extends React.Component {
             );
         }
 
+        let options;
+        if (Utils.isPostEphemeral(post)) {
+            options = (
+                <li className='col col__remove'>
+                    {this.createRemovePostButton()}
+                </li>
+            );
+        } else {
+            options = (
+                <li className='col col__reply'>
+                    {dropdown}
+                </li>
+            );
+        }
+
         return (
             <div className={'post post--thread ' + currentUserCss + ' ' + compactClass}>
                 <div className='post__content'>
@@ -365,7 +395,7 @@ export default class RhsComment extends React.Component {
                                     <FormattedDate
                                         value={post.create_at}
                                         day='numeric'
-                                        month='long'
+                                        month='short'
                                         year='numeric'
                                         hour12={!this.props.useMilitaryTime}
                                         hour='2-digit'
@@ -374,9 +404,7 @@ export default class RhsComment extends React.Component {
                                 </time>
                                 {flagTrigger}
                             </li>
-                            <li className='col col__reply'>
-                                {dropdown}
-                            </li>
+                            {options}
                         </ul>
                         <div className='post__body'>
                             <div className={postClass}>

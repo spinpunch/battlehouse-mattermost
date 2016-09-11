@@ -150,7 +150,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set(model.HEADER_REQUEST_ID, c.RequestId)
-	w.Header().Set(model.HEADER_VERSION_ID, fmt.Sprintf("%v.%v", model.CurrentVersion, utils.CfgHash))
+	w.Header().Set(model.HEADER_VERSION_ID, fmt.Sprintf("%v.%v.%v", model.CurrentVersion, model.BuildNumber, utils.CfgHash))
 	if einterfaces.GetClusterInterface() != nil {
 		w.Header().Set(model.HEADER_CLUSTER_ID, einterfaces.GetClusterInterface().GetClusterId())
 	}
@@ -207,7 +207,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if c.Err == nil && h.isUserActivity && token != "" && len(c.Session.UserId) > 0 {
-		SetStatusOnline(c.Session.UserId, c.Session.Id)
+		SetStatusOnline(c.Session.UserId, c.Session.Id, false)
 	}
 
 	if c.Err == nil {

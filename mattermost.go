@@ -279,6 +279,47 @@ func doSecurityAndDiagnostics() {
 			}
 		}
 	}
+
+	if *utils.Cfg.LogSettings.EnableDiagnostics {
+		utils.SendGeneralDiagnostics()
+		sendServerDiagnostics()
+	}
+}
+
+func sendServerDiagnostics() {
+	var userCount int64
+	var activeUserCount int64
+	var teamCount int64
+
+	if ucr := <-api.Srv.Store.User().GetTotalUsersCount(); ucr.Err == nil {
+		userCount = ucr.Data.(int64)
+	}
+
+	if ucr := <-api.Srv.Store.Status().GetTotalActiveUsersCount(); ucr.Err == nil {
+		activeUserCount = ucr.Data.(int64)
+	}
+
+	if tcr := <-api.Srv.Store.Team().AnalyticsTeamCount(); tcr.Err == nil {
+		teamCount = tcr.Data.(int64)
+	}
+
+	utils.SendDiagnostic(utils.TRACK_ACTIVITY, map[string]interface{}{
+		"users":        userCount,
+		"active_users": activeUserCount,
+		"teams":        teamCount,
+	})
+
+	edition := model.BuildEnterpriseReady
+	version := model.CurrentVersion
+	database := utils.Cfg.SqlSettings.DriverName
+	operatingSystem := runtime.GOOS
+
+	utils.SendDiagnostic(utils.TRACK_VERSION, map[string]interface{}{
+		"edition":          edition,
+		"version":          version,
+		"database":         database,
+		"operating_system": operatingSystem,
+	})
 }
 
 func runSecurityAndDiagnosticsJob() {
@@ -1214,11 +1255,11 @@ func cmdRunLdapSync() {
 	if flagCmdRunLdapSync {
 		if ldapI := einterfaces.GetLdapInterface(); ldapI != nil {
 			if err := ldapI.Syncronize(); err != nil {
-				fmt.Println("ERROR: Ldap Syncronization Failed")
+				fmt.Println("ERROR: AD/LDAP Syncronization Failed")
 				l4g.Error("%v", err.Error())
 				flushLogAndExit(1)
 			} else {
-				fmt.Println("SUCCESS: Ldap Syncronization Complete")
+				fmt.Println("SUCCESS: AD/LDAP Syncronization Complete")
 				flushLogAndExit(0)
 			}
 		}

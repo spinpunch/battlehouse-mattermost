@@ -113,7 +113,7 @@ export function getChannel(id) {
     );
 }
 
-export function updateLastViewedAt(id) {
+export function updateLastViewedAt(id, active) {
     let channelId;
     if (id) {
         channelId = id;
@@ -129,9 +129,17 @@ export function updateLastViewedAt(id) {
         return;
     }
 
+    let isActive;
+    if (active == null) {
+        isActive = true;
+    } else {
+        isActive = active;
+    }
+
     callTracker[`updateLastViewed${channelId}`] = utils.getTimestamp();
     Client.updateLastViewedAt(
         channelId,
+        isActive,
         () => {
             callTracker[`updateLastViewed${channelId}`] = 0;
             ErrorStore.clearLastError();
@@ -609,13 +617,12 @@ export function getPosts(id) {
     }
 
     const postList = PostStore.getAllPosts(channelId);
+    const latestPostTime = PostStore.getLatestPostFromPageTime(id);
 
-    if ($.isEmptyObject(postList) || postList.order.length < Constants.POST_CHUNK_SIZE) {
+    if ($.isEmptyObject(postList) || postList.order.length < Constants.POST_CHUNK_SIZE || latestPostTime === 0) {
         getPostsPage(channelId, Constants.POST_CHUNK_SIZE);
         return;
     }
-
-    const latestPostTime = PostStore.getLatestPostFromPageTime(id);
 
     callTracker['getPosts_' + channelId] = utils.getTimestamp();
 
@@ -750,6 +757,24 @@ export function getStatuses() {
         (err) => {
             callTracker.getStatuses = 0;
             dispatchError(err, 'getStatuses');
+        }
+    );
+}
+
+export function setActiveChannel(channelId) {
+    if (isCallInProgress(`setActiveChannel${channelId}`)) {
+        return;
+    }
+
+    callTracker[`setActiveChannel${channelId}`] = utils.getTimestamp();
+    Client.setActiveChannel(
+        channelId,
+        () => {
+            callTracker[`setActiveChannel${channelId}`] = 0;
+        },
+        (err) => {
+            callTracker[`setActiveChannel${channelId}`] = 0;
+            dispatchError(err, 'setActiveChannel');
         }
     );
 }
@@ -1113,7 +1138,7 @@ export function getRecentAndNewUsersAnalytics(teamId) {
 
     callTracker[callName] = utils.getTimestamp();
 
-    Client.getProfilesForTeam(
+    Client.getRecentlyActiveUsers(
         teamId,
         (users) => {
             const stats = {};

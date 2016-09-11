@@ -98,7 +98,7 @@ export default class LoginController extends React.Component {
                     <FormattedMessage
                         id={msgId}
                         values={{
-                            ldapUsername: global.window.mm_config.LdapLoginFieldName || Utils.localizeMessage('login.ldapUsernameLower', 'LDAP username')
+                            ldapUsername: global.window.mm_config.LdapLoginFieldName || Utils.localizeMessage('login.ldapUsernameLower', 'AD/LDAP username')
                         }}
                     />
                 )
@@ -261,7 +261,7 @@ export default class LoginController extends React.Component {
             if (global.window.mm_config.LdapLoginFieldName) {
                 loginPlaceholders.push(global.window.mm_config.LdapLoginFieldName);
             } else {
-                loginPlaceholders.push(Utils.localizeMessage('login.ldapUsername', 'LDAP Username'));
+                loginPlaceholders.push(Utils.localizeMessage('login.ldapUsername', 'AD/LDAP Username'));
             }
         }
 
@@ -459,6 +459,17 @@ export default class LoginController extends React.Component {
             );
         }
 
+        if (gitlabSigninEnabled || samlSigninEnabled || office365SigninEnabled || googleSigninEnabled || gitlabSigninEnabled) {
+            loginControls.push(
+                <h5 key='oauthHeader'>
+                    <FormattedMessage
+                        id='login.signInWith'
+                        defaultMessage='Sign in with:'
+                    />
+                </h5>
+            );
+        }
+
         if (gitlabSigninEnabled) {
             loginControls.push(
                 <a
@@ -534,7 +545,7 @@ export default class LoginController extends React.Component {
                     error={
                         <FormattedMessage
                             id='login.noMethods'
-                            defaultMessage='No sign in methods are enabled. Please contact your System Administrator.'
+                            defaultMessage='No sign-in methods are enabled. Please contact your System Administrator.'
                         />
                     }
                     margin={true}

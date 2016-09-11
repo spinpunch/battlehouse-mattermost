@@ -5,8 +5,7 @@ import React from 'react';
 
 import BackstageHeader from 'components/backstage/components/backstage_header.jsx';
 import {FormattedMessage, FormattedHTMLMessage} from 'react-intl';
-import {browserHistory, Link} from 'react-router/es6';
-import SpinnerButton from 'components/spinner_button.jsx';
+import {Link} from 'react-router/es6';
 
 import UserStore from 'stores/user_store.jsx';
 import IntegrationStore from 'stores/integration_store.jsx';
@@ -23,8 +22,6 @@ export default class ConfirmIntegration extends React.Component {
 
     constructor(props) {
         super(props);
-
-        this.handleDone = this.handleDone.bind(this);
 
         this.handleIntegrationChange = this.handleIntegrationChange.bind(this);
 
@@ -55,13 +52,6 @@ export default class ConfirmIntegration extends React.Component {
         });
     }
 
-    handleDone() {
-        browserHistory.push('/' + this.props.team.name + '/integrations/' + this.state.type);
-        this.setState({
-            id: ''
-        });
-    }
-
     render() {
         let headerText = null;
         let helpText = null;
@@ -74,23 +64,23 @@ export default class ConfirmIntegration extends React.Component {
                 />
             );
             helpText = (
-                <div className='backstage-list__help'>
+                <p>
                     <FormattedHTMLMessage
                         id='add_command.doneHelp'
                         defaultMessage='Your slash command has been set up. The following token will be sent in the outgoing payload. Please use it to verify the request came from your Mattermost team (see <a href="https://docs.mattermost.com/developer/slash-commands.html">documentation</a> for further details).'
                     />
-                </div>
+                </p>
             );
             tokenText = (
-                <div className='backstage-list__help'>
+                <p className='word-break--all'>
                     <FormattedHTMLMessage
                         id='add_command.token'
                         defaultMessage='<b>Token</b>: {token}'
                         values={{
-                            token: this.state.id
+                            token: IntegrationStore.getCommand(this.props.team.id, this.state.id).token
                         }}
                     />
-                </div>
+                </p>
             );
         } else if (this.state.type === Constants.Integrations.INCOMING_WEBHOOK) {
             headerText = (
@@ -100,15 +90,15 @@ export default class ConfirmIntegration extends React.Component {
                 />
             );
             helpText = (
-                <div className='backstage-list__help'>
+                <p>
                     <FormattedHTMLMessage
                         id='add_incoming_webhook.doneHelp'
                         defaultMessage='Your incoming webhook has been set up. Please send data to the following URL (see <a href=\"https://docs.mattermost.com/developer/webhooks-incoming.html\">documentation</a> for further details).'
                     />
-                </div>
+                </p>
             );
             tokenText = (
-                <div className='backstage-list__help'>
+                <p className='word-break--all'>
                     <FormattedHTMLMessage
                         id='add_incoming_webhook.url'
                         defaultMessage='<b>URL</b>: {url}'
@@ -116,7 +106,7 @@ export default class ConfirmIntegration extends React.Component {
                             url: window.location.origin + '/hooks/' + this.state.id
                         }}
                     />
-                </div>
+                </p>
             );
         } else if (this.state.type === Constants.Integrations.OUTGOING_WEBHOOK) {
             headerText = (
@@ -126,23 +116,23 @@ export default class ConfirmIntegration extends React.Component {
                 />
             );
             helpText = (
-                <div className='backstage-list__help'>
+                <p>
                     <FormattedHTMLMessage
                         id='add_outgoing_webhook.doneHelp'
                         defaultMessage='Your outgoing webhook has been set up. The following token will be sent in the outgoing payload. Please use it to verify the request came from your Mattermost team (see <a href=\"https://docs.mattermost.com/developer/webhooks-outgoing.html\">documentation</a> for further details).'
                     />
-                </div>
+                </p>
             );
             tokenText = (
-                <div className='backstage-list__help'>
+                <p className='word-break--all'>
                     <FormattedHTMLMessage
                         id='add_outgoing_webhook.token'
                         defaultMessage='<b>Token</b>: {token}'
                         values={{
-                            token: this.state.id
+                            token: IntegrationStore.getOutgoingWebhook(this.props.team.id, this.state.id).token
                         }}
                     />
-                </div>
+                </p>
             );
         } else if (this.state.type === Constants.Integrations.OAUTH_APP) {
             let oauthApp = {};
@@ -163,15 +153,15 @@ export default class ConfirmIntegration extends React.Component {
 
                 helpText = [];
                 helpText.push(
-                    <div className='backstage-list__help'>
+                    <p>
                         <FormattedMessage
                             id='add_oauth_app.doneHelp'
                             defaultMessage='Your OAuth 2.0 application has been set up. Please use the following Client ID and Client Secret when requesting authorization for your application.'
                         />
-                    </div>
+                    </p>
                 );
                 helpText.push(
-                    <div className='backstage-list__help'>
+                    <p>
                         <FormattedHTMLMessage
                             id='add_oauth_app.clientId'
                             defaultMessage='<b>Client ID:</b> {id}'
@@ -186,20 +176,20 @@ export default class ConfirmIntegration extends React.Component {
                                 secret: oauthApp.client_secret
                             }}
                         />
-                    </div>
+                    </p>
                 );
 
                 helpText.push(
-                    <div className='backstage-list__help'>
+                    <p>
                         <FormattedHTMLMessage
                             id='add_oauth_app.doneUrlHelp'
-                            defaultMessage='Please send data to the following URL.'
+                            defaultMessage='The following are your authorized redirect URL(s).'
                         />
-                    </div>
+                    </p>
                 );
 
                 tokenText = (
-                    <div className='backstage-list__help'>
+                    <p className='word-break--all'>
                         <FormattedHTMLMessage
                             id='add_oauth_app.url'
                             defaultMessage='<b>URL(s)</b>: {url}'
@@ -207,7 +197,7 @@ export default class ConfirmIntegration extends React.Component {
                                 url: oauthApp.callback_urls
                             }}
                         />
-                    </div>
+                    </p>
                 );
             }
         }
@@ -223,19 +213,27 @@ export default class ConfirmIntegration extends React.Component {
                         defaultMessage='Add'
                     />
                 </BackstageHeader>
-                {helpText}
-                {tokenText}
-                <div className='backstage-list__help'>
-                    <SpinnerButton
-                        className='btn btn-primary'
-                        type='submit'
-                        onClick={this.handleDone}
-                    >
+                <div className='backstage-form backstage-form__confirmation'>
+                    <h4 className='backstage-form__title'>
                         <FormattedMessage
-                            id='integrations.done'
-                            defaultMessage='Done'
+                            id='integrations.successful'
+                            defaultMessage='Setup Successful'
                         />
-                    </SpinnerButton>
+                    </h4>
+                    {helpText}
+                    {tokenText}
+                    <div className='backstage-form__footer'>
+                        <Link
+                            className='btn btn-primary'
+                            type='submit'
+                            to={'/' + this.props.team.name + '/integrations/' + this.state.type}
+                        >
+                            <FormattedMessage
+                                id='integrations.done'
+                                defaultMessage='Done'
+                            />
+                        </Link>
+                    </div>
                 </div>
             </div>
         );

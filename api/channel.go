@@ -354,7 +354,7 @@ func PostUpdateChannelHeaderMessage(c *Context, channelId string, oldChannelHead
 			Type:      model.POST_HEADER_CHANGE,
 			UserId:    c.Session.UserId,
 		}
-		if _, err := CreatePost(c.TeamId, post, false); err != nil {
+		if _, err := CreatePost(c, post, false); err != nil {
 			l4g.Error(utils.T("api.channel.post_update_channel_header_message_and_forget.join_leave.error"), err)
 		}
 	}
@@ -546,7 +546,7 @@ func PostUserAddRemoveMessage(c *Context, channelId string, message, postType st
 		Type:      postType,
 		UserId:    c.Session.UserId,
 	}
-	if _, err := CreatePost(c.TeamId, post, false); err != nil {
+	if _, err := CreatePost(c, post, false); err != nil {
 		l4g.Error(utils.T("api.channel.post_user_add_remove_message_and_forget.error"), err)
 	}
 }
@@ -618,7 +618,16 @@ func JoinDefaultChannels(teamId string, user *model.User, channelRole string) *m
 			Type:      model.POST_JOIN_LEAVE,
 			UserId:    user.Id,
 		}
-		if _, err := CreatePost(teamId, post, false); err != nil {
+
+		fakeContext := &Context{
+			Session: model.Session{
+				UserId: user.Id,
+			},
+			TeamId: teamId,
+			T:      utils.TfuncWithFallback(user.Locale),
+		}
+
+		if _, err := CreatePost(fakeContext, post, false); err != nil {
 			l4g.Error(utils.T("api.channel.post_user_add_remove_message_and_forget.error"), err)
 		}
 	}
@@ -794,7 +803,7 @@ func deleteChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 				Type:      model.POST_CHANNEL_DELETED,
 				UserId:    c.Session.UserId,
 			}
-			if _, err := CreatePost(c.TeamId, post, false); err != nil {
+			if _, err := CreatePost(c, post, false); err != nil {
 				l4g.Error(utils.T("api.channel.delete_channel.failed_post.error"), err)
 			}
 		}()
@@ -837,7 +846,37 @@ func updateLastViewedAt(c *Context, w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["channel_id"]
 
+	data := model.StringInterfaceFromJson(r.Body)
+
+	var active bool
+	var ok bool
+	if active, ok = data["active"].(bool); !ok {
+		active = true
+	}
+
+	doClearPush := false
+	if *utils.Cfg.EmailSettings.SendPushNotifications && !c.Session.IsMobileApp() && active {
+		if result := <-Srv.Store.User().GetUnreadCountForChannel(c.Session.UserId, id); result.Err != nil {
+			l4g.Error(utils.T("api.channel.update_last_viewed_at.get_unread_count_for_channel.error"), c.Session.UserId, id, result.Err.Error())
+		} else {
+			if result.Data.(int64) > 0 {
+				doClearPush = true
+			}
+		}
+	}
+
+	go func() {
+		if err := SetActiveChannel(c.Session.UserId, id); err != nil {
+			l4g.Error(err.Error())
+		}
+	}()
+
 	Srv.Store.Channel().UpdateLastViewedAt(id, c.Session.UserId)
+
+	// Must be after update so that unread count is correct
+	if doClearPush {
+		go clearPushNotification(c.Session.UserId, id)
+	}
 
 	preference := model.Preference{
 		UserId:   c.Session.UserId,

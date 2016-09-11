@@ -63,7 +63,7 @@ export default class PostInfo extends React.Component {
             dataComments = this.props.commentCount;
         }
 
-        if (this.props.allowReply === 'true') {
+        if (this.props.allowReply) {
             dropdownContents.push(
                 <li
                     key='replyLink'
@@ -147,7 +147,10 @@ export default class PostInfo extends React.Component {
                     <a
                         href='#'
                         role='menuitem'
-                        onClick={() => GlobalActions.showDeletePostModal(post, dataComments)}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            GlobalActions.showDeletePostModal(post, dataComments);
+                        }}
                     >
                         <FormattedMessage
                             id='post_info.del'
@@ -261,7 +264,7 @@ export default class PostInfo extends React.Component {
             highlightMentionClass = ' mention--highlight';
         }
 
-        if (post.state !== Constants.POST_FAILED && post.state !== Constants.POST_LOADING && !Utils.isPostEphemeral(post)) {
+        if (post.state !== Constants.POST_FAILED && post.state !== Constants.POST_LOADING && !Utils.isPostEphemeral(post) && this.props.allowReply) {
             comments = (
                 <a
                     href='#'
@@ -385,7 +388,7 @@ PostInfo.propTypes = {
     commentCount: React.PropTypes.number.isRequired,
     isCommentMention: React.PropTypes.bool.isRequired,
     isLastComment: React.PropTypes.bool.isRequired,
-    allowReply: React.PropTypes.string.isRequired,
+    allowReply: React.PropTypes.bool.isRequired,
     handleCommentClick: React.PropTypes.func.isRequired,
     handleDropdownOpened: React.PropTypes.func.isRequired,
     sameUser: React.PropTypes.bool.isRequired,

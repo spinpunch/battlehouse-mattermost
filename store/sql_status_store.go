@@ -5,6 +5,7 @@ package store
 
 import (
 	"database/sql"
+
 	"github.com/mattermost/platform/model"
 )
 
@@ -23,6 +24,7 @@ func NewSqlStatusStore(sqlStore *SqlStore) StatusStore {
 		table := db.AddTableWithName(model.Status{}, "Status").SetKeys(false, "UserId")
 		table.ColMap("UserId").SetMaxSize(26)
 		table.ColMap("Status").SetMaxSize(32)
+		table.ColMap("ActiveChannel").SetMaxSize(26)
 	}
 
 	return s
@@ -116,6 +118,28 @@ func (s SqlStatusStore) GetOnline() StoreChannel {
 		var statuses []*model.Status
 		if _, err := s.GetReplica().Select(&statuses, "SELECT * FROM Status WHERE Status = :Online", map[string]interface{}{"Online": model.STATUS_ONLINE}); err != nil {
 			result.Err = model.NewLocAppError("SqlStatusStore.GetOnline", "store.sql_status.get_online.app_error", nil, err.Error())
+		} else {
+			result.Data = statuses
+		}
+
+		storeChannel <- result
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
+func (s SqlStatusStore) GetAllFromTeam(teamId string) StoreChannel {
+	storeChannel := make(StoreChannel)
+
+	go func() {
+		result := StoreResult{}
+
+		var statuses []*model.Status
+		if _, err := s.GetReplica().Select(&statuses,
+			`SELECT s.* FROM Status AS s INNER JOIN
+			TeamMembers AS tm ON tm.TeamId=:TeamId AND s.UserId=tm.UserId`, map[string]interface{}{"TeamId": teamId}); err != nil {
+			result.Err = model.NewLocAppError("SqlStatusStore.GetAllFromTeam", "store.sql_status.get_team_statuses.app_error", nil, err.Error())
 		} else {
 			result.Data = statuses
 		}

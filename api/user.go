@@ -915,8 +915,7 @@ func getInitialLoad(c *Context, w http.ResponseWriter, r *http.Request) {
 			profiles := dp.Data.(map[string]*model.User)
 
 			for k, p := range profiles {
-				p.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
-				profiles[k] = p
+				profiles[k] = sanitizeProfile(c, p)
 			}
 
 			il.DirectProfiles = profiles
@@ -991,8 +990,7 @@ func getProfilesForDirectMessageList(c *Context, w http.ResponseWriter, r *http.
 		profiles := result.Data.(map[string]*model.User)
 
 		for k, p := range profiles {
-			p.SanitizeProfile(c.IsSystemAdmin(), false, false, false)
-			profiles[k] = p
+			profiles[k] = sanitizeProfile(c, p)
 		}
 
 		w.Write([]byte(model.UserMapToJson(profiles)))
@@ -1021,8 +1019,7 @@ func getProfiles(c *Context, w http.ResponseWriter, r *http.Request) {
 		profiles := result.Data.(map[string]*model.User)
 
 		for k, p := range profiles {
-			p.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
-			profiles[k] = p
+			profiles[k] = sanitizeProfile(c, p)
 		}
 
 		w.Header().Set(model.HEADER_ETAG_SERVER, etag)
@@ -1043,8 +1040,7 @@ func getDirectProfiles(c *Context, w http.ResponseWriter, r *http.Request) {
 		profiles := result.Data.(map[string]*model.User)
 
 		for k, p := range profiles {
-			p.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
-			profiles[k] = p
+			profiles[k] = sanitizeProfile(c, p)
 		}
 
 		w.Header().Set(model.HEADER_ETAG_SERVER, etag)
@@ -1293,7 +1289,7 @@ func uploadProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
 		l4g.Error(utils.T("api.user.get_me.getting.error"), c.Session.UserId)
 	} else {
 		user := result.Data.(*model.User)
-		user.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
+		user = sanitizeProfile(c, user)
 		message := model.NewWebSocketEvent("", "", c.Session.UserId, model.WEBSOCKET_EVENT_USER_UPDATED)
 		message.Add("user", user)
 		go Publish(message)
@@ -1343,7 +1339,7 @@ func updateUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		}
 
 		updatedUser := rusers[0]
-		updatedUser.SanitizeProfile(c.IsSystemAdmin(), false, true, true)
+		updatedUser = sanitizeProfile(c, updatedUser)
 
 		message := model.NewWebSocketEvent("", "", user.Id, model.WEBSOCKET_EVENT_USER_UPDATED)
 		message.Add("user", updatedUser)
@@ -2177,7 +2173,7 @@ func emailToLdap(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go sendSignInChangeEmail(c, user.Email, c.GetSiteURL(), "LDAP")
+	go sendSignInChangeEmail(c, user.Email, c.GetSiteURL(), "AD/LDAP")
 
 	m := map[string]string{}
 	m["follow_link"] = "/login?extra=signin_change"
@@ -2583,4 +2579,17 @@ func userTyping(req *model.WebSocketRequest) (map[string]interface{}, *model.App
 	go Publish(event)
 
 	return nil, nil
+}
+
+func sanitizeProfile(c *Context, user *model.User) *model.User {
+	options := utils.Cfg.GetSanitizeOptions()
+
+	if c.IsSystemAdmin() {
+		options["email"] = true
+		options["fullname"] = true
+	}
+
+	user.SanitizeProfile(options)
+
+	return user
 }

@@ -17,6 +17,8 @@ class EmojiStore extends EventEmitter {
 
         this.dispatchToken = AppDispatcher.register(this.handleEventPayload.bind(this));
 
+        this.setMaxListeners(600);
+
         this.emojis = new Map(EmojiJson);
         this.systemEmojis = new Map(EmojiJson);
 
@@ -54,6 +56,7 @@ class EmojiStore extends EventEmitter {
             this.addCustomEmoji(emoji);
         }
 
+        this.sortCustomEmojis();
         this.updateEmojiMap();
     }
 
@@ -72,6 +75,10 @@ class EmojiStore extends EventEmitter {
         }
 
         this.updateEmojiMap();
+    }
+
+    sortCustomEmojis() {
+        this.customEmojis = new Map([...this.customEmojis.entries()].sort((a, b) => a[0].localeCompare(b[0])));
     }
 
     updateEmojiMap() {

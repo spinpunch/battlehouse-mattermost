@@ -4,7 +4,6 @@
 import PostList from './components/post_list.jsx';
 import LoadingScreen from 'components/loading_screen.jsx';
 
-import EmojiStore from 'stores/emoji_store.jsx';
 import PreferenceStore from 'stores/preference_store.jsx';
 import UserStore from 'stores/user_store.jsx';
 import PostStore from 'stores/post_store.jsx';
@@ -25,7 +24,6 @@ export default class PostViewController extends React.Component {
         this.onPreferenceChange = this.onPreferenceChange.bind(this);
         this.onUserChange = this.onUserChange.bind(this);
         this.onPostsChange = this.onPostsChange.bind(this);
-        this.onEmojisChange = this.onEmojisChange.bind(this);
         this.onStatusChange = this.onStatusChange.bind(this);
         this.onPostsViewJumpRequest = this.onPostsViewJumpRequest.bind(this);
         this.onSetNewMessageIndicator = this.onSetNewMessageIndicator.bind(this);
@@ -47,10 +45,10 @@ export default class PostViewController extends React.Component {
 
         const joinLeaveEnabled = PreferenceStore.getBool(Constants.Preferences.CATEGORY_ADVANCED_SETTINGS, 'join_leave', true);
 
-        let statuses;
-        if (channel && channel.type !== Constants.DM_CHANNEL) {
-            statuses = Object.assign({}, UserStore.getStatuses());
-        }
+        const statuses = Object.assign({}, UserStore.getStatuses());
+
+        // If we haven't received a page time then we aren't done loading the posts yet
+        const loading = PostStore.getLatestPostFromPageTime(channel.id) === 0;
 
         this.state = {
             channel,
@@ -61,13 +59,13 @@ export default class PostViewController extends React.Component {
             atTop: PostStore.getVisibilityAtTop(channel.id),
             lastViewed,
             ownNewMessage: false,
+            loading,
             scrollType: ScrollTypes.NEW_MESSAGE,
             displayNameType: PreferenceStore.get(Preferences.CATEGORY_DISPLAY_SETTINGS, 'name_format', 'false'),
             displayPostsInCenter: PreferenceStore.get(Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.CHANNEL_DISPLAY_MODE, Preferences.CHANNEL_DISPLAY_MODE_DEFAULT) === Preferences.CHANNEL_DISPLAY_MODE_CENTERED,
             compactDisplay: PreferenceStore.get(Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.MESSAGE_DISPLAY, Preferences.MESSAGE_DISPLAY_DEFAULT) === Preferences.MESSAGE_DISPLAY_COMPACT,
             previewsCollapsed: PreferenceStore.get(Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.COLLAPSE_DISPLAY, 'false'),
             useMilitaryTime: PreferenceStore.getBool(Constants.Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.USE_MILITARY_TIME, false),
-            emojis: EmojiStore.getEmojis(),
             flaggedPosts: PreferenceStore.getCategory(Constants.Preferences.CATEGORY_FLAGGED_POST)
         };
     }
@@ -116,27 +114,23 @@ export default class PostViewController extends React.Component {
 
     onPostsChange() {
         const joinLeaveEnabled = PreferenceStore.getBool(Constants.Preferences.CATEGORY_ADVANCED_SETTINGS, 'join_leave', true);
+        const loading = PostStore.getLatestPostFromPageTime(this.state.channel.id) === 0;
 
-        this.setState({
+        const newState = {
             postList: PostStore.filterPosts(this.state.channel.id, joinLeaveEnabled),
-            atTop: PostStore.getVisibilityAtTop(this.state.channel.id)
-        });
-    }
+            atTop: PostStore.getVisibilityAtTop(this.state.channel.id),
+            loading
+        };
 
-    onEmojisChange() {
-        this.setState({
-            emojis: EmojiStore.getEmojis()
-        });
+        if (this.state.loading && !loading) {
+            newState.scrollType = ScrollTypes.NEW_MESSAGE;
+        }
+
+        this.setState(newState);
     }
 
     onStatusChange() {
-        const channel = this.state.channel;
-        let statuses;
-        if (channel && channel.type !== Constants.DM_CHANNEL) {
-            statuses = Object.assign({}, UserStore.getStatuses());
-        }
-
-        this.setState({statuses});
+        this.setState({statuses: Object.assign({}, UserStore.getStatuses())});
     }
 
     onActivate() {
@@ -145,7 +139,6 @@ export default class PostViewController extends React.Component {
         UserStore.addStatusesChangeListener(this.onStatusChange);
         PostStore.addChangeListener(this.onPostsChange);
         PostStore.addPostsViewJumpListener(this.onPostsViewJumpRequest);
-        EmojiStore.addChangeListener(this.onEmojisChange);
         ChannelStore.addLastViewedListener(this.onSetNewMessageIndicator);
     }
 
@@ -155,7 +148,6 @@ export default class PostViewController extends React.Component {
         UserStore.removeStatusesChangeListener(this.onStatusChange);
         PostStore.removeChangeListener(this.onPostsChange);
         PostStore.removePostsViewJumpListener(this.onPostsViewJumpRequest);
-        EmojiStore.removeChangeListener(this.onEmojisChange);
         ChannelStore.removeLastViewedListener(this.onSetNewMessageIndicator);
     }
 
@@ -230,6 +222,10 @@ export default class PostViewController extends React.Component {
             return true;
         }
 
+        if (nextState.loading !== this.state.loading) {
+            return true;
+        }
+
         if (nextState.atTop !== this.state.atTop) {
             return true;
         }
@@ -298,16 +294,12 @@ export default class PostViewController extends React.Component {
             return true;
         }
 
-        if (nextState.emojis !== this.state.emojis) {
-            return true;
-        }
-
         return false;
     }
 
     render() {
         let content;
-        if (this.state.postList == null) {
+        if (this.state.postList == null || this.state.loading) {
             content = (
                 <LoadingScreen
                     position='absolute'
@@ -332,7 +324,6 @@ export default class PostViewController extends React.Component {
                     useMilitaryTime={this.state.useMilitaryTime}
                     flaggedPosts={this.state.flaggedPosts}
                     lastViewed={this.state.lastViewed}
-                    emojis={this.state.emojis}
                     ownNewMessage={this.state.ownNewMessage}
                     statuses={this.state.statuses}
                 />

@@ -42,11 +42,13 @@ func InitAdmin() {
 	BaseRoutes.Admin.Handle("/reset_mfa", ApiAdminSystemRequired(adminResetMfa)).Methods("POST")
 	BaseRoutes.Admin.Handle("/reset_password", ApiAdminSystemRequired(adminResetPassword)).Methods("POST")
 	BaseRoutes.Admin.Handle("/ldap_sync_now", ApiAdminSystemRequired(ldapSyncNow)).Methods("POST")
+	BaseRoutes.Admin.Handle("/ldap_test", ApiAdminSystemRequired(ldapTest)).Methods("POST")
 	BaseRoutes.Admin.Handle("/saml_metadata", ApiAppHandler(samlMetadata)).Methods("GET")
 	BaseRoutes.Admin.Handle("/add_certificate", ApiAdminSystemRequired(addCertificate)).Methods("POST")
 	BaseRoutes.Admin.Handle("/remove_certificate", ApiAdminSystemRequired(removeCertificate)).Methods("POST")
 	BaseRoutes.Admin.Handle("/saml_cert_status", ApiAdminSystemRequired(samlCertificateStatus)).Methods("GET")
 	BaseRoutes.Admin.Handle("/cluster_status", ApiAdminSystemRequired(getClusterStatus)).Methods("GET")
+	BaseRoutes.Admin.Handle("/recently_active_users/{team_id:[A-Za-z0-9]+}", ApiUserRequiredActivity(getRecentlyActiveUsers, false)).Methods("GET")
 }
 
 func getLogs(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -643,7 +645,7 @@ func ldapSyncNow(c *Context, w http.ResponseWriter, r *http.Request) {
 			if ldapI := einterfaces.GetLdapInterface(); ldapI != nil {
 				ldapI.SyncNow()
 			} else {
-				l4g.Error("%v", model.NewLocAppError("saveComplianceReport", "ent.compliance.licence_disable.app_error", nil, "").Error())
+				l4g.Error("%v", model.NewLocAppError("ldapSyncNow", "ent.ldap.disabled.app_error", nil, "").Error())
 			}
 		}
 	}()
@@ -651,6 +653,24 @@ func ldapSyncNow(c *Context, w http.ResponseWriter, r *http.Request) {
 	rdata := map[string]string{}
 	rdata["status"] = "ok"
 	w.Write([]byte(model.MapToJson(rdata)))
+}
+
+func ldapTest(c *Context, w http.ResponseWriter, r *http.Request) {
+	if ldapI := einterfaces.GetLdapInterface(); ldapI != nil && utils.IsLicensed && *utils.License.Features.LDAP && *utils.Cfg.LdapSettings.Enable {
+		if err := ldapI.RunTest(); err != nil {
+			c.Err = err
+			c.Err.StatusCode = 500
+		}
+	} else {
+		c.Err = model.NewLocAppError("ldapTest", "ent.ldap.disabled.app_error", nil, "")
+		c.Err.StatusCode = http.StatusNotImplemented
+	}
+
+	if c.Err == nil {
+		rdata := map[string]string{}
+		rdata["status"] = "ok"
+		w.Write([]byte(model.MapToJson(rdata)))
+	}
 }
 
 func samlMetadata(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -734,4 +754,38 @@ func samlCertificateStatus(c *Context, w http.ResponseWriter, r *http.Request) {
 	status["PublicCertificateFile"] = utils.FileExistsInConfigFolder(*utils.Cfg.SamlSettings.PublicCertificateFile)
 
 	w.Write([]byte(model.StringInterfaceToJson(status)))
+}
+
+func getRecentlyActiveUsers(c *Context, w http.ResponseWriter, r *http.Request) {
+	statusMap := map[string]interface{}{}
+
+	if result := <-Srv.Store.Status().GetAllFromTeam(c.TeamId); result.Err != nil {
+		c.Err = result.Err
+		return
+	} else {
+		statuses := result.Data.([]*model.Status)
+		for _, s := range statuses {
+			statusMap[s.UserId] = s.LastActivityAt
+		}
+	}
+
+	if result := <-Srv.Store.User().GetProfiles(c.TeamId); result.Err != nil {
+		c.Err = result.Err
+		return
+	} else {
+		profiles := result.Data.(map[string]*model.User)
+
+		for k, p := range profiles {
+			p = sanitizeProfile(c, p)
+
+			if lastActivityAt, ok := statusMap[p.Id].(int64); ok {
+				p.LastActivityAt = lastActivityAt
+			}
+
+			profiles[k] = p
+		}
+
+		w.Write([]byte(model.UserMapToJson(profiles)))
+	}
+
 }

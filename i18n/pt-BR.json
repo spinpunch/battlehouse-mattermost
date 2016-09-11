@@ -325,7 +325,7 @@
   },
   {
     "id": "api.channel.remove_member.removed",
-    "translation": "%v was removed from the channel."
+    "translation": "%v foi removido do canal"
   },
   {
     "id": "api.channel.remove_member.unable.app_error",
@@ -333,7 +333,7 @@
   },
   {
     "id": "api.channel.remove_member.user.app_error",
-    "translation": "Não foi possível encontrar o usuário a ser adicionado"
+    "translation": "Não foi possível encontrar o usuário a ser removido"
   },
   {
     "id": "api.channel.remove_user_from_channel.deleted.app_error",
@@ -350,6 +350,10 @@
   {
     "id": "api.channel.update_channel.tried.app_error",
     "translation": "Tentou executar uma atualização inválida para o canal padrão {{.Channel}}"
+  },
+  {
+    "id": "api.channel.update_last_viewed_at.get_unread_count_for_channel.errord",
+    "translation": "Não foi possível obter o número de não lidos para o user_id=%v e channel_id=%v, err=%v"
   },
   {
     "id": "api.command.admin_only.app_error",
@@ -430,6 +434,18 @@
   {
     "id": "api.command.regen.app_error",
     "translation": "Permissões inadequadas para re-gerar o token de comando"
+  },
+  {
+    "id": "api.command_away.desc",
+    "translation": "Defina seu status como ausente"
+  },
+  {
+    "id": "api.command_away.name",
+    "translation": "ausente"
+  },
+  {
+    "id": "api.command_away.success",
+    "translation": "Você está agora ausente"
   },
   {
     "id": "api.command_collapse.desc",
@@ -564,12 +580,36 @@
     "translation": "Mensagem enviada."
   },
   {
+    "id": "api.command_offline.desc",
+    "translation": "Defina seu status como desconectado"
+  },
+  {
+    "id": "api.command_offline.name",
+    "translation": "desconectado"
+  },
+  {
+    "id": "api.command_offline.success",
+    "translation": "Agora você está desconectado"
+  },
+  {
+    "id": "api.command_online.desc",
+    "translation": "Defina seu status como conectado"
+  },
+  {
+    "id": "api.command_online.name",
+    "translation": "conectado"
+  },
+  {
+    "id": "api.command_online.success",
+    "translation": "Você está agora conectado"
+  },
+  {
     "id": "api.command_shortcuts.browser",
-    "translation": "#### Built-in Browser Commands\n\nALT+LEFT: Previous channel in your history\nALT+RIGHT: Next channel in your history\nCTRL+PLUS: Increase font size (zoom in)\nCTRL+MINUS: Decrease font size (zoom out)\nSHIFT+UP (in input field): Highlight text to the previous line\nSHIFT+DOWN (in input field): Highlight text to the next line\nSHIFT+ENTER (in input field): Create a new line\n"
+    "translation": "#### Comandos Nativos do Navegador\n\nALT+LEFT: Canal anterior no seu histórico\nALT+RIGHT: Próximo canal no seu histórico\nCTRL+PLUS: Aumenta o tamanho da fonte (zoom in)\nCTRL+MINUS: Diminui o tamanho da fonte (zoom out)\nSHIFT+UP (no campo de entrada): Seleciona o texto até a linha anterior\nSHIFT+DOWN (no campo de entrada): Seleciona o texto até a próxima linha\nSHIFT+ENTER (no campo de entrada): Cria nova linha\n"
   },
   {
     "id": "api.command_shortcuts.browser_mac",
-    "translation": "#### Built-in Browser Commands\n\nCMD+[: Previous channel in your history\nCMD+]: Next channel in your history\nCMD+PLUS: Increase font size (zoom in)\nCMD+MINUS: Decrease font size (zoom out)\nSHIFT+UP (in input field): Highlight text to the previous line\nSHIFT+DOWN (in input field): Highlight text to the next line\nSHIFT+ENTER (in input field): Create a new line\n"
+    "translation": "#### Comandos Nativos do Navegador\n\nCMD+[: Canal anterior no seu histórico\nCMD+]: Próximo canal no seu histórico\nCMD+PLUS: Aumenta o tamanho da fonte (zoom in)\nCMD+MINUS: Diminui o tamanho da fonte (zoom out)\nSHIFT+UP (no campo de entrada): Seleciona o texto até a linha anterior\nSHIFT+DOWN (no campo de entrada): Seleciona o texto até a próxima linha\nSHIFT+ENTER (no campo de entrada): Cria nova linha\n"
   },
   {
     "id": "api.command_shortcuts.desc",
@@ -577,19 +617,19 @@
   },
   {
     "id": "api.command_shortcuts.files",
-    "translation": "#### Files\n\nCTRL+U: Upload file(s)\n\n"
+    "translation": "#### Arquivos\n\nCTRL+U: Enviar arquivo(s)\n\n"
   },
   {
     "id": "api.command_shortcuts.files_mac",
-    "translation": "#### Files\n\nCMD+U: Upload file(s)\n\n"
+    "translation": "#### Arquivos\n\nCMD+U: Enviar arquivo(s)\n\n"
   },
   {
     "id": "api.command_shortcuts.msgs",
-    "translation": "#### Messages\n\nESC: Mark all messages in the current channel as read\nCTRL+UP (in empty input field): Reprint the previous message or slash command you entered\nCTRL+DOWN (in empty input field): Reprint the next message or slash command you entered\nUP (in empty input field): Edit your last message in the current channel\n@[character]+TAB: Autocomplete @username beginning with [character]\n:[character]+TAB: Autocomplete emoji beginning with [character]\n\n"
+    "translation": "#### Mensagens\n\nESC: Marca todas as mensagens do canal atual como lida\nCTRL+UP (campo de entrada vazio): Reimprimi a mensagem anterior ou comando slash digitado\nCTRL+DOWN (campo de entrada vazio): Reimprimi a próxima mensagem ou comando slash digitado\nUP (campo de entrada vazio): Editar sua última mensagem no canal atual\n@[caracter]+TAB: Autocompleta @usuário começando com [caracter]\n:[caracter]+TAB: Autocompleta o emoji começando com [caracter]\n\n"
   },
   {
     "id": "api.command_shortcuts.msgs_mac",
-    "translation": "#### Messages\n\nESC: Mark all messages in the current channel as read\nCMD+UP (in empty input field): Reprint the previous message or slash command you entered\nCMD+DOWN (in empty input field): Reprint the next message or slash command you entered\nUP (in empty input field): Edit your last message in the current channel\n@[character]+TAB: Autocomplete @username beginning with [character]\n:[character]+TAB: Autocomplete emoji beginning with [character]\n\n"
+    "translation": "#### Mensagens\n\nESC: Marca todas as mensagens do canal atual como lida\nCMD+UP (campo de entrada vazio): Reimprimi a mensagem anterior ou comando slash digitado\nCMD+DOWN (campo de entrada vazio): Reimprimi a próxima mensagem ou comando slash digitado\nUP (campo de entrada vazio): Editar sua última mensagem no canal atual\n@[caracter]+TAB: Autocompleta @usuário começando com [caracter]\n:[caracter]+TAB: Autocompleta o emoji começando com [caracter]\n\n"
   },
   {
     "id": "api.command_shortcuts.name",
@@ -597,11 +637,11 @@
   },
   {
     "id": "api.command_shortcuts.nav",
-    "translation": "### Keyboard Shortcuts\n\n#### Navigation\n\nALT+UP: Previous channel or direct message in left hand sidebar\nALT+DOWN: Next channel or direct message in left hand sidebar\nALT+SHIFT+UP: Previous channel or direct message in left hand sidebar with unread messages\nALT+SHIFT+DOWN: Next channel or direct message in left hand sidebar with unread messages\nCTRL+K: Open a quick channel switcher dialog\nCTRL+SHIFT+A: Open account settings\nCTRL+SHIFT+M: Open recent mentions\n\n"
+    "translation": "### Atalhos do Teclado\n\n#### Navegação\n\nALT+UP: Canal ou mensagem direta anterior na barra lateral esquerda\nALT+DOWN: Próximo canal ou mensagem direta na barra lateral esquerda\nALT+SHIFT+UP: Canal anterior ou mensagem direta na barra lateral esquerda com mensagens não lidas\nALT+SHIFT+DOWN: Próximo canal ou mensagem direta na barra lateral esquerda com mensagens não lidas\nCTRL+K: Abra uma janela de troca rápida de canal\nCTRL+SHIFT+A: Abre as configurações de conta\nCTRL+SHIFT+M: Abre as menções recentes\n\n"
   },
   {
     "id": "api.command_shortcuts.nav_mac",
-    "translation": "### Keyboard Shortcuts\n\n#### Navigation\n\nALT+UP: Previous channel or direct message in left hand sidebar\nALT+DOWN: Next channel or direct message in left hand sidebar\nALT+SHIFT+UP: Previous channel or direct message in left hand sidebar with unread messages\nALT+SHIFT+DOWN: Next channel or direct message in left hand sidebar with unread messages\nCMD+K: Open a quick channel switcher dialog\nCMD+SHIFT+A: Open account settings\nCMD+SHIFT+M: Open recent mentions\n\n"
+    "translation": "### Atalhos do Teclado\n\n#### Navegação\n\nALT+UP: Canal ou mensagem direta anterior na barra lateral esquerda\nALT+DOWN: Próximo canal ou mensagem direta na barra lateral esquerda\nALT+SHIFT+UP: Canal anterior ou mensagem direta na barra lateral esquerda com mensagens não lidas\nALT+SHIFT+DOWN: Próximo canal ou mensagem direta na barra lateral esquerda com mensagens não lidas\nCMD+K: Abra uma janela de troca rápida de canal\nCMD+SHIFT+A: Abre as configurações de conta\nCMD+SHIFT+M: Abre as menções recentes\n\n"
   },
   {
     "id": "api.command_shrug.desc",
@@ -708,7 +748,7 @@
   },
   {
     "id": "api.email_batching.send_batched_email_notification.send.app_error",
-    "translation": "Failed to send batched email notification to %v: %v"
+    "translation": "Falha ou enviar notificações por email em lote para %v: %v"
   },
   {
     "id": "api.email_batching.send_batched_email_notification.subject",
@@ -719,11 +759,11 @@
   },
   {
     "id": "api.email_batching.send_batched_email_notification.user.app_error",
-    "translation": "Não foi possível encontrar o status do destinatário para a notificação de e-mail em lote"
+    "translation": "Não foi possível encontrar o o destinatário para a notificação de e mail em lote"
   },
   {
     "id": "api.email_batching.start.starting",
-    "translation": "Email batching job starting. Checking for pending emails every %v seconds."
+    "translation": "Iniciando tarefa de email em lote. Verificando por emails pendentes a cada %v segundos."
   },
   {
     "id": "api.emoji.create.duplicate.app_error",
@@ -998,6 +1038,10 @@
     "translation": "Faltando um ou mais response_type, client_id, ou redirect_uri"
   },
   {
+    "id": "api.oauth.complete_oauth.missing_code.app_error",
+    "translation": "O provedor do serviço {{.service}} não forneceu um código de autorização na URL redirecionada.\n\nPara [Google Apps](https://docs.mattermost.com/deployment/sso-google.html) tenha certeza que o administrador ativou a API Google+.\n\nPara [Office 365](https://docs.mattermost.com/deployment/sso-office.html) tenha certeza que o administrador da organização Microsoft ativou o app Mattermost.\n\nPara [GitLab](https://docs.mattermost.com/deployment/sso-gitlab.html) por favor certifique de ter seguido as instruções de instalação.\n\nSe você analisou o problema acima e ainda está tendo dificuldades com a configuração, você pode postar no nosso [Fórum de solução de problema](https://forum.mattermost.org/c/general/trouble-shoot) onde ficaremos felizes de ajudar com os problemas durante a instalação."
+  },
+  {
     "id": "api.oauth.delete.permissions.app_error",
     "translation": "Permissão inapropriada para deletar o App OAuth2"
   },
@@ -1066,6 +1110,10 @@
     "translation": "Inicializando oauth api routes"
   },
   {
+    "id": "api.oauth.regenerate_secret.app_error",
+    "translation": "Permissão inapropriada para gerar novo OAuth2 App Secret"
+  },
+  {
     "id": "api.oauth.register_oauth_app.turn_off.app_error",
     "translation": "O administrador do sistema desligou o Provedor de Serviço OAuth2."
   },
@@ -1127,7 +1175,7 @@
   },
   {
     "id": "api.post.delete_flagged_post.app_error.warn",
-    "translation": "Unable to delete flagged post preference when deleting post, err=%v"
+    "translation": "Não é possível deletar a preferencia da postagem marcada ao deletar a postagem, err=%v"
   },
   {
     "id": "api.post.delete_post.permissions.app_error",
@@ -1209,15 +1257,23 @@
   },
   {
     "id": "api.post.notification.here.warn",
-    "translation": "Não foi possível enviar a notificação para os usuários online com @here, err=%v"
+    "translation": "Não foi possível enviar a notificação para os usuários conectados usando @here, err=%v"
   },
   {
     "id": "api.post.notification.member_profile.warn",
-    "translation": "Unable to get profile for channel member, user_id=%v"
+    "translation": "Não foi possível obter o perfil do membro do canal, user_id=%v"
+  },
+  {
+    "id": "api.post.send_notifications_and_forget.clear_push_notification.debug",
+    "translation": "Limpando notificação push para %v com channel_id %v"
   },
   {
     "id": "api.post.send_notifications_and_forget.comment_thread.error",
     "translation": "Falha ao obter os comentários da mensagem em notificações root_post_id=%v, err=%v"
+  },
+  {
+    "id": "api.post.send_notifications_and_forget.get_teams.error",
+    "translation": "Falha ao obter equipes quando enviado mensagem direta entre equipes user_id=%v, err=%v"
   },
   {
     "id": "api.post.send_notifications_and_forget.mention_body",
@@ -1257,7 +1313,7 @@
   },
   {
     "id": "api.post.send_notifications_and_forget.push_notification.error",
-    "translation": "Falha ao enviar notificação push id=%v, err=%v"
+    "translation": "Falha ao enviar notificação push device_id=%v, err=%v"
   },
   {
     "id": "api.post.send_notifications_and_forget.send.error",
@@ -1418,6 +1474,10 @@
   {
     "id": "api.slackimport.slack_convert_timestamp.bad.warn",
     "translation": "Data e hora ruim detectada"
+  },
+  {
+    "id": "api.slackimport.slack_convert_user_mentions.compile_regexp_failed.warn",
+    "translation": "Falha ao compilar a @menção correspondendo a expressão regular para o usuário Slack {{.UserID}} {{.Username}}"
   },
   {
     "id": "api.slackimport.slack_import.log",
@@ -1684,8 +1744,12 @@
     "translation": "CANAL: {{.ChannelName}}<br>{{.SenderName}} - {{.Hour}}:{{.Minute}} {{.TimeZone}}, {{.Month}} {{.Day}}"
   },
   {
-    "id": "api.templates.post_subject",
-    "translation": "{{.SubjectText}} no {{.TeamDisplayName}} em {{.Month}} {{.Day}}, {{.Year}}"
+    "id": "api.templates.post_subject_in_channel",
+    "translation": "{{.SubjectText}} de {{.TeamDisplayName}} ({{.ChannelName}}) em {{.Day}} {{.Month}}, {{.Year}}"
+  },
+  {
+    "id": "api.templates.post_subject_in_direct_message",
+    "translation": "{{.SubjectText}} de {{.TeamDisplayName}} para {{.SenderDisplayName}} em {{.Day}} {{.Month}}, {{.Year}}"
   },
   {
     "id": "api.templates.reset_body.button",
@@ -1937,7 +2001,7 @@
   },
   {
     "id": "api.user.email_to_ldap.not_available.app_error",
-    "translation": "LDAP não está disponível neste servidor"
+    "translation": "AD/LDAP não está disponível neste servidor"
   },
   {
     "id": "api.user.generate_mfa_qr.not_available.app_error",
@@ -1957,11 +2021,11 @@
   },
   {
     "id": "api.user.ldap_to_email.not_available.app_error",
-    "translation": "LDAP não está disponível neste servidor"
+    "translation": "AD/LDAP não está disponível neste servidor"
   },
   {
     "id": "api.user.ldap_to_email.not_ldap_account.app_error",
-    "translation": "Está conta de usuário não utiliza LDAP"
+    "translation": "Está conta de usuário não utiliza AD/LDAP"
   },
   {
     "id": "api.user.login.blank_pwd.app_error",
@@ -2005,7 +2069,7 @@
   },
   {
     "id": "api.user.login_ldap.disabled.app_error",
-    "translation": "LDAP não habilitado neste servidor"
+    "translation": "AD/LDAP não habilitado neste servidor"
   },
   {
     "id": "api.user.login_ldap.need_id.app_error",
@@ -2013,7 +2077,7 @@
   },
   {
     "id": "api.user.login_ldap.not_available.app_error",
-    "translation": "LDAP não está disponível neste servidor"
+    "translation": "AD/LDAP não está disponível neste servidor"
   },
   {
     "id": "api.user.oauth_to_email.context.app_error",
@@ -2097,7 +2161,7 @@
   },
   {
     "id": "api.user.update_active.no_deactivate_ldap.app_error",
-    "translation": "Você não pode modificar o status de ativação de contas LDAP. Por favor modifique através do servidor LDAP."
+    "translation": "Você não pode modificar o status de ativação de contas AD/LDAP. Por favor modifique através do servidor AD/LDAP."
   },
   {
     "id": "api.user.update_active.permissions.app_error",
@@ -2392,8 +2456,12 @@
     "translation": "Emoji personalizado desabilitado pela licença atual. Entre em contato com o administrador do sistema sobre como atualizar sua licença enterprise."
   },
   {
+    "id": "ent.ldap.disabled.app_error",
+    "translation": "AD/LDAP desabilitado ou licença não suporta AD/LDAP."
+  },
+  {
     "id": "ent.ldap.do_login.bind_admin_user.app_error",
-    "translation": "Não foi possível ligar ao servidor LDAP. Verifique BindUsername e BindPassword."
+    "translation": "Não foi possível ligar ao servidor AD/LDAP. Verifique BindUsername e BindPassword."
   },
   {
     "id": "ent.ldap.do_login.invalid_password.app_error",
@@ -2401,7 +2469,7 @@
   },
   {
     "id": "ent.ldap.do_login.licence_disable.app_error",
-    "translation": "Funcionalidade LDAP desabilitada pela licença atual. Entre em contato com o administrador do sistema sobre como atualizar sua licença enterprise."
+    "translation": "Funcionalidade AD/LDAP desabilitada pela licença atual. Entre em contato com o administrador do sistema sobre como atualizar sua licença enterprise."
   },
   {
     "id": "ent.ldap.do_login.matched_to_many_users.app_error",
@@ -2409,11 +2477,11 @@
   },
   {
     "id": "ent.ldap.do_login.search_ldap_server.app_error",
-    "translation": "Falha ao pesquisar o servidor LDAP"
+    "translation": "Falha ao pesquisar o servidor AD/LDAP"
   },
   {
     "id": "ent.ldap.do_login.unable_to_connect.app_error",
-    "translation": "Não foi possível conectar no servidor LDAP"
+    "translation": "Não foi possível conectar no servidor AD/LDAP"
   },
   {
     "id": "ent.ldap.do_login.unable_to_create_user.app_error",
@@ -2421,27 +2489,27 @@
   },
   {
     "id": "ent.ldap.do_login.user_filtered.app_error",
-    "translation": "Sua conta LDAP não tem permissão para usar este servidor Mattermost. Por favor peça ao Administrador do Sistema para verificar o filtro de usuário LDAP."
+    "translation": "Sua conta AD/LDAP não tem permissão para usar este servidor Mattermost. Por favor peça ao Administrador do Sistema para verificar o filtro de usuário AD/LDAP."
   },
   {
     "id": "ent.ldap.do_login.user_not_registered.app_error",
-    "translation": "Usuário não registrado no servidor LDAP"
+    "translation": "Usuário não registrado no servidor AD/LDAP"
   },
   {
     "id": "ent.ldap.mattermost_user_update",
-    "translation": "Usuário Mattermost foi atualizado pelo servidor LDAP."
+    "translation": "Usuário Mattermost foi atualizado pelo servidor AD/LDAP."
   },
   {
     "id": "ent.ldap.syncdone.info",
-    "translation": "Sincronização LDAP completada"
+    "translation": "Sincronização AD/LDAP completada"
   },
   {
     "id": "ent.ldap.syncronize.get_all.app_error",
-    "translation": "Não foi possível obter todos os usuários usando LDAP"
+    "translation": "Não foi possível obter todos os usuários usando AD/LDAP"
   },
   {
     "id": "ent.ldap.validate_filter.app_error",
-    "translation": "Filtro LDAP Inválido"
+    "translation": "Filtro AD/LDAP Inválido"
   },
   {
     "id": "ent.mfa.activate.authenticate.app_error",
@@ -2481,11 +2549,15 @@
   },
   {
     "id": "ent.migration.migratetoldap.duplicate_field",
-    "translation": "Não é possível migrar usuários LDAP com o campo especificado. Entrada duplicada detectada. Por favor remova todas as duplicadas e tente novamente."
+    "translation": "Não é possível migrar usuários AD/LDAP com o campo especificado. Entrada duplicada detectada. Por favor remova todas as duplicadas e tente novamente."
   },
   {
     "id": "ent.migration.migratetoldap.user_not_found",
-    "translation": "Não foi possível localizar usuário no servidor LDAP: "
+    "translation": "Não foi possível localizar usuário no servidor AD/LDAP: "
+  },
+  {
+    "id": "ent.saml.attribute.app_error",
+    "translation": "SAML login was unsuccessful because one of the attributes is incorrect. Please contact your System Administrator."
   },
   {
     "id": "ent.saml.build_request.app_error",
@@ -2881,15 +2953,15 @@
   },
   {
     "id": "model.config.is_valid.cluster_email_batching.app_error",
-    "translation": "Unable to enable email batching when clustering is enabled"
+    "translation": "Não é possível ativar email em lote quando clustering está ativo"
   },
   {
     "id": "model.config.is_valid.email_batching_buffer_size.app_error",
-    "translation": "Invalid email batching buffer size for email settings.  Must be zero or a positive number."
+    "translation": "Tamanho do buffer de email em lote inválido nas configurações de e-mail.  Deve ser zero ou um número positivo."
   },
   {
     "id": "model.config.is_valid.email_batching_interval.app_error",
-    "translation": "Invalid email batching interval for email settings.  Must be 30 seconds or more."
+    "translation": "Intervalo de email em lote inválido nas configurações de e-mail. Deve ser 30 segundos ou mais."
   },
   {
     "id": "model.config.is_valid.email_reset_salt.app_error",
@@ -2941,31 +3013,31 @@
   },
   {
     "id": "model.config.is_valid.ldap_basedn",
-    "translation": "O campo \"BaseDN\" no LDAP é requerido."
+    "translation": "O campo \"BaseDN\" no AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.ldap_bind_password",
-    "translation": "O campo \"Bind Password\" do LDAP é requerido."
+    "translation": "O campo \"Bind Password\" do AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.ldap_bind_username",
-    "translation": "O campo \"Bind Username\" do LDAP é requerido."
+    "translation": "O campo \"Bind Username\" do AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.ldap_email",
-    "translation": "O campo \"Email Attribute\" do LDAP é requerido."
+    "translation": "O campo \"Email Attribute\" do AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.ldap_firstname",
-    "translation": "O campo \"First Name Attribute\" do LDAP é requerido."
+    "translation": "O campo \"First Name Attribute\" do AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.ldap_id",
-    "translation": "O campo \"ID Attribute\" do LDAP é requerido."
+    "translation": "O campo \"ID Attribute\" do AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.ldap_lastname",
-    "translation": "O campo \"Last Name Attribute\" do LDAP é requerido."
+    "translation": "O campo \"Last Name Attribute\" do AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.ldap_max_page_size.app_error",
@@ -2973,19 +3045,19 @@
   },
   {
     "id": "model.config.is_valid.ldap_required.app_error",
-    "translation": "Campo LDAP requerido não foi preenchido."
+    "translation": "Campo AD/LDAP requerido não foi preenchido."
   },
   {
     "id": "model.config.is_valid.ldap_required.app_error",
-    "translation": "Campo LDAP requerido não foi preenchido."
+    "translation": "Campo AD/LDAP requerido não foi preenchido."
   },
   {
     "id": "model.config.is_valid.ldap_security.app_error",
-    "translation": "Inválida segurança de conexão em configurações de LDAP.  Deve ser '', 'TLS', or 'STARTTLS'"
+    "translation": "Inválida segurança de conexão em configurações de AD/LDAP.  Deve ser '', 'TLS', or 'STARTTLS'"
   },
   {
     "id": "model.config.is_valid.ldap_server",
-    "translation": "Campo \"LDAP Server\" do LDAP é requerido."
+    "translation": "Campo \"AD/LDAP Server\" do AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.ldap_sync_interval.app_error",
@@ -2993,7 +3065,7 @@
   },
   {
     "id": "model.config.is_valid.ldap_username",
-    "translation": "O campo \"Username Attribute\" do LDAP é requerido."
+    "translation": "O campo \"Username Attribute\" do AD/LDAP é requerido."
   },
   {
     "id": "model.config.is_valid.listen_address.app_error",
@@ -3040,10 +3112,6 @@
     "translation": "Atributo Email Inválido. Deve ser definido."
   },
   {
-    "id": "model.config.is_valid.saml_first_name_attribute.app_error",
-    "translation": "Atributo Primeiro Nome Inválido. Deve ser definido."
-  },
-  {
     "id": "model.config.is_valid.saml_idp_cert.app_error",
     "translation": "Faltando Certificado Público do Provedor de Identidade. Esqueceu-se de carregá-lo?"
   },
@@ -3054,10 +3122,6 @@
   {
     "id": "model.config.is_valid.saml_idp_url.app_error",
     "translation": "URL SAML SSO deve ser uma URL válida e começar com http:// ou https://."
-  },
-  {
-    "id": "model.config.is_valid.saml_last_name_attribute.app_error",
-    "translation": "Atributo Último Nome Inválido. Deve ser definido."
   },
   {
     "id": "model.config.is_valid.saml_private_key.app_error",
@@ -3077,7 +3141,7 @@
   },
   {
     "id": "model.config.is_valid.site_url_email_batching.app_error",
-    "translation": "Unable to enable email batching when SiteURL isn't set."
+    "translation": "Não é possível ativar o email em lote quando SiteURL não está definido."
   },
   {
     "id": "model.config.is_valid.sitename_length.app_error",
@@ -3940,6 +4004,10 @@
     "translation": "Encontramos um erro ao procurar o token de acesso"
   },
   {
+    "id": "store.sql_oauth.get_access_data_by_user_for_app.app_error",
+    "translation": "Encontramos um erro ao procurar todos os token de acesso"
+  },
+  {
     "id": "store.sql_oauth.get_app.find.app_error",
     "translation": "Não foi possível encontrar o app solicitado"
   },
@@ -4217,11 +4285,15 @@
   },
   {
     "id": "store.sql_status.get_online.app_error",
-    "translation": "Encontrado um erro ao obter todos os status online"
+    "translation": "Encontrado um erro ao obter todos os status conectados"
   },
   {
     "id": "store.sql_status.get_online_away.app_error",
-    "translation": "Encontrado um erro ao obter todos os status online/ausente"
+    "translation": "Encontrado um erro ao obter todos os status conectado/ausente"
+  },
+  {
+    "id": "store.sql_status.get_team_statuses.app_error",
+    "translation": "Foi encontrado um erro ao recuperar todos os status dos membros da equipe"
   },
   {
     "id": "store.sql_status.get_total_active_users_count.app_error",
@@ -4246,6 +4318,10 @@
   {
     "id": "store.sql_system.get_by_name.app_error",
     "translation": "Não foi possível encontrar a variável do sistema."
+  },
+  {
+    "id": "store.sql_system.get_version.app_error",
+    "translation": "Não foi possível obter a versão do banco de dados"
   },
   {
     "id": "store.sql_system.save.app_error",
@@ -4400,6 +4476,10 @@
     "translation": "Não foi possível obter o número de mensagens não lidas para o usuário"
   },
   {
+    "id": "store.sql_user.get_unread_count_for_channel.app_error",
+    "translation": "Não foi possível obter o número de mensagens não lidas para o usuário e canal"
+  },
+  {
     "id": "store.sql_user.migrate_theme.critical",
     "translation": "Migração do usuário falhou. ThemeProps to Preferences table %v"
   },
@@ -4421,7 +4501,7 @@
   },
   {
     "id": "store.sql_user.save.email_exists.ldap_app_error",
-    "translation": "Está conta não usa autenticação LDAP. Por favor faça login usando email e senha."
+    "translation": "Está conta não usa autenticação AD/LDAP. Por favor faça login usando email e senha."
   },
   {
     "id": "store.sql_user.save.email_exists.saml_app_error",
@@ -4457,7 +4537,7 @@
   },
   {
     "id": "store.sql_user.update.can_not_change_ldap.app_error",
-    "translation": "Não é possível alterar os campos definidos pelo LDAP"
+    "translation": "Não é possível alterar os campos definidos pelo AD/LDAP"
   },
   {
     "id": "store.sql_user.update.email_taken.app_error",
@@ -4610,6 +4690,10 @@
   {
     "id": "utils.config.save_config.saving.app_error",
     "translation": "Um erro ocorreu durante o salvamento do arquivo {{.Filename}}"
+  },
+  {
+    "id": "utils.diagnostic.analytics_not_found.app_error",
+    "translation": "Análise não inicializada"
   },
   {
     "id": "utils.i18n.loaded",

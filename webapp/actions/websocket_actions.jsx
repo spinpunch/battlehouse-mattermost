@@ -156,6 +156,10 @@ function handleEvent(msg) {
         handleStatusChangedEvent(msg);
         break;
 
+    case SocketEvents.HELLO:
+        handleHelloEvent(msg);
+        break;
+
     default:
     }
 }
@@ -174,7 +178,7 @@ function handlePostEditEvent(msg) {
     // Update channel state
     if (ChannelStore.getCurrentId() === msg.channel_id) {
         if (window.isActive) {
-            AsyncClient.updateLastViewedAt();
+            AsyncClient.updateLastViewedAt(null, false);
         }
     }
 }
@@ -283,4 +287,9 @@ function handleUserTypingEvent(msg) {
 
 function handleStatusChangedEvent(msg) {
     UserStore.setStatus(msg.user_id, msg.data.status);
+}
+
+function handleHelloEvent(msg) {
+    Client.serverVersion = msg.data.server_version;
+    AsyncClient.checkVersion();
 }
