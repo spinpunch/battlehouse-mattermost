@@ -156,11 +156,12 @@ func TestGetOAuthAppsByUser(t *testing.T) {
 
 	utils.Cfg.ServiceSettings.EnableOAuthServiceProvider = true
 
-	if _, err := Client.GetOAuthAppsByUser(); err == nil {
-		t.Fatal("Should have failed. only admin is permitted")
+	if _, err := Client.GetOAuthAppsByUser(); err != nil {
+		t.Fatal("Should have passed.")
 	}
 
 	*utils.Cfg.ServiceSettings.EnableOnlyAdminIntegrations = false
+	utils.SetDefaultRolesBasedOnConfig()
 
 	if result, err := Client.GetOAuthAppsByUser(); err != nil {
 		t.Fatal(err)
@@ -316,6 +317,7 @@ func TestOAuthDeleteApp(t *testing.T) {
 
 	utils.Cfg.ServiceSettings.EnableOAuthServiceProvider = true
 	*utils.Cfg.ServiceSettings.EnableOnlyAdminIntegrations = false
+	utils.SetDefaultRolesBasedOnConfig()
 
 	app := &model.OAuthApp{Name: "TestApp5" + model.NewId(), Homepage: "https://nowhere.com", Description: "test", CallbackUrls: []string{"https://nowhere.com"}}
 

@@ -66,6 +66,16 @@ export default class PostList extends React.Component {
         }
     }
 
+    componentWillReceiveProps(nextProps) {
+        // TODO: Clean-up intro text creation
+        if (this.props.channel && this.props.channel.type === Constants.DM_CHANNEL) {
+            const teammateId = Utils.getUserIdFromChannelName(this.props.channel);
+            if (!this.props.profiles[teammateId] && nextProps.profiles[teammateId]) {
+                this.introText = createChannelIntroMessage(this.props.channel, this.state.fullWidthIntro);
+            }
+        }
+    }
+
     handleKeyDown(e) {
         if (e.which === Constants.KeyCodes.ESCAPE && $('.popover.in,.modal.in').length === 0) {
             e.preventDefault();
@@ -253,35 +263,35 @@ export default class PostList extends React.Component {
             }
 
             let commentCount = 0;
-            let nonOwnCommentsExists = false;
             let isCommentMention = false;
+            let shouldHighlightThreads = false;
             let commentRootId;
             if (parentPost) {
                 commentRootId = post.root_id;
             } else {
                 commentRootId = post.id;
             }
+
             if (commentRootId) {
-                const commentsNotifyLevel = this.props.currentUser.notify_props.comments || 'never';
                 for (const postId in posts) {
                     if (posts[postId].root_id === commentRootId) {
                         commentCount += 1;
-                        if (posts[postId].user_id !== this.props.currentUser.id) {
-                            nonOwnCommentsExists = true;
-                        }
-                        if (posts[postId].user_id === this.props.currentUser.id && commentsNotifyLevel === 'any' && !isCommentMention) {
-                            for (const nextPostId in posts) {
-                                if (posts[nextPostId].root_id === commentRootId && posts[nextPostId].user_id !== this.props.currentUser.id &&
-                                        posts[postId].create_at < posts[nextPostId].create_at) {
-                                    isCommentMention = true;
-                                    break;
-                                }
-                            }
+                        if (posts[postId].user_id === userId) {
+                            shouldHighlightThreads = true;
                         }
                     }
                 }
-                if (nonOwnCommentsExists && posts[commentRootId].user_id === this.props.currentUser.id && commentsNotifyLevel !== 'never') {
-                    isCommentMention = true;
+            }
+
+            if (parentPost && commentRootId) {
+                const commentsNotifyLevel = this.props.currentUser.notify_props.comments || 'never';
+                const notCurrentUser = post.user_id !== userId || (post.props && post.props.from_webhook);
+                if (notCurrentUser) {
+                    if (commentsNotifyLevel === 'any' && (posts[commentRootId].user_id === userId || shouldHighlightThreads)) {
+                        isCommentMention = true;
+                    } else if (commentsNotifyLevel === 'root' && posts[commentRootId].user_id === userId) {
+                        isCommentMention = true;
+                    }
                 }
             }
 
@@ -317,6 +327,7 @@ export default class PostList extends React.Component {
                     useMilitaryTime={this.props.useMilitaryTime}
                     isFlagged={isFlagged}
                     status={status}
+                    isBusy={this.props.isBusy}
                 />
             );
 
@@ -382,15 +393,15 @@ export default class PostList extends React.Component {
         if (this.props.scrollType === ScrollTypes.BOTTOM) {
             this.scrollToBottom();
         } else if (this.props.scrollType === ScrollTypes.NEW_MESSAGE) {
-            window.setTimeout(window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
                 // If separator exists scroll to it. Otherwise scroll to bottom.
                 if (this.refs.newMessageSeparator) {
                     var objDiv = this.refs.postlist;
                     objDiv.scrollTop = this.refs.newMessageSeparator.offsetTop; //scrolls node to top of Div
                 } else if (this.refs.postlist) {
-                    this.refs.postlist.scrollTop = this.refs.postlist.scrollHeight;
+                    this.scrollToBottom();
                 }
-            }), 0);
+            });
         } else if (this.props.scrollType === ScrollTypes.POST && this.props.scrollPostId) {
             window.requestAnimationFrame(() => {
                 const postNode = ReactDOM.findDOMNode(this.refs[this.props.scrollPostId]);
@@ -433,7 +444,9 @@ export default class PostList extends React.Component {
 
     scrollToBottom() {
         this.animationFrameId = window.requestAnimationFrame(() => {
-            this.refs.postlist.scrollTop = this.refs.postlist.scrollHeight;
+            if (this.refs.postlist) {
+                this.refs.postlist.scrollTop = this.refs.postlist.scrollHeight;
+            }
         });
     }
 
@@ -586,5 +599,6 @@ PostList.propTypes = {
     useMilitaryTime: React.PropTypes.bool.isRequired,
     isFocusPost: React.PropTypes.bool,
     flaggedPosts: React.PropTypes.object,
-    statuses: React.PropTypes.object
+    statuses: React.PropTypes.object,
+    isBusy: React.PropTypes.bool
 };

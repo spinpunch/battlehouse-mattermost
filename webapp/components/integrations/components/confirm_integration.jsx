@@ -16,7 +16,8 @@ export default class ConfirmIntegration extends React.Component {
     static get propTypes() {
         return {
             team: React.propTypes.object.isRequired,
-            location: React.PropTypes.object
+            location: React.PropTypes.object,
+            loading: React.PropTypes.bool
         };
     }
 
@@ -56,6 +57,11 @@ export default class ConfirmIntegration extends React.Component {
         let headerText = null;
         let helpText = null;
         let tokenText = null;
+
+        if (this.props.loading === true) {
+            return (<div/>);
+        }
+
         if (this.state.type === Constants.Integrations.COMMAND) {
             headerText = (
                 <FormattedMessage
@@ -154,9 +160,9 @@ export default class ConfirmIntegration extends React.Component {
                 helpText = [];
                 helpText.push(
                     <p>
-                        <FormattedMessage
+                        <FormattedHTMLMessage
                             id='add_oauth_app.doneHelp'
-                            defaultMessage='Your OAuth 2.0 application has been set up. Please use the following Client ID and Client Secret when requesting authorization for your application.'
+                            defaultMessage='Your OAuth 2.0 application has been set up. Please use the following Client ID and Client Secret when requesting authorization for your application (see <a href="https://docs.mattermost.com/developer/oauth-2-0-applications.html">documentation</a> for further details).'
                         />
                     </p>
                 );

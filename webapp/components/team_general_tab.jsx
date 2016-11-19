@@ -8,6 +8,7 @@ import SettingItemMax from './setting_item_max.jsx';
 import Client from 'client/web_client.jsx';
 import * as Utils from 'utils/utils.jsx';
 import TeamStore from 'stores/team_store.jsx';
+import Constants from 'utils/constants.jsx';
 
 import {intlShape, injectIntl, defineMessages, FormattedMessage, FormattedHTMLMessage} from 'react-intl';
 
@@ -354,8 +355,7 @@ class GeneralTab extends React.Component {
             inputs.push(
                 <div key='teamInviteSetting'>
                     <div className='row'>
-                        <label className='col-sm-5 control-label visible-xs-block'>
-                        </label>
+                        <label className='col-sm-5 control-label visible-xs-block'/>
                         <div className='col-sm-12'>
                             <input
                                 className='form-control'
@@ -431,7 +431,7 @@ class GeneralTab extends React.Component {
                         <input
                             className='form-control'
                             type='text'
-                            maxLength='22'
+                            maxLength={Constants.MAX_TEAMNAME_LENGTH.toString()}
                             onChange={this.updateName}
                             value={this.state.name}
                         />
@@ -482,7 +482,7 @@ class GeneralTab extends React.Component {
                         ref='title'
                     >
                         <div className='modal-back'>
-                            <i className='fa fa-angle-left'></i>
+                            <i className='fa fa-angle-left'/>
                         </div>
                         <FormattedMessage
                             id='general_tab.title'

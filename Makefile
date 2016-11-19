@@ -78,6 +78,15 @@ start-docker:
 		docker start mattermost-postgres > /dev/null; \
 	fi
 
+	@if [ $(shell docker ps -a | grep -ci mattermost-webrtc) -eq 0 ]; then \
+    	echo starting mattermost-webrtc; \
+        docker run --name mattermost-webrtc -p 7088:7088 -p 7089:7089 -p 8188:8188 -p 8189:8189 -d mattermost/webrtc:latest > /dev/null; \
+    elif [ $(shell docker ps | grep -ci mattermost-webrtc) -eq 0 ]; then \
+    	echo restarting mattermost-webrtc; \
+        docker start mattermost-webrtc > /dev/null; \
+    fi
+
+ifeq ($(BUILD_ENTERPRISE_READY),true)
 	@echo Ldap test user test.one
 	@if [ $(shell docker ps -a | grep -ci mattermost-openldap) -eq 0 ]; then \
 		echo starting mattermost-openldap; \
@@ -99,6 +108,7 @@ start-docker:
 		docker start mattermost-openldap > /dev/null; \
 		sleep 10; \
 	fi
+endif
 
 stop-docker:
 	@echo Stopping docker containers
@@ -116,6 +126,11 @@ stop-docker:
 	@if [ $(shell docker ps -a | grep -ci mattermost-openldap) -eq 1 ]; then \
 		echo stopping mattermost-openldap; \
 		docker stop mattermost-openldap > /dev/null; \
+	fi
+
+	@if [ $(shell docker ps -a | grep -ci mattermost-webrtc) -eq 1 ]; then \
+		echo stopping mattermost-webrtc; \
+		docker stop mattermost-webrtc > /dev/null; \
 	fi
 
 clean-docker:
@@ -137,6 +152,12 @@ clean-docker:
 		echo removing mattermost-openldap; \
 		docker stop mattermost-openldap > /dev/null; \
 		docker rm -v mattermost-openldap > /dev/null; \
+	fi
+
+	@if [ $(shell docker ps -a | grep -ci mattermost-webrtc) -eq 1 ]; then \
+		echo removing mattermost-webrtc; \
+		docker stop mattermost-webrtc > /dev/null; \
+		docker rm -v mattermost-webrtc > /dev/null; \
 	fi
 
 check-client-style:
@@ -184,6 +205,7 @@ ifeq ($(BUILD_ENTERPRISE_READY),true)
 
 	$(GO) test $(GOFLAGS) -run=$(TESTS) -covermode=count -c ./enterprise/ldap && ./ldap.test -test.v -test.timeout=120s -test.coverprofile=cldap.out || exit 1
 	$(GO) test $(GOFLAGS) -run=$(TESTS) -covermode=count -c ./enterprise/compliance && ./compliance.test -test.v -test.timeout=120s -test.coverprofile=ccompliance.out || exit 1
+	$(GO) test $(GOFLAGS) -run=$(TESTS) -covermode=count -c ./enterprise/mfa && ./mfa.test -test.v -test.timeout=120s -test.coverprofile=cmfa.out || exit 1
 	$(GO) test $(GOFLAGS) -run=$(TESTS) -covermode=count -c ./enterprise/emoji && ./emoji.test -test.v -test.timeout=120s -test.coverprofile=cemoji.out || exit 1
 	$(GO) test $(GOFLAGS) -run=$(TESTS) -covermode=count -c ./enterprise/saml && ./saml.test -test.v -test.timeout=60s -test.coverprofile=csaml.out || exit 1
 	$(GO) test $(GOFLAGS) -run=$(TESTS) -covermode=count -c ./enterprise/cluster && ./cluster.test -test.v -test.timeout=60s -test.coverprofile=ccluster.out || exit 1
@@ -191,14 +213,15 @@ ifeq ($(BUILD_ENTERPRISE_READY),true)
 
 	tail -n +2 cldap.out >> ecover.out
 	tail -n +2 ccompliance.out >> ecover.out
+	tail -n +2 cmfa.out >> ecover.out
 	tail -n +2 cemoji.out >> ecover.out
 	tail -n +2 csaml.out >> ecover.out
 	tail -n +2 ccluster.out >> ecover.out
 	tail -n +2 caccount_migration.out >> ecover.out
-	rm -f cldap.out ccompliance.out cemoji.out csaml.out ccluster.out caccount_migration.out
-
+	rm -f cldap.out ccompliance.out cmfa.out cemoji.out csaml.out ccluster.out caccount_migration.out
 	rm -r ldap.test
 	rm -r compliance.test
+	rm -r mfa.test
 	rm -r emoji.test
 	rm -r saml.test
 	rm -r cluster.test
@@ -276,6 +299,9 @@ package: build build-client
 	cp -RL templates $(DIST_PATH)
 	cp -RL i18n $(DIST_PATH)
 
+	@# Disable developer settings
+	sed -i'' -e 's|"ConsoleLevel": "DEBUG"|"ConsoleLevel": "INFO"|g' $(DIST_PATH)/config/config.json
+
 	@# Package webapp
 	mkdir -p $(DIST_PATH)/webapp/dist
 	cp -RL $(BUILD_WEBAPP_DIR)/dist $(DIST_PATH)/webapp
@@ -311,7 +337,7 @@ else
 	cp $(GOPATH)/bin/windows_amd64/platform.exe $(DIST_PATH)/bin # from cross-compiled bin dir
 endif
 	@# Package
-	tar -C dist -czf $(DIST_PATH)-$(BUILD_TYPE_NAME)-windows-amd64.tar.gz mattermost
+	cd $(DIST_ROOT) && zip -9 -r -q -l mattermost-$(BUILD_TYPE_NAME)-windows-amd64.zip mattermost && cd ..
 	@# Cleanup
 	rm -f $(DIST_PATH)/bin/platform.exe
 
@@ -336,7 +362,7 @@ run-server: prepare-enterprise start-docker
 
 run-cli: prepare-enterprise start-docker
 	@echo Running mattermost for development
-	@echo Example should be like >'make ARGS="-version" run-cli'
+	@echo Example should be like 'make ARGS="-version" run-cli'
 
 	$(GO) run $(GOFLAGS) $(GO_LINKER_FLAGS) *.go ${ARGS}
 
@@ -357,21 +383,24 @@ run-fullmap: run-server run-client-fullmap
 stop-server:
 	@echo Stopping mattermost
 
+ifeq ($(BUILDER_GOOS_GOARCH),"windows_amd64")
+	wmic process where "Caption='go.exe' and CommandLine like '%go.exe run%'" call terminate
+	wmic process where "Caption='mattermost.exe' and CommandLine like '%go-build%'" call terminate
+else
 	@for PID in $$(ps -ef | grep "[g]o run" | awk '{ print $$2 }'); do \
 		echo stopping go $$PID; \
 		kill $$PID; \
 	done
-
 	@for PID in $$(ps -ef | grep "[g]o-build" | awk '{ print $$2 }'); do \
 		echo stopping mattermost $$PID; \
 		kill $$PID; \
 	done
+endif 
 
 stop-client:
 	@echo Stopping mattermost client
 
 	cd $(BUILD_WEBAPP_DIR) && $(MAKE) stop
-
 
 stop: stop-server stop-client
 

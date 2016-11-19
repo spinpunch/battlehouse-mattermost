@@ -12,6 +12,7 @@ import TeamStore from 'stores/team_store.jsx';
 import UserStore from 'stores/user_store.jsx';
 
 import * as Utils from 'utils/utils.jsx';
+import * as PostUtils from 'utils/post_utils.jsx';
 import Constants from 'utils/constants.jsx';
 import {Tooltip, OverlayTrigger} from 'react-bootstrap';
 
@@ -48,7 +49,7 @@ export default class PostInfo extends React.Component {
         var isAdmin = TeamStore.isTeamAdminForCurrentTeam() || UserStore.isSystemAdminForCurrentUser();
         const isSystemMessage = post.type && post.type.startsWith(Constants.SYSTEM_MESSAGE_PREFIX);
 
-        if (post.state === Constants.POST_FAILED || post.state === Constants.POST_LOADING || Utils.isPostEphemeral(post)) {
+        if (post.state === Constants.POST_FAILED || post.state === Constants.POST_LOADING) {
             return '';
         }
 
@@ -166,6 +167,7 @@ export default class PostInfo extends React.Component {
                 <li
                     key='editPost'
                     role='presentation'
+                    className='dropdown-submenu'
                 >
                     <a
                         href='#'
@@ -204,12 +206,14 @@ export default class PostInfo extends React.Component {
                     aria-expanded='false'
                     onClick={this.handleDropdownClick}
                 />
-                <ul
-                    className='dropdown-menu'
-                    role='menu'
-                >
-                    {dropdownContents}
-                </ul>
+                <div className='dropdown-menu__content'>
+                    <ul
+                        className='dropdown-menu'
+                        role='menu'
+                    >
+                        {dropdownContents}
+                    </ul>
+                </div>
             </div>
         );
     }
@@ -250,7 +254,6 @@ export default class PostInfo extends React.Component {
         var post = this.props.post;
         var comments = '';
         var showCommentClass = '';
-        var highlightMentionClass = '';
         var commentCountText = this.props.commentCount;
         const flagIcon = Constants.FLAG_ICON_SVG;
 
@@ -260,15 +263,11 @@ export default class PostInfo extends React.Component {
             commentCountText = '';
         }
 
-        if (this.props.isCommentMention) {
-            highlightMentionClass = ' mention--highlight';
-        }
-
         if (post.state !== Constants.POST_FAILED && post.state !== Constants.POST_LOADING && !Utils.isPostEphemeral(post) && this.props.allowReply) {
             comments = (
                 <a
                     href='#'
-                    className={'comment-icon__container' + showCommentClass + highlightMentionClass}
+                    className={'comment-icon__container' + showCommentClass}
                     onClick={this.props.handleCommentClick}
                 >
                     <span
@@ -287,7 +286,7 @@ export default class PostInfo extends React.Component {
                     {this.createRemovePostButton()}
                 </li>
             );
-        } else {
+        } else if (!PostUtils.isSystemMessage(post)) {
             options = (
                 <li className='col col__reply'>
                     <div
@@ -386,7 +385,6 @@ PostInfo.defaultProps = {
 PostInfo.propTypes = {
     post: React.PropTypes.object.isRequired,
     commentCount: React.PropTypes.number.isRequired,
-    isCommentMention: React.PropTypes.bool.isRequired,
     isLastComment: React.PropTypes.bool.isRequired,
     allowReply: React.PropTypes.bool.isRequired,
     handleCommentClick: React.PropTypes.func.isRequired,

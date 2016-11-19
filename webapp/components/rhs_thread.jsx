@@ -8,7 +8,6 @@ import RootPost from './rhs_root_post.jsx';
 import Comment from './rhs_comment.jsx';
 import FileUploadOverlay from './file_upload_overlay.jsx';
 
-import ChannelStore from 'stores/channel_store.jsx';
 import PostStore from 'stores/post_store.jsx';
 import UserStore from 'stores/user_store.jsx';
 import PreferenceStore from 'stores/preference_store.jsx';
@@ -238,16 +237,11 @@ export default class RhsThread extends React.Component {
     render() {
         const postsArray = this.state.postsArray;
         const selected = this.state.selected;
-        const channel = ChannelStore.get(this.state.selected.channel_id);
-
-        let profiles = this.state.profiles || {};
-        if (channel && channel.type === Constants.DM_CHANNEL) {
-            profiles = Object.assign({}, profiles, UserStore.getDirectProfiles());
-        }
+        const profiles = this.state.profiles || {};
 
         if (postsArray == null || selected == null) {
             return (
-                <div></div>
+                <div/>
             );
         }
 
@@ -282,6 +276,7 @@ export default class RhsThread extends React.Component {
                     <RhsHeaderPost
                         fromFlaggedPosts={this.props.fromFlaggedPosts}
                         fromSearch={this.props.fromSearch}
+                        isWebrtc={this.props.isWebrtc}
                         isMentionSearch={this.props.isMentionSearch}
                         toggleSize={this.props.toggleSize}
                         shrink={this.props.shrink}
@@ -362,6 +357,7 @@ RhsThread.defaultProps = {
 RhsThread.propTypes = {
     fromSearch: React.PropTypes.string,
     fromFlaggedPosts: React.PropTypes.bool,
+    isWebrtc: React.PropTypes.bool,
     isMentionSearch: React.PropTypes.bool,
     currentUser: React.PropTypes.object.isRequired,
     useMilitaryTime: React.PropTypes.bool.isRequired,

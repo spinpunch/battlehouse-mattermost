@@ -20,23 +20,24 @@ import (
 	"github.com/mattermost/platform/store"
 	"github.com/mattermost/platform/utils"
 	"github.com/mssola/user_agent"
+	"runtime/debug"
 )
 
 func InitAdmin() {
 	l4g.Debug(utils.T("api.admin.init.debug"))
 
-	BaseRoutes.Admin.Handle("/logs", ApiUserRequired(getLogs)).Methods("GET")
-	BaseRoutes.Admin.Handle("/audits", ApiUserRequired(getAllAudits)).Methods("GET")
-	BaseRoutes.Admin.Handle("/config", ApiUserRequired(getConfig)).Methods("GET")
-	BaseRoutes.Admin.Handle("/save_config", ApiUserRequired(saveConfig)).Methods("POST")
-	BaseRoutes.Admin.Handle("/reload_config", ApiUserRequired(reloadConfig)).Methods("GET")
-	BaseRoutes.Admin.Handle("/test_email", ApiUserRequired(testEmail)).Methods("POST")
-	BaseRoutes.Admin.Handle("/recycle_db_conn", ApiUserRequired(recycleDatabaseConnection)).Methods("GET")
-	BaseRoutes.Admin.Handle("/analytics/{id:[A-Za-z0-9]+}/{name:[A-Za-z0-9_]+}", ApiUserRequired(getAnalytics)).Methods("GET")
-	BaseRoutes.Admin.Handle("/analytics/{name:[A-Za-z0-9_]+}", ApiUserRequired(getAnalytics)).Methods("GET")
-	BaseRoutes.Admin.Handle("/save_compliance_report", ApiUserRequired(saveComplianceReport)).Methods("POST")
-	BaseRoutes.Admin.Handle("/compliance_reports", ApiUserRequired(getComplianceReports)).Methods("GET")
-	BaseRoutes.Admin.Handle("/download_compliance_report/{id:[A-Za-z0-9]+}", ApiUserRequiredTrustRequester(downloadComplianceReport)).Methods("GET")
+	BaseRoutes.Admin.Handle("/logs", ApiAdminSystemRequired(getLogs)).Methods("GET")
+	BaseRoutes.Admin.Handle("/audits", ApiAdminSystemRequired(getAllAudits)).Methods("GET")
+	BaseRoutes.Admin.Handle("/config", ApiAdminSystemRequired(getConfig)).Methods("GET")
+	BaseRoutes.Admin.Handle("/save_config", ApiAdminSystemRequired(saveConfig)).Methods("POST")
+	BaseRoutes.Admin.Handle("/reload_config", ApiAdminSystemRequired(reloadConfig)).Methods("GET")
+	BaseRoutes.Admin.Handle("/test_email", ApiAdminSystemRequired(testEmail)).Methods("POST")
+	BaseRoutes.Admin.Handle("/recycle_db_conn", ApiAdminSystemRequired(recycleDatabaseConnection)).Methods("GET")
+	BaseRoutes.Admin.Handle("/analytics/{id:[A-Za-z0-9]+}/{name:[A-Za-z0-9_]+}", ApiAdminSystemRequired(getAnalytics)).Methods("GET")
+	BaseRoutes.Admin.Handle("/analytics/{name:[A-Za-z0-9_]+}", ApiAdminSystemRequired(getAnalytics)).Methods("GET")
+	BaseRoutes.Admin.Handle("/save_compliance_report", ApiAdminSystemRequired(saveComplianceReport)).Methods("POST")
+	BaseRoutes.Admin.Handle("/compliance_reports", ApiAdminSystemRequired(getComplianceReports)).Methods("GET")
+	BaseRoutes.Admin.Handle("/download_compliance_report/{id:[A-Za-z0-9]+}", ApiAdminSystemRequiredTrustRequester(downloadComplianceReport)).Methods("GET")
 	BaseRoutes.Admin.Handle("/upload_brand_image", ApiAdminSystemRequired(uploadBrandImage)).Methods("POST")
 	BaseRoutes.Admin.Handle("/get_brand_image", ApiAppHandlerTrustRequester(getBrandImage)).Methods("GET")
 	BaseRoutes.Admin.Handle("/reset_mfa", ApiAdminSystemRequired(adminResetMfa)).Methods("POST")
@@ -48,15 +49,10 @@ func InitAdmin() {
 	BaseRoutes.Admin.Handle("/remove_certificate", ApiAdminSystemRequired(removeCertificate)).Methods("POST")
 	BaseRoutes.Admin.Handle("/saml_cert_status", ApiAdminSystemRequired(samlCertificateStatus)).Methods("GET")
 	BaseRoutes.Admin.Handle("/cluster_status", ApiAdminSystemRequired(getClusterStatus)).Methods("GET")
-	BaseRoutes.Admin.Handle("/recently_active_users/{team_id:[A-Za-z0-9]+}", ApiUserRequiredActivity(getRecentlyActiveUsers, false)).Methods("GET")
+	BaseRoutes.Admin.Handle("/recently_active_users/{team_id:[A-Za-z0-9]+}", ApiUserRequired(getRecentlyActiveUsers)).Methods("GET")
 }
 
 func getLogs(c *Context, w http.ResponseWriter, r *http.Request) {
-
-	if !c.HasSystemAdminPermissions("getLogs") {
-		return
-	}
-
 	lines, err := GetLogs()
 	if err != nil {
 		c.Err = err
@@ -99,11 +95,6 @@ func GetLogs() ([]string, *model.AppError) {
 }
 
 func getClusterStatus(c *Context, w http.ResponseWriter, r *http.Request) {
-
-	if !c.HasSystemAdminPermissions("getClusterStatus") {
-		return
-	}
-
 	infos := make([]*model.ClusterInfo, 0)
 	if einterfaces.GetClusterInterface() != nil {
 		infos = einterfaces.GetClusterInterface().GetClusterInfos()
@@ -113,11 +104,6 @@ func getClusterStatus(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func getAllAudits(c *Context, w http.ResponseWriter, r *http.Request) {
-
-	if !c.HasSystemAdminPermissions("getAllAudits") {
-		return
-	}
-
 	if result := <-Srv.Store.Audit().Get("", 200); result.Err != nil {
 		c.Err = result.Err
 		return
@@ -139,10 +125,6 @@ func getAllAudits(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func getConfig(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("getConfig") {
-		return
-	}
-
 	json := utils.Cfg.ToJson()
 	cfg := model.ConfigFromJson(strings.NewReader(json))
 
@@ -153,10 +135,7 @@ func getConfig(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func reloadConfig(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("reloadConfig") {
-		return
-	}
-
+	debug.FreeOSMemory()
 	utils.LoadConfig(utils.CfgFileName)
 
 	// start/restart email batching job if necessary
@@ -167,10 +146,6 @@ func reloadConfig(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func saveConfig(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("getConfig") {
-		return
-	}
-
 	cfg := model.ConfigFromJson(r.Body)
 	if cfg == nil {
 		c.SetInvalidParam("saveConfig", "config")
@@ -219,10 +194,6 @@ func saveConfig(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func recycleDatabaseConnection(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("recycleDatabaseConnection") {
-		return
-	}
-
 	oldStore := Srv.Store
 
 	l4g.Warn(utils.T("api.admin.recycle_db_start.warn"))
@@ -238,10 +209,6 @@ func recycleDatabaseConnection(c *Context, w http.ResponseWriter, r *http.Reques
 }
 
 func testEmail(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("testEmail") {
-		return
-	}
-
 	cfg := model.ConfigFromJson(r.Body)
 	if cfg == nil {
 		c.SetInvalidParam("testEmail", "config")
@@ -282,10 +249,6 @@ func testEmail(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func getComplianceReports(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("getComplianceReports") {
-		return
-	}
-
 	if !*utils.Cfg.ComplianceSettings.Enable || !utils.IsLicensed || !*utils.License.Features.Compliance {
 		c.Err = model.NewLocAppError("getComplianceReports", "ent.compliance.licence_disable.app_error", nil, "")
 		return
@@ -301,10 +264,6 @@ func getComplianceReports(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func saveComplianceReport(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("getComplianceReports") {
-		return
-	}
-
 	if !*utils.Cfg.ComplianceSettings.Enable || !utils.IsLicensed || !*utils.License.Features.Compliance || einterfaces.GetComplianceInterface() == nil {
 		c.Err = model.NewLocAppError("saveComplianceReport", "ent.compliance.licence_disable.app_error", nil, "")
 		return
@@ -331,10 +290,6 @@ func saveComplianceReport(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func downloadComplianceReport(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("downloadComplianceReport") {
-		return
-	}
-
 	if !*utils.Cfg.ComplianceSettings.Enable || !utils.IsLicensed || !*utils.License.Features.Compliance || einterfaces.GetComplianceInterface() == nil {
 		c.Err = model.NewLocAppError("downloadComplianceReport", "ent.compliance.licence_disable.app_error", nil, "")
 		return
@@ -380,21 +335,20 @@ func downloadComplianceReport(c *Context, w http.ResponseWriter, r *http.Request
 }
 
 func getAnalytics(c *Context, w http.ResponseWriter, r *http.Request) {
-	if !c.HasSystemAdminPermissions("getAnalytics") {
-		return
-	}
-
 	params := mux.Vars(r)
 	teamId := params["id"]
 	name := params["name"]
 
 	if name == "standard" {
-		var rows model.AnalyticsRows = make([]*model.AnalyticsRow, 5)
+		var rows model.AnalyticsRows = make([]*model.AnalyticsRow, 8)
 		rows[0] = &model.AnalyticsRow{"channel_open_count", 0}
 		rows[1] = &model.AnalyticsRow{"channel_private_count", 0}
 		rows[2] = &model.AnalyticsRow{"post_count", 0}
 		rows[3] = &model.AnalyticsRow{"unique_user_count", 0}
 		rows[4] = &model.AnalyticsRow{"team_count", 0}
+		rows[5] = &model.AnalyticsRow{"total_websocket_connections", 0}
+		rows[6] = &model.AnalyticsRow{"total_master_db_connections", 0}
+		rows[7] = &model.AnalyticsRow{"total_read_db_connections", 0}
 
 		openChan := Srv.Store.Channel().AnalyticsTypeCount(teamId, model.CHANNEL_OPEN)
 		privateChan := Srv.Store.Channel().AnalyticsTypeCount(teamId, model.CHANNEL_PRIVATE)
@@ -436,6 +390,10 @@ func getAnalytics(c *Context, w http.ResponseWriter, r *http.Request) {
 		} else {
 			rows[4].Value = float64(r.Data.(int64))
 		}
+
+		rows[5].Value = float64(TotalWebsocketConnections())
+		rows[6].Value = float64(Srv.Store.TotalMasterDbConnections())
+		rows[7].Value = float64(Srv.Store.TotalReadDbConnections())
 
 		w.Write([]byte(rows.ToJson()))
 	} else if name == "post_counts_day" {
@@ -757,32 +715,14 @@ func samlCertificateStatus(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func getRecentlyActiveUsers(c *Context, w http.ResponseWriter, r *http.Request) {
-	statusMap := map[string]interface{}{}
-
-	if result := <-Srv.Store.Status().GetAllFromTeam(c.TeamId); result.Err != nil {
-		c.Err = result.Err
-		return
-	} else {
-		statuses := result.Data.([]*model.Status)
-		for _, s := range statuses {
-			statusMap[s.UserId] = s.LastActivityAt
-		}
-	}
-
-	if result := <-Srv.Store.User().GetProfiles(c.TeamId); result.Err != nil {
+	if result := <-Srv.Store.User().GetRecentlyActiveUsersForTeam(c.TeamId); result.Err != nil {
 		c.Err = result.Err
 		return
 	} else {
 		profiles := result.Data.(map[string]*model.User)
 
-		for k, p := range profiles {
-			p = sanitizeProfile(c, p)
-
-			if lastActivityAt, ok := statusMap[p.Id].(int64); ok {
-				p.LastActivityAt = lastActivityAt
-			}
-
-			profiles[k] = p
+		for _, p := range profiles {
+			sanitizeProfile(c, p)
 		}
 
 		w.Write([]byte(model.UserMapToJson(profiles)))
