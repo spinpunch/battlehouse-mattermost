@@ -34,7 +34,7 @@ body {
 
 .inner-wrap {
     top: 0; bottom: 0; position: absolute; height: auto; overflow: hidden; // for battlehouse.com header
-    left: 0; width: auto; // for battlehouse.com header
+    left: 0; width: 100%; // for battlehouse.com header
     // margin-left: 15px;
 
     > .row {
