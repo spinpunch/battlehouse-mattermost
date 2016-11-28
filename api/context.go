@@ -341,7 +341,7 @@ func (c *Context) cookieDomain() string {
 	// "asdf.foo.bar" -> "foo.bar"
 	fields := strings.Split(host, ".")
 	if len(fields) >= 2 {
-		ret = strings.Join(fields[len(fields)-2:len(fields)], ".")
+		ret = strings.Join(fields[len(fields)-2:], ".")
 	}
 
 	return ret

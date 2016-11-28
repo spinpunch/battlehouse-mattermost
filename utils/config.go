@@ -135,8 +135,8 @@ func GetWebserverRoot(config *model.Config) string {
 		return *config.ServiceSettings.WebserverRoot
 	} else {
 		// otherwise, treat as relative to CLIENT_DIR
-		return FindDir(CLIENT_DIR)+*config.ServiceSettings.WebserverRoot
-	}		
+		return FindDir(CLIENT_DIR) + *config.ServiceSettings.WebserverRoot
+	}
 }
 
 func SaveConfig(fileName string, config *model.Config) *model.AppError {

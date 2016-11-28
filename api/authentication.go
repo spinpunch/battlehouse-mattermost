@@ -38,7 +38,7 @@ func doubleCheckPassword(user *model.User, password string) *model.AppError {
 }
 
 func checkUserPassword(user *model.User, password string, rawBcrypt string) *model.AppError {
-	if ! ((len(rawBcrypt) != 0 && rawBcrypt == user.Password) || model.ComparePassword(user.Password, password)) {
+	if !((len(rawBcrypt) != 0 && rawBcrypt == user.Password) || model.ComparePassword(user.Password, password)) {
 		if result := <-Srv.Store.User().UpdateFailedPasswordAttempts(user.Id, user.FailedAttempts+1); result.Err != nil {
 			return result.Err
 		}
