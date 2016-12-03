@@ -549,6 +549,24 @@ export default class SecurityTab extends React.Component {
             this.props.updateSection('password');
         }.bind(this);
 
+        // battlehouse.com
+        if(global.window.mm_config.BHLoginEnabled) {
+            let settings_url = BHSDK.bh_account_settings_url();
+            return (
+                    <a
+                href={settings_url}
+                target='blank_'>
+                    <FormattedMessage
+                id='setting_item_min.edit'
+                defaultMessage='Edit'
+                    /> <FormattedMessage
+                        id='user.settings.security.password'
+                        defaultMessage='Password'
+                    />
+                    </a>
+            );
+        }
+
         return (
             <SettingItemMin
                 title={
@@ -946,6 +964,37 @@ export default class SecurityTab extends React.Component {
             oauthSection = this.createOAuthAppsSection();
         }
 
+        // battlehouse.com
+        let sessionManipulationSection;
+        if (!config.BHLoginEnabled) {
+            sessionManipulationSection = (
+                <div>
+                   <br/>
+                    <ToggleModalButton
+                        className='security-links theme'
+                        dialogType={AccessHistoryModal}
+                    >
+                        <i className='fa fa-clock-o'/>
+                        <FormattedMessage
+                            id='user.settings.security.viewHistory'
+                            defaultMessage='View Access History'
+                        />
+                    </ToggleModalButton>
+                    <b/>
+                    <ToggleModalButton
+                        className='security-links theme'
+                        dialogType={ActivityLogModal}
+                    >
+                        <i className='fa fa-clock-o'/>
+                        <FormattedMessage
+                            id='user.settings.security.logoutActiveSessions'
+                            defaultMessage='View and Logout of Active Sessions'
+                        />
+                    </ToggleModalButton>
+                </div>
+            );
+        }
+
         return (
             <div>
                 <div className='modal-header'>
@@ -990,28 +1039,7 @@ export default class SecurityTab extends React.Component {
                     <div className='divider-light'/>
                     {signInSection}
                     <div className='divider-dark'/>
-                    <br/>
-                    <ToggleModalButton
-                        className='security-links theme'
-                        dialogType={AccessHistoryModal}
-                    >
-                        <i className='fa fa-clock-o'/>
-                        <FormattedMessage
-                            id='user.settings.security.viewHistory'
-                            defaultMessage='View Access History'
-                        />
-                    </ToggleModalButton>
-                    <b/>
-                    <ToggleModalButton
-                        className='security-links theme'
-                        dialogType={ActivityLogModal}
-                    >
-                        <i className='fa fa-clock-o'/>
-                        <FormattedMessage
-                            id='user.settings.security.logoutActiveSessions'
-                            defaultMessage='View and Logout of Active Sessions'
-                        />
-                    </ToggleModalButton>
+                    {sessionManipulationSection}
                 </div>
             </div>
         );
