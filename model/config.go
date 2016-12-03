@@ -90,6 +90,7 @@ type ServiceSettings struct {
 	WebserverMode                     *string
 	WebserverRoot                     *string
 	BHApiSecret                       *string
+	BHLoginEnabled                    bool
 	EnableCustomEmoji                 *bool
 	RestrictCustomEmojiCreation       *string
 }
