@@ -2606,6 +2606,8 @@ func sanitizeProfile(c *Context, user *model.User) *model.User {
 		options["email"] = true
 		options["fullname"] = true
 		options["authservice"] = true
+		// battlehouse.com
+		options["pictureupdate"] = true
 	}
 	c.Err = nil
 

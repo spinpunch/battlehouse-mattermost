@@ -232,6 +232,10 @@ func (u *User) Sanitize(options map[string]bool) {
 	if len(options) != 0 && !options["passwordupdate"] {
 		u.LastPasswordUpdate = 0
 	}
+	// battlehouse.com - need this for portrait sync
+	if len(options) != 0 && !options["pictureupdate"] {
+		u.LastPictureUpdate = 0
+	}
 	if len(options) != 0 && !options["authservice"] {
 		u.AuthService = ""
 	}
@@ -247,7 +251,8 @@ func (u *User) ClearNonProfileFields() {
 	u.Props = StringMap{}
 	u.NotifyProps = StringMap{}
 	u.LastPasswordUpdate = 0
-	u.LastPictureUpdate = 0
+	// battlehouse.com - need this for portrait sync
+	// u.LastPictureUpdate = 0
 	u.FailedAttempts = 0
 }
 
