@@ -39,6 +39,8 @@ func InitUser() {
 
 	BaseRoutes.Users.Handle("/create", ApiAppHandler(createUser)).Methods("POST")
 	BaseRoutes.Users.Handle("/update", ApiUserRequired(updateUser)).Methods("POST")
+	// battlehouse.com - special API to silently force-push new username/email
+	BaseRoutes.NeedUser.Handle("/update_bh", ApiAdminSystemRequired(updateUserBH)).Methods("POST")
 	BaseRoutes.Users.Handle("/update_active", ApiUserRequired(updateActive)).Methods("POST")
 	BaseRoutes.Users.Handle("/update_notify", ApiUserRequired(updateUserNotify)).Methods("POST")
 	BaseRoutes.Users.Handle("/newpassword", ApiUserRequired(updatePassword)).Methods("POST")
@@ -1428,6 +1430,55 @@ func updateUser(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		omitUsers := make(map[string]bool, 1)
 		omitUsers[user.Id] = true
+		message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_UPDATED, "", "", "", omitUsers)
+		message.Add("user", updatedUser)
+		go Publish(message)
+
+		rusers[0].Password = ""
+		rusers[0].AuthData = new(string)
+		*rusers[0].AuthData = ""
+		w.Write([]byte(rusers[0].ToJson()))
+	}
+}
+
+// battlehouse.com
+func updateUserBH(c *Context, w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := params["user_id"]
+
+	if !HasPermissionToUser(c, userId) {
+		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
+	}
+
+	props := model.MapFromJson(r.Body)
+	BHApiSecret := props["bh_api_secret"]
+
+	if len(BHApiSecret) == 0 || BHApiSecret != *utils.Cfg.ServiceSettings.BHApiSecret {
+		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
+	}
+
+	new_email := props["new_email"]
+	new_username := props["new_username"]
+
+	if result := <-Srv.Store.User().UpdateBH(userId, new_username, new_email); result.Err != nil {
+		c.Err = result.Err
+		return
+	} else {
+		c.LogAudit("")
+
+		rusers := result.Data.([2]*model.User)
+
+		InvalidateCacheForUser(userId)
+
+		updatedUser := rusers[0]
+		updatedUser = sanitizeProfile(c, updatedUser)
+
+		omitUsers := make(map[string]bool, 1)
+		omitUsers[userId] = true
 		message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_UPDATED, "", "", "", omitUsers)
 		message.Add("user", updatedUser)
 		go Publish(message)
