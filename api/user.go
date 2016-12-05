@@ -53,6 +53,7 @@ func InitUser() {
 	BaseRoutes.Users.Handle("/verify_email", ApiAppHandler(verifyEmail)).Methods("POST")
 	BaseRoutes.Users.Handle("/resend_verification", ApiAppHandler(resendVerification)).Methods("POST")
 	BaseRoutes.Users.Handle("/newimage", ApiUserRequired(uploadProfileImage)).Methods("POST")
+	BaseRoutes.NeedUser.Handle("/newimage", ApiUserRequired(uploadProfileImageForUser)).Methods("POST")
 	BaseRoutes.Users.Handle("/me", ApiUserRequired(getMe)).Methods("GET")
 	BaseRoutes.Users.Handle("/initial_load", ApiAppHandler(getInitialLoad)).Methods("GET")
 	BaseRoutes.Users.Handle("/{offset:[0-9]+}/{limit:[0-9]+}", ApiUserRequired(getProfiles)).Methods("GET")
@@ -1287,7 +1288,27 @@ func getProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// battlehouse.com - alternate way to update portrait of an arbitrary user, not just the one from the context
+
+// standard version - for "me"
 func uploadProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
+	do_uploadProfileImage(c.Session.UserId, c, w, r)
+}
+
+// can update other users
+func uploadProfileImageForUser(c *Context, w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := params["user_id"]
+
+	if !HasPermissionToUser(c, userId) {
+		c.Err = model.NewLocAppError("update_bh", "api.user.newimage.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
+	}
+	do_uploadProfileImage(userId, c, w, r)
+}
+
+func do_uploadProfileImage(userId string, c *Context, w http.ResponseWriter, r *http.Request) {
 	if len(utils.Cfg.FileSettings.DriverName) == 0 {
 		c.Err = model.NewLocAppError("uploadProfileImage", "api.user.upload_profile_user.storage.app_error", nil, "")
 		c.Err.StatusCode = http.StatusNotImplemented
@@ -1358,17 +1379,17 @@ func uploadProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := "users/" + c.Session.UserId + "/profile.png"
+	path := "users/" + userId + "/profile.png"
 
 	if err := WriteFile(buf.Bytes(), path); err != nil {
 		c.Err = model.NewLocAppError("uploadProfileImage", "api.user.upload_profile_user.upload_profile.app_error", nil, "")
 		return
 	}
 
-	Srv.Store.User().UpdateLastPictureUpdate(c.Session.UserId)
+	Srv.Store.User().UpdateLastPictureUpdate(userId)
 
-	if result := <-Srv.Store.User().Get(c.Session.UserId); result.Err != nil {
-		l4g.Error(utils.T("api.user.get_me.getting.error"), c.Session.UserId)
+	if result := <-Srv.Store.User().Get(userId); result.Err != nil {
+		l4g.Error(utils.T("api.user.get_me.getting.error"), userId)
 	} else {
 		user := result.Data.(*model.User)
 		user = sanitizeProfile(c, user)
