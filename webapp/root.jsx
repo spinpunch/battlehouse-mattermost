@@ -53,7 +53,7 @@ function preRenderSetup(callwhendone) {
             d1.resolve();
 
             // battlehouse.com
-            if(window.mm_config.BHLoginEnabled) {
+            if(window.mm_config.BHLoginEnabled === 'true') {
                 window.BHSDK.bh_main('mattermost', true);
                 //window.setInterval(BHSDK.bh_access_token_renew_async, 60*1000);
             }

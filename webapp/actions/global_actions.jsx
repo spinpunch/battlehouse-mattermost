@@ -476,7 +476,7 @@ export function emitUserLoggedOutEvent(redirectTo = '/', shouldSignalLogout = tr
             newLocalizationSelected(global.window.mm_config.DefaultClientLocale);
 
             // battlehouse.com
-            if (global.window.mm_config.BHLoginEnabled) {
+            if (global.window.mm_config.BHLoginEnabled === 'true') {
                 BHSDK.bh_logout();
                 return; // (should redirect immediately though)
             }

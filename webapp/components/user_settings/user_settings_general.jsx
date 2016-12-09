@@ -989,7 +989,7 @@ class UserSettingsGeneralTab extends React.Component {
 
         // battlehouse.com
         let mainSections;
-        if(global.window.mm_config.BHLoginEnabled) {
+        if(global.window.mm_config.BHLoginEnabled === 'true') {
             let settings_url = BHSDK.bh_account_settings_url();
             mainSections = (
                     <a

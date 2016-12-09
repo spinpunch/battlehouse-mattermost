@@ -550,7 +550,7 @@ export default class SecurityTab extends React.Component {
         }.bind(this);
 
         // battlehouse.com
-        if(global.window.mm_config.BHLoginEnabled) {
+        if(global.window.mm_config.BHLoginEnabled === 'true') {
             let settings_url = BHSDK.bh_account_settings_url();
             return (
                     <a
@@ -966,7 +966,7 @@ export default class SecurityTab extends React.Component {
 
         // battlehouse.com
         let sessionManipulationSection;
-        if (!config.BHLoginEnabled) {
+        if (config.BHLoginEnabled !== 'true') {
             sessionManipulationSection = (
                 <div>
                    <br/>
