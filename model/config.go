@@ -215,6 +215,7 @@ type TeamSettings struct {
 	EnableUserCreation               bool
 	EnableOpenServer                 *bool
 	RestrictCreationToDomains        string
+	AutoJoinAllChannels              *bool
 	EnableCustomBrand                *bool
 	CustomBrandText                  *string
 	CustomDescriptionText            *string
@@ -452,6 +453,11 @@ func (o *Config) SetDefaults() {
 	if o.PasswordSettings.Symbol == nil {
 		o.PasswordSettings.Symbol = new(bool)
 		*o.PasswordSettings.Symbol = false
+	}
+
+	if o.TeamSettings.AutoJoinAllChannels == nil {
+		o.TeamSettings.AutoJoinAllChannels = new(bool)
+		*o.TeamSettings.AutoJoinAllChannels = false
 	}
 
 	if o.TeamSettings.EnableCustomBrand == nil {
