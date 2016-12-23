@@ -21,7 +21,6 @@ body {
     }
 
     .inner-wrap {
-        width: 100%; // for battlehouse.com header
         > .row {
             &.content {
                 margin-right: 0; margin-left: 0; // for battlehouse.com header
@@ -33,13 +32,10 @@ body {
 }
 
 .inner-wrap {
-    top: 0; bottom: 0; position: absolute; height: auto; overflow: hidden; // for battlehouse.com header
-    left: 0; width: 100%; // for battlehouse.com header
-    // margin-left: 15px;
+    height: 100%;
 
     > .row {
         &.main {
-            margin-right: 0; margin-left: 0; // for battlehouse.com header
             height: 100%;
             position: relative;
         }
