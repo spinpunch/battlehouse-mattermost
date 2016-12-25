@@ -1489,7 +1489,7 @@ func updateUserBH(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	BHApiSecret := "";
+	BHApiSecret := ""
 	if props["bh_api_secret"] != nil {
 		BHApiSecret = *props["bh_api_secret"]
 	}
