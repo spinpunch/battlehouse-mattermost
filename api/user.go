@@ -290,6 +290,13 @@ func CreateUser(user *model.User, skipTutorial bool) (*model.User, *model.AppErr
 			l4g.Error(utils.T("api.user.create_user.tutorial.error"), presult.Err.Message)
 		}
 
+		if *utils.Cfg.TeamSettings.DefaultNameDisplayFormat != model.PREFERENCE_DEFAULT_DISPLAY_NAME_FORMAT {
+			pref := model.Preference{UserId: ruser.Id, Category: model.PREFERENCE_CATEGORY_DISPLAY_SETTINGS, Name: model.PREFERENCE_NAME_DISPLAY_NAME_FORMAT, Value: *utils.Cfg.TeamSettings.DefaultNameDisplayFormat}
+			if presult := <-Srv.Store.Preference().Save(&model.Preferences{pref}); presult.Err != nil {
+				l4g.Error(utils.T("api.user.create_user.set_default_name_display_format.error"), presult.Err.Message)
+			}
+		}
+
 		ruser.Sanitize(map[string]bool{})
 
 		// This message goes to everyone, so the teamId, channelId and userId are irrelevant

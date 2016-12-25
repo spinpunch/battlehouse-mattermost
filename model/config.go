@@ -216,6 +216,7 @@ type TeamSettings struct {
 	EnableOpenServer                 *bool
 	RestrictCreationToDomains        string
 	AutoJoinAllChannels              *bool
+	DefaultNameDisplayFormat         *string
 	EnableCustomBrand                *bool
 	CustomBrandText                  *string
 	CustomDescriptionText            *string
@@ -458,6 +459,11 @@ func (o *Config) SetDefaults() {
 	if o.TeamSettings.AutoJoinAllChannels == nil {
 		o.TeamSettings.AutoJoinAllChannels = new(bool)
 		*o.TeamSettings.AutoJoinAllChannels = false
+	}
+
+	if o.TeamSettings.DefaultNameDisplayFormat == nil {
+		o.TeamSettings.DefaultNameDisplayFormat = new(string)
+		*o.TeamSettings.DefaultNameDisplayFormat = PREFERENCE_DEFAULT_DISPLAY_NAME_FORMAT
 	}
 
 	if o.TeamSettings.EnableCustomBrand == nil {
