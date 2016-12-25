@@ -6,6 +6,7 @@ package api
 import (
 	"bytes"
 	b64 "encoding/base64"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"html/template"
@@ -1480,8 +1481,18 @@ func updateUserBH(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	props := model.MapFromJson(r.Body)
-	BHApiSecret := props["bh_api_secret"]
+	// don't use model.MapFromJson() because it cannot differentiate empty strings from null/missing
+	var props map[string]*string
+	if err := json.NewDecoder(r.Body).Decode(&props); err != nil {
+		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusBadRequest
+		return
+	}
+
+	BHApiSecret := "";
+	if props["bh_api_secret"] != nil {
+		BHApiSecret = *props["bh_api_secret"]
+	}
 
 	if len(BHApiSecret) == 0 || BHApiSecret != *utils.Cfg.ServiceSettings.BHApiSecret {
 		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
@@ -1489,10 +1500,7 @@ func updateUserBH(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	new_email := props["new_email"]
-	new_username := props["new_username"]
-
-	if result := <-Srv.Store.User().UpdateBH(userId, new_username, new_email); result.Err != nil {
+	if result := <-Srv.Store.User().UpdateBH(userId, props["new_username"], props["new_email"], props["new_nickname"]); result.Err != nil {
 		c.Err = result.Err
 		return
 	} else {

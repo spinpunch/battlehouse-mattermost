@@ -136,7 +136,7 @@ type UserStore interface {
 	Save(user *model.User) StoreChannel
 	Update(user *model.User, allowRoleUpdate bool) StoreChannel
 	// battlehouse.com
-	UpdateBH(userId string, new_username string, new_email string) StoreChannel
+	UpdateBH(userId string, new_username *string, new_email *string, new_nickname *string) StoreChannel
 	UpdateLastPictureUpdate(userId string) StoreChannel
 	UpdateUpdateAt(userId string) StoreChannel
 	UpdatePassword(userId, newPassword string) StoreChannel

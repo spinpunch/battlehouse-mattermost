@@ -183,7 +183,7 @@ func (us SqlUserStore) Update(user *model.User, trustedUpdateData bool) StoreCha
 }
 
 // battlehouse.com
-func (us SqlUserStore) UpdateBH(userId string, new_username string, new_email string) StoreChannel {
+func (us SqlUserStore) UpdateBH(userId string, new_username *string, new_email *string, new_nickname *string) StoreChannel {
 
 	storeChannel := make(StoreChannel, 1)
 
@@ -197,13 +197,16 @@ func (us SqlUserStore) UpdateBH(userId string, new_username string, new_email st
 		} else {
 			oldUser := oldUserResult.(*model.User)
 			user := oldUser
-			if len(new_username) != 0 {
-				user.Username = strings.ToLower(new_username)
+			if new_username != nil {
+				user.Username = strings.ToLower(*new_username)
 				user.UpdateMentionKeysFromUsername(oldUser.Username)
 			}
-			if len(new_email) != 0 {
-				user.Email = strings.ToLower(new_email)
+			if new_email != nil {
+				user.Email = strings.ToLower(*new_email)
 				user.EmailVerified = true
+			}
+			if new_nickname != nil {
+				user.Nickname = *new_nickname
 			}
 
 			if count, err := us.GetMaster().Update(user); err != nil {
