@@ -38,7 +38,8 @@ func NewWebHub() *Hub {
 }
 
 func TotalWebsocketConnections() int {
-	// XXX TODO FIXME, this is racy and needs to be fixed
+	// This is racy, but it's only used for reporting information
+	// so it's probably OK
 	count := 0
 	for _, hub := range hubs {
 		count = count + len(hub.connections)
@@ -102,6 +103,32 @@ func PublishSkipClusterSend(message *model.WebSocketEvent) {
 	}
 }
 
+func InvalidateCacheForChannel(channelId string) {
+	InvalidateCacheForChannelSkipClusterSend(channelId)
+
+	if cluster := einterfaces.GetClusterInterface(); cluster != nil {
+		cluster.InvalidateCacheForChannel(channelId)
+	}
+}
+
+func InvalidateCacheForChannelSkipClusterSend(channelId string) {
+	Srv.Store.User().InvalidateProfilesInChannelCache(channelId)
+	Srv.Store.Channel().InvalidateMemberCount(channelId)
+	Srv.Store.Channel().InvalidateChannel(channelId)
+}
+
+func InvalidateCacheForChannelPosts(channelId string) {
+	InvalidateCacheForChannelPostsSkipClusterSend(channelId)
+
+	if cluster := einterfaces.GetClusterInterface(); cluster != nil {
+		cluster.InvalidateCacheForChannelPosts(channelId)
+	}
+}
+
+func InvalidateCacheForChannelPostsSkipClusterSend(channelId string) {
+	Srv.Store.Post().InvalidateLastPostTimeCache(channelId)
+}
+
 func InvalidateCacheForUser(userId string) {
 	InvalidateCacheForUserSkipClusterSend(userId)
 
@@ -113,8 +140,17 @@ func InvalidateCacheForUser(userId string) {
 func InvalidateCacheForUserSkipClusterSend(userId string) {
 	Srv.Store.Channel().InvalidateAllChannelMembersForUser(userId)
 	Srv.Store.User().InvalidateProfilesInChannelCacheByUser(userId)
+	Srv.Store.User().InvalidatProfileCacheForUser(userId)
 
-	GetHubForUserId(userId).InvalidateUser(userId)
+	if len(hubs) != 0 {
+		GetHubForUserId(userId).InvalidateUser(userId)
+	}
+}
+
+func InvalidateWebConnSessionCacheForUser(userId string) {
+	if len(hubs) != 0 {
+		GetHubForUserId(userId).InvalidateUser(userId)
+	}
 }
 
 func (h *Hub) Register(webConn *WebConn) {

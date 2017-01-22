@@ -25,6 +25,9 @@ export default class TeamMembersModal extends React.Component {
 
     componentDidMount() {
         TeamStore.addChangeListener(this.teamChanged);
+        if (this.props.onLoad) {
+            this.props.onLoad();
+        }
     }
 
     componentWillUnmount() {
@@ -68,18 +71,6 @@ export default class TeamMembersModal extends React.Component {
                         isAdmin={this.props.isAdmin}
                     />
                 </Modal.Body>
-                <Modal.Footer>
-                    <button
-                        type='button'
-                        className='btn btn-default'
-                        onClick={this.onHide}
-                    >
-                        <FormattedMessage
-                            id='team_member_modal.close'
-                            defaultMessage='Close'
-                        />
-                    </button>
-                </Modal.Footer>
             </Modal>
         );
     }
@@ -87,5 +78,6 @@ export default class TeamMembersModal extends React.Component {
 
 TeamMembersModal.propTypes = {
     onHide: React.PropTypes.func.isRequired,
-    isAdmin: React.PropTypes.bool.isRequired
+    isAdmin: React.PropTypes.bool.isRequired,
+    onLoad: React.PropTypes.func
 };

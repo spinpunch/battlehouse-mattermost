@@ -1,15 +1,17 @@
 // Copyright (c) 2015 Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
 
-import React from 'react';
-
-import SuggestionStore from 'stores/suggestion_store.jsx';
-import ChannelStore from 'stores/channel_store.jsx';
-import Constants from 'utils/constants.jsx';
-
 import Suggestion from './suggestion.jsx';
+import Provider from './provider.jsx';
 
-const MaxChannelSuggestions = 40;
+import {autocompleteChannels} from 'actions/channel_actions.jsx';
+
+import ChannelStore from 'stores/channel_store.jsx';
+
+import AppDispatcher from 'dispatcher/app_dispatcher.jsx';
+import {Constants, ActionTypes} from 'utils/constants.jsx';
+
+import React from 'react';
 
 class ChannelMentionSuggestion extends Suggestion {
     render() {
@@ -48,84 +50,62 @@ class ChannelMentionSuggestion extends Suggestion {
     }
 }
 
-function filterChannelsByPrefix(channels, prefix, limit) {
-    const filtered = [];
-
-    for (const id of Object.keys(channels)) {
-        if (filtered.length >= limit) {
-            break;
-        }
-
-        const channel = channels[id];
-
-        if (channel.delete_at > 0) {
-            continue;
-        }
-
-        if (channel.display_name.toLowerCase().startsWith(prefix) || channel.name.startsWith(prefix)) {
-            filtered.push(channel);
-        }
-    }
-
-    return filtered;
-}
-
-export default class ChannelMentionProvider {
+export default class ChannelMentionProvider extends Provider {
     handlePretextChanged(suggestionId, pretext) {
         const captured = (/(^|\s)(~([^~]*))$/i).exec(pretext.toLowerCase());
         if (captured) {
             const prefix = captured[3];
 
-            const channels = ChannelStore.getAll();
-            const moreChannels = ChannelStore.getMoreAll();
+            this.startNewRequest(prefix);
 
-            // Remove private channels from the list.
-            const publicChannels = channels.filter((channel) => {
-                return channel.type === 'O';
-            });
-
-            // Filter channels by prefix.
-            const filteredChannels = filterChannelsByPrefix(
-                    publicChannels, prefix, MaxChannelSuggestions);
-            const filteredMoreChannels = filterChannelsByPrefix(
-                    moreChannels, prefix, MaxChannelSuggestions - filteredChannels.length);
-
-            // Sort channels by display name.
-            [filteredChannels, filteredMoreChannels].forEach((items) => {
-                items.sort((a, b) => {
-                    const aPrefix = a.display_name.startsWith(prefix);
-                    const bPrefix = b.display_name.startsWith(prefix);
-
-                    if (aPrefix === bPrefix) {
-                        return a.display_name.localeCompare(b.display_name);
-                    } else if (aPrefix) {
-                        return -1;
+            autocompleteChannels(
+                prefix,
+                (data) => {
+                    if (this.shouldCancelDispatch(prefix)) {
+                        return;
                     }
 
-                    return 1;
-                });
-            });
+                    const channels = data;
 
-            // Wrap channels in an outer object to avoid overwriting the 'type' property.
-            const wrappedChannels = filteredChannels.map((item) => {
-                return {
-                    type: Constants.MENTION_CHANNELS,
-                    channel: item
-                };
-            });
-            const wrappedMoreChannels = filteredMoreChannels.map((item) => {
-                return {
-                    type: Constants.MENTION_MORE_CHANNELS,
-                    channel: item
-                };
-            });
+                    // Wrap channels in an outer object to avoid overwriting the 'type' property.
+                    const wrappedChannels = [];
+                    const wrappedMoreChannels = [];
+                    const moreChannels = [];
+                    channels.forEach((item) => {
+                        if (ChannelStore.get(item.id)) {
+                            wrappedChannels.push({
+                                type: Constants.MENTION_CHANNELS,
+                                channel: item
+                            });
+                            return;
+                        }
 
-            const wrapped = wrappedChannels.concat(wrappedMoreChannels);
+                        wrappedMoreChannels.push({
+                            type: Constants.MENTION_MORE_CHANNELS,
+                            channel: item
+                        });
 
-            const mentions = wrapped.map((item) => '~' + item.channel.name);
+                        moreChannels.push(item);
+                    });
 
-            SuggestionStore.clearSuggestions(suggestionId);
-            SuggestionStore.addSuggestions(suggestionId, mentions, wrapped, ChannelMentionSuggestion, captured[2]);
+                    const wrapped = wrappedChannels.concat(wrappedMoreChannels);
+                    const mentions = wrapped.map((item) => '~' + item.channel.name);
+
+                    AppDispatcher.handleServerAction({
+                        type: ActionTypes.RECEIVED_MORE_CHANNELS,
+                        channels: moreChannels
+                    });
+
+                    AppDispatcher.handleServerAction({
+                        type: ActionTypes.SUGGESTION_RECEIVED_SUGGESTIONS,
+                        id: suggestionId,
+                        matchedPretext: captured[2],
+                        terms: mentions,
+                        items: wrapped,
+                        component: ChannelMentionSuggestion
+                    });
+                }
+            );
         }
     }
 }

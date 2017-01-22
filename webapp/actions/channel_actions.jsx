@@ -32,7 +32,7 @@ export function goToChannel(channel) {
     }
 }
 
-export function executeCommand(channelId, message, suggest, success, error) {
+export function executeCommand(message, args, success, error) {
     let msg = message;
 
     msg = msg.substring(0, msg.indexOf(' ')).toLowerCase() + msg.substring(msg.indexOf(' '), msg.length);
@@ -48,13 +48,12 @@ export function executeCommand(channelId, message, suggest, success, error) {
             msg = '/shortcuts';
         }
     }
-
-    Client.executeCommand(channelId, msg, suggest, success, error);
+    Client.executeCommand(msg, args, success, error);
 }
 
 export function setChannelAsRead(channelIdParam) {
     const channelId = channelIdParam || ChannelStore.getCurrentId();
-    AsyncClient.updateLastViewedAt();
+    AsyncClient.viewChannel();
     ChannelStore.resetCounts(channelId);
     ChannelStore.emitChange();
     if (channelId === ChannelStore.getCurrentId()) {
@@ -190,4 +189,125 @@ export function unmarkFavorite(channelId) {
 export function loadChannelsForCurrentUser() {
     AsyncClient.getChannels();
     AsyncClient.getMyChannelMembers();
+}
+
+export function joinChannel(channel, success, error) {
+    Client.joinChannel(
+        channel.id,
+        () => {
+            ChannelStore.removeMoreChannel(channel.id);
+
+            if (success) {
+                success();
+            }
+        },
+        () => {
+            if (error) {
+                error();
+            }
+        }
+    );
+}
+
+export function updateChannel(channel, success, error) {
+    Client.updateChannel(
+        channel,
+        () => {
+            AsyncClient.getChannel(channel.id);
+
+            if (success) {
+                success();
+            }
+        },
+        (err) => {
+            if (error) {
+                error(err);
+            }
+        }
+    );
+}
+
+export function searchMoreChannels(term, success, error) {
+    Client.searchMoreChannels(
+        term,
+        (data) => {
+            if (success) {
+                success(data);
+            }
+        },
+        (err) => {
+            if (error) {
+                error(err);
+            }
+        }
+    );
+}
+
+export function autocompleteChannels(term, success, error) {
+    Client.autocompleteChannels(
+        term,
+        (data) => {
+            if (success) {
+                success(data);
+            }
+        },
+        (err) => {
+            AsyncClient.dispatchError(err, 'autocompleteChannels');
+
+            if (error) {
+                error(err);
+            }
+        }
+    );
+}
+
+export function updateChannelNotifyProps(data, success, error) {
+    Client.updateChannelNotifyProps(data,
+        () => {
+            if (success) {
+                success();
+            }
+        },
+        (err) => {
+            if (error) {
+                error(err);
+            }
+        }
+    );
+}
+
+export function createChannel(channel, success, error) {
+    Client.createChannel(
+        channel,
+        (data) => {
+            Client.getChannel(
+                data.id,
+                (data2) => {
+                    AppDispatcher.handleServerAction({
+                        type: ActionTypes.RECEIVED_CHANNEL,
+                        channel: data2.channel,
+                        member: data2.channel
+                    });
+
+                    if (success) {
+                        success(data2);
+                    }
+                },
+                (err) => {
+                    AsyncClient.dispatchError(err, 'getChannel');
+
+                    if (error) {
+                        error(err);
+                    }
+                }
+            );
+        },
+        (err) => {
+            AsyncClient.dispatchError(err, 'createChannel');
+
+            if (error) {
+                error(err);
+            }
+        }
+    );
 }

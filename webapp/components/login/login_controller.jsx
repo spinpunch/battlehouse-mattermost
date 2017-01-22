@@ -6,6 +6,7 @@ import ErrorBar from 'components/error_bar.jsx';
 import FormError from 'components/form_error.jsx';
 
 import * as GlobalActions from 'actions/global_actions.jsx';
+import BrowserStore from 'stores/browser_store.jsx';
 import UserStore from 'stores/user_store.jsx';
 
 import Client from 'client/web_client.jsx';
@@ -52,9 +53,9 @@ export default class LoginController extends React.Component {
 
     componentDidMount() {
         document.title = global.window.mm_config.SiteName;
-
+        BrowserStore.removeGlobalItem('team');
         if (UserStore.getCurrentUser()) {
-            browserHistory.push('/select_team');
+            GlobalActions.redirectUserToDefaultTeam();
         }
 
         AsyncClient.checkVersion();
@@ -150,8 +151,8 @@ export default class LoginController extends React.Component {
                         query.d,
                         query.h,
                         query.id,
-                        () => {
-                            this.finishSignin();
+                        (team) => {
+                            this.finishSignin(team);
                         },
                         () => {
                             // there's not really a good way to deal with this, so just let the user log in like normal
@@ -167,7 +168,6 @@ export default class LoginController extends React.Component {
             (err) => {
                 if (err.id === 'api.user.login.not_verified.app_error') {
                     browserHistory.push('/should_verify_email?&email=' + encodeURIComponent(loginId));
-                    return;
                 } else if (err.id === 'store.sql_user.get_for_login.app_error' ||
                     err.id === 'ent.ldap.do_login.user_not_registered.app_error') {
                     this.setState({
@@ -196,15 +196,17 @@ export default class LoginController extends React.Component {
         );
     }
 
-    finishSignin() {
+    finishSignin(team) {
         GlobalActions.emitInitialLoad(
             () => {
                 const query = this.props.location.query;
                 GlobalActions.loadDefaultLocale();
                 if (query.redirect_to) {
                     browserHistory.push(query.redirect_to);
+                } else if (team) {
+                    browserHistory.push(`/${team.name}`);
                 } else {
-                    browserHistory.push('/select_team');
+                    GlobalActions.redirectUserToDefaultTeam();
                 }
             }
         );
@@ -460,17 +462,6 @@ export default class LoginController extends React.Component {
             );
         }
 
-        if (gitlabSigninEnabled || samlSigninEnabled || office365SigninEnabled || googleSigninEnabled || gitlabSigninEnabled) {
-            loginControls.push(
-                <h5 key='oauthHeader'>
-                    <FormattedMessage
-                        id='login.signInWith'
-                        defaultMessage='Sign in with:'
-                    />
-                </h5>
-            );
-        }
-
         if (gitlabSigninEnabled) {
             loginControls.push(
                 <a
@@ -534,7 +525,7 @@ export default class LoginController extends React.Component {
                 >
                     <span className='icon fa fa-lock fa--margin-top'/>
                     <span>
-                        {window.mm_config.SamlLoginButtonText}
+                        {global.window.mm_config.SamlLoginButtonText}
                     </span>
                 </a>
             );

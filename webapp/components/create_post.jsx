@@ -9,14 +9,15 @@ import FilePreview from './file_preview.jsx';
 import PostDeletedModal from './post_deleted_modal.jsx';
 import TutorialTip from './tutorial/tutorial_tip.jsx';
 
-import AppDispatcher from '../dispatcher/app_dispatcher.jsx';
+import AppDispatcher from 'dispatcher/app_dispatcher.jsx';
 import * as GlobalActions from 'actions/global_actions.jsx';
-import Client from 'client/web_client.jsx';
 import * as Utils from 'utils/utils.jsx';
 import * as UserAgent from 'utils/user_agent.jsx';
 import * as ChannelActions from 'actions/channel_actions.jsx';
+import * as PostActions from 'actions/post_actions.jsx';
 
 import ChannelStore from 'stores/channel_store.jsx';
+import EmojiStore from 'stores/emoji_store.jsx';
 import PostStore from 'stores/post_store.jsx';
 import MessageHistoryStore from 'stores/message_history_store.jsx';
 import UserStore from 'stores/user_store.jsx';
@@ -33,6 +34,8 @@ const ActionTypes = Constants.ActionTypes;
 const KeyCodes = Constants.KeyCodes;
 
 import React from 'react';
+
+export const REACTION_PATTERN = /^(\+|-):([^:\s]+):\s*$/;
 
 export default class CreatePost extends React.Component {
     constructor(props) {
@@ -58,6 +61,7 @@ export default class CreatePost extends React.Component {
         this.showPostDeletedModal = this.showPostDeletedModal.bind(this);
         this.hidePostDeletedModal = this.hidePostDeletedModal.bind(this);
         this.showShortcuts = this.showShortcuts.bind(this);
+        this.handlePostError = this.handlePostError.bind(this);
 
         PostStore.clearDraftUploads();
 
@@ -72,9 +76,14 @@ export default class CreatePost extends React.Component {
             ctrlSend: PreferenceStore.getBool(Constants.Preferences.CATEGORY_ADVANCED_SETTINGS, 'send_on_ctrl_enter'),
             fullWidthTextBox: PreferenceStore.get(Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.CHANNEL_DISPLAY_MODE, Preferences.CHANNEL_DISPLAY_MODE_DEFAULT) === Preferences.CHANNEL_DISPLAY_MODE_FULL_SCREEN,
             showTutorialTip: false,
-            showPostDeletedModal: false,
-            lastBlurAt: 0
+            showPostDeletedModal: false
         };
+
+        this.lastBlurAt = 0;
+    }
+
+    handlePostError(postError) {
+        this.setState({postError});
     }
 
     handleSubmit(e) {
@@ -92,8 +101,11 @@ export default class CreatePost extends React.Component {
             return;
         }
 
-        if (post.message.length > Constants.CHARACTER_LIMIT) {
-            this.setState({postError: `Post length must be less than ${Constants.CHARACTER_LIMIT} characters.`});
+        if (this.state.postError) {
+            this.setState({errorClass: 'animation--highlight'});
+            setTimeout(() => {
+                this.setState({errorClass: null});
+            }, Constants.ANIMATION_TIMEOUT);
             return;
         }
 
@@ -101,16 +113,23 @@ export default class CreatePost extends React.Component {
 
         this.setState({submitting: true, serverError: null});
 
+        const isReaction = REACTION_PATTERN.exec(post.message);
         if (post.message.indexOf('/') === 0) {
             PostStore.storeDraft(this.state.channelId, null);
             this.setState({message: '', postError: null, fileInfos: []});
 
+            const args = {};
+            args.channel_id = this.state.channelId;
             ChannelActions.executeCommand(
-                this.state.channelId,
                 post.message,
-                false,
+                args,
                 (data) => {
                     this.setState({submitting: false});
+
+                    if (post.message.trim() === '/logout') {
+                        GlobalActions.clientLogout(data.goto_location);
+                        return;
+                    }
 
                     if (data.goto_location && data.goto_location.length > 0) {
                         browserHistory.push(data.goto_location);
@@ -123,16 +142,21 @@ export default class CreatePost extends React.Component {
                         const state = {};
                         state.serverError = err.message;
                         state.submitting = false;
-                        this.setState(state);
+                        this.setState({state});
                     }
                 }
             );
+        } else if (isReaction && EmojiStore.has(isReaction[2])) {
+            this.sendReaction(isReaction);
         } else {
             this.sendMessage(post);
         }
 
+        this.setState({message: '', submitting: false, postError: null, fileInfos: [], serverError: null});
+
         const fasterThanHumanWillClick = 150;
-        const forceFocus = (Date.now() - this.state.lastBlurAt < fasterThanHumanWillClick);
+        const forceFocus = (Date.now() - this.lastBlurAt < fasterThanHumanWillClick);
+
         this.focusTextbox(forceFocus);
     }
 
@@ -148,26 +172,14 @@ export default class CreatePost extends React.Component {
         post.parent_id = this.state.parentId;
 
         GlobalActions.emitUserPostedEvent(post);
-        this.setState({message: '', submitting: false, postError: null, fileInfos: [], serverError: null});
 
-        Client.createPost(post,
-            (data) => {
-                PostStore.removePendingPost(post.pending_post_id);
-
-                AppDispatcher.handleServerAction({
-                    type: ActionTypes.RECEIVED_POST,
-                    post: data
-                });
-            },
+        PostActions.queuePost(post, false, null,
             (err) => {
                 if (err.id === 'api.post.create_post.root_id.app_error') {
                     // this should never actually happen since you can't reply from this textbox
                     this.showPostDeletedModal();
-
-                    PostStore.removePendingPost(post.pending_post_id);
                 } else {
-                    post.state = Constants.POST_FAILED;
-                    PostStore.updatePendingPost(post);
+                    this.forceUpdate();
                 }
 
                 this.setState({
@@ -175,6 +187,21 @@ export default class CreatePost extends React.Component {
                 });
             }
         );
+    }
+
+    sendReaction(isReaction) {
+        const action = isReaction[1];
+
+        const emojiName = isReaction[2];
+        const postId = PostStore.getLatestPost(this.state.channelId).id;
+
+        if (action === '+') {
+            PostActions.addReaction(this.state.channelId, postId, emojiName);
+        } else if (action === '-') {
+            PostActions.removeReaction(this.state.channelId, postId, emojiName);
+        }
+
+        PostStore.storeCurrentDraft(null);
     }
 
     focusTextbox(keepFocus = false) {
@@ -325,10 +352,11 @@ export default class CreatePost extends React.Component {
     showShortcuts(e) {
         if ((e.ctrlKey || e.metaKey) && e.keyCode === Constants.KeyCodes.FORWARD_SLASH) {
             e.preventDefault();
+            const args = {};
+            args.channel_id = this.state.channelId;
             ChannelActions.executeCommand(
-                this.state.channelId,
-                '/shortcuts ',
-                false,
+                '/shortcuts',
+                args,
                 null,
                 (err) => {
                     this.setState({
@@ -412,7 +440,7 @@ export default class CreatePost extends React.Component {
     }
 
     handleBlur() {
-        this.setState({lastBlurAt: Date.now()});
+        this.lastBlurAt = Date.now();
     }
 
     showPostDeletedModal() {
@@ -460,7 +488,8 @@ export default class CreatePost extends React.Component {
 
         let postError = null;
         if (this.state.postError) {
-            postError = <label className='control-label'>{this.state.postError}</label>;
+            const postErrorClass = 'post-error' + (this.state.errorClass ? (' ' + this.state.errorClass) : '');
+            postError = <label className={postErrorClass}>{this.state.postError}</label>;
         }
 
         let preview = null;
@@ -504,6 +533,7 @@ export default class CreatePost extends React.Component {
                                 onChange={this.handleChange}
                                 onKeyPress={this.postMsgKeyPress}
                                 onKeyDown={this.handleKeyDown}
+                                handlePostError={this.handlePostError}
                                 value={this.state.message}
                                 onBlur={this.handleBlur}
                                 createMessage={Utils.localizeMessage('create_post.write', 'Write a message...')}
@@ -511,17 +541,17 @@ export default class CreatePost extends React.Component {
                                 id='post_textbox'
                                 ref='textbox'
                             />
-                            <FileUpload
-                                ref='fileUpload'
-                                getFileCount={this.getFileCount}
-                                onClick={this.handleUploadClick}
-                                onUploadStart={this.handleUploadStart}
-                                onFileUpload={this.handleFileUploadComplete}
-                                onUploadError={this.handleUploadError}
-                                postType='post'
-                                channelId=''
-                            />
                         </div>
+                        <FileUpload
+                            ref='fileUpload'
+                            getFileCount={this.getFileCount}
+                            onClick={this.handleUploadClick}
+                            onUploadStart={this.handleUploadStart}
+                            onFileUpload={this.handleFileUploadComplete}
+                            onUploadError={this.handleUploadError}
+                            postType='post'
+                            channelId=''
+                        />
                         <a
                             className='send-button theme'
                             onClick={this.handleSubmit}
@@ -535,8 +565,8 @@ export default class CreatePost extends React.Component {
                             channelId={this.state.channelId}
                             parentId=''
                         />
-                        {preview}
                         {postError}
+                        {preview}
                         {serverError}
                     </div>
                 </div>

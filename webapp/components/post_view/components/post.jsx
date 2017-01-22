@@ -184,13 +184,27 @@ export default class Post extends React.Component {
             rootUser = '';
         }
 
+        let status = this.props.status;
+        if (post.props && post.props.from_webhook === 'true') {
+            status = null;
+        }
+
         let profilePic = (
             <ProfilePicture
                 src={PostUtils.getProfilePicSrcForPost(post, timestamp)}
-                status={this.props.status}
+                status={status}
                 user={this.props.user}
+                isBusy={this.props.isBusy}
             />
         );
+
+        if (post.props && post.props.from_webhook) {
+            profilePic = (
+                <ProfilePicture
+                    src={PostUtils.getProfilePicSrcForPost(post, timestamp)}
+                />
+            );
+        }
 
         if (PostUtils.isSystemMessage(post)) {
             profilePic = (
@@ -210,13 +224,22 @@ export default class Post extends React.Component {
         if (this.props.compactDisplay) {
             compactClass = 'post--compact';
 
-            profilePic = (
-                <ProfilePicture
-                    src=''
-                    status={this.props.status}
-                    user={this.props.user}
-                />
-            );
+            if (post.props && post.props.from_webhook) {
+                profilePic = (
+                    <ProfilePicture
+                        src=''
+                        status={status}
+                        isBusy={this.props.isBusy}
+                        user={this.props.user}
+                    />
+                );
+            } else {
+                profilePic = (
+                    <ProfilePicture
+                        src=''
+                    />
+                );
+            }
         }
 
         const profilePicContainer = (<div className='post__img'>{profilePic}</div>);
@@ -255,6 +278,7 @@ export default class Post extends React.Component {
                             />
                             <PostBody
                                 post={post}
+                                currentUser={this.props.currentUser}
                                 sameRoot={this.props.sameRoot}
                                 parentPost={parentPost}
                                 handleCommentClick={this.handleCommentClick}

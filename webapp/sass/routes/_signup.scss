@@ -13,7 +13,7 @@
 
 .signup-team__container {
     margin: 0 auto;
-    max-width: 380px;
+    max-width: 400px;
     padding: 40px 0 50px; // for battlehouse.com header
     position: relative;
 
@@ -481,7 +481,8 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        width: 90%;
+        width: calc(100% - 50px);
+
     }
 
     .signup-team__icon {
@@ -496,6 +497,15 @@
             font-size: .9em;
             right: -2px;
             top: 16px;
+        }
+
+        &.fa-info-circle {
+            float: left;
+            line-height: 1.5em;
+            margin-right: .3em;
+            padding-left: .5em;
+            font-size: 1.5em;
+            top: 11px;
         }
     }
 }

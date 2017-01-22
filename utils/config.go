@@ -249,8 +249,12 @@ func getClientConfig(c *model.Config) map[string]string {
 	props["EnableOpenServer"] = strconv.FormatBool(*c.TeamSettings.EnableOpenServer)
 	props["RestrictDirectMessage"] = *c.TeamSettings.RestrictDirectMessage
 	props["RestrictTeamInvite"] = *c.TeamSettings.RestrictTeamInvite
+	props["RestrictPublicChannelCreation"] = *c.TeamSettings.RestrictPublicChannelCreation
+	props["RestrictPrivateChannelCreation"] = *c.TeamSettings.RestrictPrivateChannelCreation
 	props["RestrictPublicChannelManagement"] = *c.TeamSettings.RestrictPublicChannelManagement
 	props["RestrictPrivateChannelManagement"] = *c.TeamSettings.RestrictPrivateChannelManagement
+	props["RestrictPublicChannelDeletion"] = *c.TeamSettings.RestrictPublicChannelDeletion
+	props["RestrictPrivateChannelDeletion"] = *c.TeamSettings.RestrictPrivateChannelDeletion
 
 	props["EnableOAuthServiceProvider"] = strconv.FormatBool(c.ServiceSettings.EnableOAuthServiceProvider)
 	props["SegmentDeveloperKey"] = c.ServiceSettings.SegmentDeveloperKey
@@ -323,6 +327,7 @@ func getClientConfig(c *model.Config) map[string]string {
 
 		if *License.Features.MFA {
 			props["EnableMultifactorAuthentication"] = strconv.FormatBool(*c.ServiceSettings.EnableMultifactorAuthentication)
+			props["EnforceMultifactorAuthentication"] = strconv.FormatBool(*c.ServiceSettings.EnforceMultifactorAuthentication)
 		}
 
 		if *License.Features.Compliance {
@@ -339,6 +344,10 @@ func getClientConfig(c *model.Config) map[string]string {
 
 		if *License.Features.Cluster {
 			props["EnableCluster"] = strconv.FormatBool(*c.ClusterSettings.Enable)
+		}
+
+		if *License.Features.Cluster {
+			props["EnableMetrics"] = strconv.FormatBool(*c.MetricsSettings.Enable)
 		}
 
 		if *License.Features.GoogleOAuth {

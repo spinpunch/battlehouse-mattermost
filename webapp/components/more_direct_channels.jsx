@@ -12,6 +12,7 @@ import TeamStore from 'stores/team_store.jsx';
 
 import * as AsyncClient from 'utils/async_client.jsx';
 import * as UserAgent from 'utils/user_agent.jsx';
+import {localizeMessage} from 'utils/utils.jsx';
 import Constants from 'utils/constants.jsx';
 
 import React from 'react';
@@ -33,6 +34,8 @@ export default class MoreDirectChannels extends React.Component {
         this.toggleList = this.toggleList.bind(this);
         this.nextPage = this.nextPage.bind(this);
         this.search = this.search.bind(this);
+
+        this.searchTimeoutId = 0;
 
         this.state = {
             users: null,
@@ -105,7 +108,7 @@ export default class MoreDirectChannels extends React.Component {
 
         let users;
         if (this.state.listType === 'any') {
-            users = UserStore.getProfileList();
+            users = UserStore.getProfileList(true);
         } else {
             users = UserStore.getProfileListInTeam(TeamStore.getCurrentId(), true, true);
         }
@@ -119,7 +122,7 @@ export default class MoreDirectChannels extends React.Component {
         const listType = e.target.value;
         let users;
         if (listType === 'any') {
-            users = UserStore.getProfileList();
+            users = UserStore.getProfileList(true);
         } else {
             users = UserStore.getProfileListInTeam(TeamStore.getCurrentId(), true, true);
         }
@@ -167,25 +170,34 @@ export default class MoreDirectChannels extends React.Component {
             teamId = TeamStore.getCurrentId();
         }
 
-        searchUsers(
-            term,
-            teamId,
-            {},
-            (users) => {
-                for (let i = 0; i < users.length; i++) {
-                    if (users[i].id === UserStore.getCurrentId()) {
-                        users.splice(i, 1);
-                        break;
+        clearTimeout(this.searchTimeoutId);
+
+        this.searchTimeoutId = setTimeout(
+            () => {
+                searchUsers(
+                    term,
+                    teamId,
+                    {},
+                    (users) => {
+                        for (let i = 0; i < users.length; i++) {
+                            if (users[i].id === UserStore.getCurrentId()) {
+                                users.splice(i, 1);
+                                break;
+                            }
+                        }
+                        this.setState({search: true, users});
                     }
-                }
-                this.setState({search: true, users});
-            }
+                );
+            },
+            Constants.SEARCH_TIMEOUT_MILLISECONDS
         );
     }
 
     render() {
         let teamToggle;
+        let memberClass = '';
         if (global.window.mm_config.RestrictDirectMessage === 'any') {
+            memberClass = 'more-system-members';
             teamToggle = (
                 <div className='member-select__container'>
                     <select
@@ -196,16 +208,10 @@ export default class MoreDirectChannels extends React.Component {
                         onChange={this.toggleList}
                     >
                         <option value='any'>
-                            <FormattedMessage
-                                id='filtered_user_list.any_team'
-                                defaultMessage='All Users'
-                            />
+                            {localizeMessage('filtered_user_list.any_team', 'All Users')}
                         </option>
                         <option value='team'>
-                            <FormattedMessage
-                                id='filtered_user_list.team_only'
-                                defaultMessage='Members of this Team'
-                            />
+                            {localizeMessage('filtered_user_list.team_only', 'Members of this Team')}
                         </option>
                     </select>
                     <span
@@ -222,7 +228,7 @@ export default class MoreDirectChannels extends React.Component {
 
         return (
             <Modal
-                dialogClassName='more-modal more-direct-channels'
+                dialogClassName={'more-modal more-direct-channels ' + memberClass}
                 show={this.state.show}
                 onHide={this.handleHide}
                 onExited={this.handleExit}
@@ -247,18 +253,6 @@ export default class MoreDirectChannels extends React.Component {
                         focusOnMount={!UserAgent.isMobile()}
                     />
                 </Modal.Body>
-                <Modal.Footer>
-                    <button
-                        type='button'
-                        className='btn btn-default'
-                        onClick={this.handleHide}
-                    >
-                        <FormattedMessage
-                            id='more_direct_channels.close'
-                            defaultMessage='Close'
-                        />
-                    </button>
-                </Modal.Footer>
             </Modal>
         );
     }

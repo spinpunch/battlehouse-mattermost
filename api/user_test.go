@@ -80,6 +80,51 @@ func TestCreateUser(t *testing.T) {
 	}
 }
 
+func TestCheckUserDomain(t *testing.T) {
+	th := Setup().InitBasic()
+	user := th.BasicUser
+
+	cases := []struct {
+		domains string
+		matched bool
+	}{
+		{"simulator.amazonses.com", true},
+		{"gmail.com", false},
+		{"", true},
+		{"gmail.com simulator.amazonses.com", true},
+	}
+	for _, c := range cases {
+		matched := CheckUserDomain(user, c.domains)
+		if matched != c.matched {
+			if c.matched {
+				t.Logf("'%v' should have matched '%v'", user.Email, c.domains)
+			} else {
+				t.Logf("'%v' should not have matched '%v'", user.Email, c.domains)
+			}
+			t.FailNow()
+		}
+	}
+}
+
+func TestIsUsernameTaken(t *testing.T) {
+	th := Setup().InitBasic()
+	user := th.BasicUser
+	taken := IsUsernameTaken(user.Username)
+
+	if !taken {
+		t.Logf("the username '%v' should be taken", user.Username)
+		t.FailNow()
+	}
+
+	newUsername := "randomUsername"
+	taken = IsUsernameTaken(newUsername)
+
+	if taken {
+		t.Logf("the username '%v' should not be taken", newUsername)
+		t.FailNow()
+	}
+}
+
 func TestLogin(t *testing.T) {
 	th := Setup()
 	Client := th.CreateClient()
@@ -478,10 +523,7 @@ func TestGetUser(t *testing.T) {
 		t.Fatal("shouldn't have accss")
 	}
 
-	c := &Context{}
-	c.RequestId = model.NewId()
-	c.IpAddress = "cmd_line"
-	UpdateUserRoles(c, ruser.Data.(*model.User), model.ROLE_SYSTEM_ADMIN.Id)
+	UpdateUserRoles(ruser.Data.(*model.User), model.ROLE_SYSTEM_ADMIN.Id)
 
 	Client.Login(user.Email, "passwd1")
 
@@ -670,7 +712,15 @@ func TestUserCreateImage(t *testing.T) {
 
 	Client.Login(user.Email, "passwd1")
 
-	Client.DoApiGet("/users/"+user.Id+"/image", "", "")
+	if resp, err := Client.DoApiGet("/users/"+user.Id+"/image", "", ""); err != nil {
+		t.Fatal(err)
+	} else {
+		etag := resp.Header.Get(model.HEADER_ETAG_SERVER)
+		resp2, _ := Client.DoApiGet("/users/"+user.Id+"/image", "", etag)
+		if resp2.StatusCode != 304 {
+			t.Fatal("Should have hit etag")
+		}
+	}
 
 	if utils.Cfg.FileSettings.DriverName == model.IMAGE_DRIVER_S3 {
 		endpoint := utils.Cfg.FileSettings.AmazonS3Endpoint
@@ -1088,8 +1138,9 @@ func TestUserUpdateDeviceId(t *testing.T) {
 }
 
 func TestUserUpdateActive(t *testing.T) {
-	th := Setup()
+	th := Setup().InitSystemAdmin()
 	Client := th.CreateClient()
+	SystemAdminClient := th.SystemAdminClient
 
 	team := &model.Team{DisplayName: "Name", Name: "z-z-" + model.NewId() + "a", Email: "test@nowhere.com", Type: model.TEAM_OPEN}
 	team = Client.Must(Client.CreateTeam(team)).Data.(*model.Team)
@@ -1142,6 +1193,18 @@ func TestUserUpdateActive(t *testing.T) {
 	if _, err := Client.UpdateActive("12345678901234567890123456", false); err == nil {
 		t.Fatal("Should have errored, bad id")
 	}
+
+	SetStatusOnline(user3.Id, "", false)
+
+	if _, err := SystemAdminClient.UpdateActive(user3.Id, false); err != nil {
+		t.Fatal(err)
+	}
+
+	if status, err := GetStatus(user3.Id); err != nil {
+		t.Fatal(err)
+	} else if status.Status != model.STATUS_OFFLINE {
+		t.Fatal("status should have been set to offline")
+	}
 }
 
 func TestUserPermDelete(t *testing.T) {
@@ -1178,7 +1241,7 @@ func TestUserPermDelete(t *testing.T) {
 	c.RequestId = model.NewId()
 	c.IpAddress = "test"
 
-	err := PermanentDeleteUser(c, user1)
+	err := PermanentDeleteUser(user1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1198,16 +1261,21 @@ func TestSendPasswordReset(t *testing.T) {
 	LinkUserToTeam(user, team)
 	store.Must(Srv.Store.User().VerifyEmail(user.Id))
 
-	if _, err := Client.SendPasswordReset(user.Email); err != nil {
+	if result, err := Client.SendPasswordReset(user.Email); err != nil {
 		t.Fatal(err)
+	} else {
+		resp := result.Data.(map[string]string)
+		if resp["email"] != user.Email {
+			t.Fatal("wrong email")
+		}
+	}
+
+	if _, err := Client.SendPasswordReset("junk@junk.com"); err != nil {
+		t.Fatal("Should have errored - bad email")
 	}
 
 	if _, err := Client.SendPasswordReset(""); err == nil {
 		t.Fatal("Should have errored - no email")
-	}
-
-	if _, err := Client.SendPasswordReset("junk@junk.com"); err == nil {
-		t.Fatal("Should have errored - bad email")
 	}
 
 	authData := model.NewId()
@@ -1281,7 +1349,7 @@ func TestResetPassword(t *testing.T) {
 	}
 
 	authData := model.NewId()
-	if result := <-Srv.Store.User().UpdateAuthData(user.Id, "random", &authData, ""); result.Err != nil {
+	if result := <-Srv.Store.User().UpdateAuthData(user.Id, "random", &authData, "", true); result.Err != nil {
 		t.Fatal(result.Err)
 	}
 
@@ -2177,6 +2245,112 @@ func TestSearchUsers(t *testing.T) {
 		}
 	}
 
+	emailPrivacy := utils.Cfg.PrivacySettings.ShowEmailAddress
+	namePrivacy := utils.Cfg.PrivacySettings.ShowFullName
+	defer func() {
+		utils.Cfg.PrivacySettings.ShowEmailAddress = emailPrivacy
+		utils.Cfg.PrivacySettings.ShowFullName = namePrivacy
+	}()
+	utils.Cfg.PrivacySettings.ShowEmailAddress = false
+	utils.Cfg.PrivacySettings.ShowFullName = false
+
+	privacyEmailPrefix := strings.ToLower(model.NewId())
+	privacyUser := &model.User{Email: privacyEmailPrefix + "success+test@simulator.amazonses.com", Nickname: "Corey Hulen", Password: "passwd1", FirstName: model.NewId(), LastName: "Jimmers"}
+	privacyUser = Client.Must(Client.CreateUser(privacyUser, "")).Data.(*model.User)
+	LinkUserToTeam(privacyUser, th.BasicTeam)
+
+	if result, err := Client.SearchUsers(model.UserSearch{Term: privacyUser.FirstName}); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+
+		found := false
+		for _, user := range users {
+			if user.Id == privacyUser.Id {
+				found = true
+			}
+		}
+
+		if found {
+			t.Fatal("should not have found profile")
+		}
+	}
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = true
+
+	if result, err := Client.SearchUsers(model.UserSearch{Term: privacyUser.FirstName}); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+
+		found := false
+		for _, user := range users {
+			if user.Id == privacyUser.Id {
+				found = true
+			}
+		}
+
+		if found {
+			t.Fatal("should not have found profile")
+		}
+	}
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = false
+	utils.Cfg.PrivacySettings.ShowFullName = true
+
+	if result, err := Client.SearchUsers(model.UserSearch{Term: privacyUser.FirstName}); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+
+		found := false
+		for _, user := range users {
+			if user.Id == privacyUser.Id {
+				found = true
+			}
+		}
+
+		if !found {
+			t.Fatal("should have found profile")
+		}
+	}
+
+	if result, err := Client.SearchUsers(model.UserSearch{Term: privacyEmailPrefix}); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+
+		found := false
+		for _, user := range users {
+			if user.Id == privacyUser.Id {
+				found = true
+			}
+		}
+
+		if found {
+			t.Fatal("should not have found profile")
+		}
+	}
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = true
+
+	if result, err := Client.SearchUsers(model.UserSearch{Term: privacyEmailPrefix}); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+
+		found := false
+		for _, user := range users {
+			if user.Id == privacyUser.Id {
+				found = true
+			}
+		}
+
+		if !found {
+			t.Fatal("should have found profile")
+		}
+	}
+
 	th.LoginBasic2()
 
 	if result, err := Client.SearchUsers(model.UserSearch{Term: th.BasicUser.Username}); err != nil {
@@ -2211,6 +2385,53 @@ func TestSearchUsers(t *testing.T) {
 func TestAutocompleteUsers(t *testing.T) {
 	th := Setup().InitBasic()
 	Client := th.BasicClient
+
+	if result, err := Client.AutocompleteUsers(th.BasicUser.Username); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+		if len(users) != 1 {
+			t.Fatal("should have returned 1 user in")
+		}
+	}
+
+	if result, err := Client.AutocompleteUsers("amazonses"); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+		if len(users) != 0 {
+			t.Fatal("should have returned 0 users - email should not autocomplete")
+		}
+	}
+
+	if result, err := Client.AutocompleteUsers(""); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+		if len(users) == 0 {
+			t.Fatal("should have many users")
+		}
+	}
+
+	notInTeamUser := th.CreateUser(Client)
+
+	if result, err := Client.AutocompleteUsers(notInTeamUser.Username); err != nil {
+		t.Fatal(err)
+	} else {
+		users := result.Data.([]*model.User)
+		if len(users) != 1 {
+			t.Fatal("should have returned 1 user in")
+		}
+	}
+
+	if result, err := Client.AutocompleteUsersInTeam(notInTeamUser.Username); err != nil {
+		t.Fatal(err)
+	} else {
+		autocomplete := result.Data.(*model.UserAutocompleteInTeam)
+		if len(autocomplete.InTeam) != 0 {
+			t.Fatal("should have returned 0 users")
+		}
+	}
 
 	if result, err := Client.AutocompleteUsersInTeam(th.BasicUser.Username); err != nil {
 		t.Fatal(err)
@@ -2263,6 +2484,37 @@ func TestAutocompleteUsers(t *testing.T) {
 		}
 	}
 
+	namePrivacy := utils.Cfg.PrivacySettings.ShowFullName
+	defer func() {
+		utils.Cfg.PrivacySettings.ShowFullName = namePrivacy
+	}()
+	utils.Cfg.PrivacySettings.ShowFullName = false
+
+	privacyUser := &model.User{Email: strings.ToLower(model.NewId()) + "success+test@simulator.amazonses.com", Nickname: "Corey Hulen", Password: "passwd1", FirstName: model.NewId(), LastName: "Jimmers"}
+	privacyUser = Client.Must(Client.CreateUser(privacyUser, "")).Data.(*model.User)
+	LinkUserToTeam(privacyUser, th.BasicTeam)
+
+	if result, err := Client.AutocompleteUsersInChannel(privacyUser.FirstName, th.BasicChannel.Id); err != nil {
+		t.Fatal(err)
+	} else {
+		autocomplete := result.Data.(*model.UserAutocompleteInChannel)
+		if len(autocomplete.InChannel) != 0 {
+			t.Fatal("should have returned no users")
+		}
+		if len(autocomplete.OutOfChannel) != 0 {
+			t.Fatal("should have returned no users")
+		}
+	}
+
+	if result, err := Client.AutocompleteUsersInTeam(privacyUser.FirstName); err != nil {
+		t.Fatal(err)
+	} else {
+		autocomplete := result.Data.(*model.UserAutocompleteInTeam)
+		if len(autocomplete.InTeam) != 0 {
+			t.Fatal("should have returned no users")
+		}
+	}
+
 	if _, err := Client.AutocompleteUsersInChannel("", "junk"); err == nil {
 		t.Fatal("should have errored - bad channel id")
 	}
@@ -2274,5 +2526,77 @@ func TestAutocompleteUsers(t *testing.T) {
 
 	if _, err := Client.AutocompleteUsersInTeam(""); err == nil {
 		t.Fatal("should have errored - bad team id")
+	}
+}
+
+func TestGetByUsername(t *testing.T) {
+	th := Setup().InitBasic()
+	Client := th.BasicClient
+
+	if result, err := Client.GetByUsername(th.BasicUser.Username, ""); err != nil {
+		t.Fatal("Failed to get user")
+	} else {
+		if result.Data.(*model.User).Password != "" {
+			t.Fatal("User shouldn't have any password data once set")
+		}
+	}
+
+	emailPrivacy := utils.Cfg.PrivacySettings.ShowEmailAddress
+	namePrivacy := utils.Cfg.PrivacySettings.ShowFullName
+	defer func() {
+		utils.Cfg.PrivacySettings.ShowEmailAddress = emailPrivacy
+		utils.Cfg.PrivacySettings.ShowFullName = namePrivacy
+	}()
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = false
+	utils.Cfg.PrivacySettings.ShowFullName = false
+
+	if result, err := Client.GetByUsername(th.BasicUser2.Username, ""); err != nil {
+		t.Fatal(err)
+	} else {
+		u := result.Data.(*model.User)
+		if u.Password != "" {
+			t.Fatal("password must be empty")
+		}
+		if *u.AuthData != "" {
+			t.Fatal("auth data must be empty")
+		}
+		if u.Email != "" {
+			t.Fatal("email should be sanitized")
+		}
+	}
+
+}
+
+func TestGetByEmail(t *testing.T) {
+	th := Setup().InitBasic()
+	Client := th.BasicClient
+
+	if _, respMetdata := Client.GetByEmail(th.BasicUser.Email, ""); respMetdata.Error != nil {
+		t.Fatal("Failed to get user by email")
+	}
+
+	emailPrivacy := utils.Cfg.PrivacySettings.ShowEmailAddress
+	namePrivacy := utils.Cfg.PrivacySettings.ShowFullName
+	defer func() {
+		utils.Cfg.PrivacySettings.ShowEmailAddress = emailPrivacy
+		utils.Cfg.PrivacySettings.ShowFullName = namePrivacy
+	}()
+
+	utils.Cfg.PrivacySettings.ShowEmailAddress = false
+	utils.Cfg.PrivacySettings.ShowFullName = false
+
+	if user, respMetdata := Client.GetByEmail(th.BasicUser2.Email, ""); respMetdata.Error != nil {
+		t.Fatal(respMetdata.Error)
+	} else {
+		if user.Password != "" {
+			t.Fatal("password must be empty")
+		}
+		if *user.AuthData != "" {
+			t.Fatal("auth data must be empty")
+		}
+		if user.Email != "" {
+			t.Fatal("email should be sanitized")
+		}
 	}
 }

@@ -12,6 +12,8 @@ import {getTeamStats} from 'utils/async_client.jsx';
 
 import Constants from 'utils/constants.jsx';
 
+import * as UserAgent from 'utils/user_agent.jsx';
+
 import React from 'react';
 
 const USERS_PER_PAGE = 50;
@@ -24,6 +26,8 @@ export default class MemberListTeam extends React.Component {
         this.onStatsChange = this.onStatsChange.bind(this);
         this.search = this.search.bind(this);
         this.loadComplete = this.loadComplete.bind(this);
+
+        this.searchTimeoutId = 0;
 
         const stats = TeamStore.getCurrentStats();
 
@@ -84,14 +88,21 @@ export default class MemberListTeam extends React.Component {
             return;
         }
 
-        searchUsers(
-            term,
-            TeamStore.getCurrentId(),
-            {},
-            (users) => {
-                this.setState({loading: true, search: true, users, term, teamMembers: Object.assign([], TeamStore.getMembersInTeam())});
-                loadTeamMembersForProfilesList(users, TeamStore.getCurrentId(), this.loadComplete);
-            }
+        clearTimeout(this.searchTimeoutId);
+
+        this.searchTimeoutId = setTimeout(
+            () => {
+                searchUsers(
+                    term,
+                    TeamStore.getCurrentId(),
+                    {},
+                    (users) => {
+                        this.setState({loading: true, search: true, users, term, teamMembers: Object.assign([], TeamStore.getMembersInTeam())});
+                        loadTeamMembersForProfilesList(users, TeamStore.getCurrentId(), this.loadComplete);
+                    }
+                );
+            },
+            Constants.SEARCH_TIMEOUT_MILLISECONDS
         );
     }
 
@@ -132,6 +143,7 @@ export default class MemberListTeam extends React.Component {
                 search={this.search}
                 actions={teamMembersDropdown}
                 actionUserProps={actionUserProps}
+                focusOnMount={!UserAgent.isMobile()}
             />
         );
     }

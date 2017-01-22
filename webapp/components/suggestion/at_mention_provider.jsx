@@ -2,8 +2,10 @@
 // See License.txt for license information.
 
 import Suggestion from './suggestion.jsx';
+import Provider from './provider.jsx';
 
 import ChannelStore from 'stores/channel_store.jsx';
+import UserStore from 'stores/user_store.jsx';
 
 import {autocompleteUsersInChannel} from 'actions/user_actions.jsx';
 
@@ -14,6 +16,7 @@ import {Constants, ActionTypes} from 'utils/constants.jsx';
 
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
+import XRegExp from 'xregexp';
 
 class AtMentionSuggestion extends Suggestion {
     render() {
@@ -99,65 +102,64 @@ class AtMentionSuggestion extends Suggestion {
     }
 }
 
-export default class AtMentionProvider {
+export default class AtMentionProvider extends Provider {
     constructor(channelId) {
-        this.channelId = channelId;
-        this.timeoutId = '';
-    }
+        super();
 
-    componentWillUnmount() {
-        clearTimeout(this.timeoutId);
+        this.channelId = channelId;
     }
 
     handlePretextChanged(suggestionId, pretext) {
-        clearTimeout(this.timeoutId);
-
-        const captured = (/(?:^|\W)@([a-z0-9\-\._]*)$/i).exec(pretext.toLowerCase());
+        const captured = XRegExp.cache('(?:^|\\W)@([\\pL\\d\\-_.]*)$', 'i').exec(pretext.toLowerCase());
         if (captured) {
             const prefix = captured[1];
 
-            function autocomplete() {
-                autocompleteUsersInChannel(
-                    prefix,
-                    this.channelId,
-                    (data) => {
-                        const members = data.in_channel;
-                        for (const id of Object.keys(members)) {
-                            members[id].type = Constants.MENTION_MEMBERS;
-                        }
+            this.startNewRequest(prefix);
 
-                        const nonmembers = data.out_of_channel;
-                        for (const id of Object.keys(nonmembers)) {
-                            nonmembers[id].type = Constants.MENTION_NONMEMBERS;
-                        }
+            autocompleteUsersInChannel(
+                prefix,
+                this.channelId,
+                (data) => {
+                    if (this.shouldCancelDispatch(prefix)) {
+                        return;
+                    }
 
-                        let specialMentions = [];
-                        if (!pretext.startsWith('/msg')) {
-                            specialMentions = ['here', 'channel', 'all'].filter((item) => {
-                                return item.startsWith(prefix);
-                            }).map((name) => {
-                                return {username: name, type: Constants.MENTION_SPECIAL};
-                            });
-                        }
+                    const members = data.in_channel;
+                    for (const id of Object.keys(members)) {
+                        members[id].type = Constants.MENTION_MEMBERS;
+                    }
 
-                        const users = members.concat(specialMentions).concat(nonmembers);
-                        const mentions = users.map((user) => '@' + user.username);
+                    const nonmembers = data.out_of_channel;
+                    for (const id of Object.keys(nonmembers)) {
+                        nonmembers[id].type = Constants.MENTION_NONMEMBERS;
+                    }
 
-                        AppDispatcher.handleServerAction({
-                            type: ActionTypes.SUGGESTION_RECEIVED_SUGGESTIONS,
-                            id: suggestionId,
-                            matchedPretext: `@${captured[1]}`,
-                            terms: mentions,
-                            items: users,
-                            component: AtMentionSuggestion
+                    let specialMentions = [];
+                    if (!pretext.startsWith('/msg')) {
+                        specialMentions = ['here', 'channel', 'all'].filter((item) => {
+                            return item.startsWith(prefix);
+                        }).map((name) => {
+                            return {username: name, type: Constants.MENTION_SPECIAL};
                         });
                     }
-                );
-            }
 
-            this.timeoutId = setTimeout(
-                autocomplete.bind(this),
-                Constants.AUTOCOMPLETE_TIMEOUT
+                    let users = members.concat(specialMentions).concat(nonmembers);
+                    const me = UserStore.getCurrentUser();
+                    users = users.filter((user) => {
+                        return user.id !== me.id;
+                    });
+
+                    const mentions = users.map((user) => '@' + user.username);
+
+                    AppDispatcher.handleServerAction({
+                        type: ActionTypes.SUGGESTION_RECEIVED_SUGGESTIONS,
+                        id: suggestionId,
+                        matchedPretext: `@${captured[1]}`,
+                        terms: mentions,
+                        items: users,
+                        component: AtMentionSuggestion
+                    });
+                }
             );
         }
     }

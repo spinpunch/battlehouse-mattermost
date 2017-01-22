@@ -116,6 +116,18 @@ func TestReloadConfig(t *testing.T) {
 	*utils.Cfg.TeamSettings.EnableOpenServer = true
 }
 
+func TestInvalidateAllCache(t *testing.T) {
+	th := Setup().InitBasic().InitSystemAdmin()
+
+	if _, err := th.BasicClient.InvalidateAllCaches(); err == nil {
+		t.Fatal("Shouldn't have permissions")
+	}
+
+	if _, err := th.SystemAdminClient.InvalidateAllCaches(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSaveConfig(t *testing.T) {
 	th := Setup().InitBasic().InitSystemAdmin()
 
@@ -179,6 +191,12 @@ func TestGetTeamAnalyticsStandard(t *testing.T) {
 	if _, err := th.BasicClient.GetTeamAnalytics(th.BasicTeam.Id, "standard"); err == nil {
 		t.Fatal("Shouldn't have permissions")
 	}
+
+	maxUsersForStats := *utils.Cfg.AnalyticsSettings.MaxUsersForStatistics
+	defer func() {
+		*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = maxUsersForStats
+	}()
+	*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = 1000000
 
 	if result, err := th.SystemAdminClient.GetTeamAnalytics(th.BasicTeam.Id, "standard"); err != nil {
 		t.Fatal(err)
@@ -291,6 +309,24 @@ func TestGetTeamAnalyticsStandard(t *testing.T) {
 			t.Fatal()
 		}
 	}
+
+	*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = 1
+
+	if result, err := th.SystemAdminClient.GetSystemAnalytics("standard"); err != nil {
+		t.Fatal(err)
+	} else {
+		rows := result.Data.(model.AnalyticsRows)
+
+		if rows[2].Name != "post_count" {
+			t.Log(rows.ToJson())
+			t.Fatal()
+		}
+
+		if rows[2].Value != -1 {
+			t.Log(rows.ToJson())
+			t.Fatal()
+		}
+	}
 }
 
 func TestGetPostCount(t *testing.T) {
@@ -304,12 +340,31 @@ func TestGetPostCount(t *testing.T) {
 		t.Fatal("Shouldn't have permissions")
 	}
 
+	maxUsersForStats := *utils.Cfg.AnalyticsSettings.MaxUsersForStatistics
+	defer func() {
+		*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = maxUsersForStats
+	}()
+	*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = 1000000
+
 	if result, err := th.SystemAdminClient.GetTeamAnalytics(th.BasicTeam.Id, "post_counts_day"); err != nil {
 		t.Fatal(err)
 	} else {
 		rows := result.Data.(model.AnalyticsRows)
 
 		if rows[0].Value != 1 {
+			t.Log(rows.ToJson())
+			t.Fatal()
+		}
+	}
+
+	*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = 1
+
+	if result, err := th.SystemAdminClient.GetTeamAnalytics(th.BasicTeam.Id, "post_counts_day"); err != nil {
+		t.Fatal(err)
+	} else {
+		rows := result.Data.(model.AnalyticsRows)
+
+		if rows[0].Value != -1 {
 			t.Log(rows.ToJson())
 			t.Fatal()
 		}
@@ -327,12 +382,31 @@ func TestUserCountsWithPostsByDay(t *testing.T) {
 		t.Fatal("Shouldn't have permissions")
 	}
 
+	maxUsersForStats := *utils.Cfg.AnalyticsSettings.MaxUsersForStatistics
+	defer func() {
+		*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = maxUsersForStats
+	}()
+	*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = 1000000
+
 	if result, err := th.SystemAdminClient.GetTeamAnalytics(th.BasicTeam.Id, "user_counts_with_posts_day"); err != nil {
 		t.Fatal(err)
 	} else {
 		rows := result.Data.(model.AnalyticsRows)
 
 		if rows[0].Value != 1 {
+			t.Log(rows.ToJson())
+			t.Fatal()
+		}
+	}
+
+	*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = 1
+
+	if result, err := th.SystemAdminClient.GetTeamAnalytics(th.BasicTeam.Id, "user_counts_with_posts_day"); err != nil {
+		t.Fatal(err)
+	} else {
+		rows := result.Data.(model.AnalyticsRows)
+
+		if rows[0].Value != -1 {
 			t.Log(rows.ToJson())
 			t.Fatal()
 		}
@@ -347,6 +421,12 @@ func TestGetTeamAnalyticsExtra(t *testing.T) {
 	if _, err := th.BasicClient.GetTeamAnalytics("", "extra_counts"); err == nil {
 		t.Fatal("Shouldn't have permissions")
 	}
+
+	maxUsersForStats := *utils.Cfg.AnalyticsSettings.MaxUsersForStatistics
+	defer func() {
+		*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = maxUsersForStats
+	}()
+	*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = 1000000
 
 	if result, err := th.SystemAdminClient.GetTeamAnalytics(th.BasicTeam.Id, "extra_counts"); err != nil {
 		t.Fatal(err)
@@ -445,6 +525,24 @@ func TestGetTeamAnalyticsExtra(t *testing.T) {
 		}
 
 		if rows[5].Name != "session_count" {
+			t.Log(rows.ToJson())
+			t.Fatal()
+		}
+	}
+
+	*utils.Cfg.AnalyticsSettings.MaxUsersForStatistics = 1
+
+	if result, err := th.SystemAdminClient.GetSystemAnalytics("extra_counts"); err != nil {
+		t.Fatal(err)
+	} else {
+		rows := result.Data.(model.AnalyticsRows)
+
+		if rows[0].Value != -1 {
+			t.Log(rows.ToJson())
+			t.Fatal()
+		}
+
+		if rows[1].Value != -1 {
 			t.Log(rows.ToJson())
 			t.Fatal()
 		}

@@ -110,6 +110,10 @@ export default class LoggedIn extends React.Component {
         // Listen for user
         UserStore.addChangeListener(this.onUserChanged);
 
+        // Listen for focussed tab/window state
+        window.addEventListener('focus', this.onFocusListener);
+        window.addEventListener('blur', this.onBlurListener);
+
         // ???
         $('body').on('mouseenter mouseleave', '.post', function mouseOver(ev) {
             if (ev.type === 'mouseenter') {
@@ -167,6 +171,10 @@ export default class LoggedIn extends React.Component {
         $('.modal').off('show.bs.modal');
 
         $(window).off('keydown.preventBackspace');
+
+        // Listen for focussed tab/window state
+        window.removeEventListener('focus', this.onFocusListener);
+        window.removeEventListener('blur', this.onBlurListener);
     }
 
     render() {
@@ -177,6 +185,14 @@ export default class LoggedIn extends React.Component {
         return React.cloneElement(this.props.children, {
             user: this.state.user
         });
+    }
+
+    onFocusListener() {
+        GlobalActions.emitBrowserFocus(true);
+    }
+
+    onBlurListener() {
+        GlobalActions.emitBrowserFocus(false);
     }
 }
 

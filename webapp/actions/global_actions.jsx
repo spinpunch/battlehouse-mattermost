@@ -15,6 +15,8 @@ import SearchStore from 'stores/search_store.jsx';
 import {handleNewPost, loadPosts, loadPostsBefore, loadPostsAfter} from 'actions/post_actions.jsx';
 import {loadProfilesAndTeamMembersForDMSidebar} from 'actions/user_actions.jsx';
 import {loadChannelsForCurrentUser} from 'actions/channel_actions.jsx';
+import {stopPeriodicStatusUpdates} from 'actions/status_actions.jsx';
+import * as WebsocketActions from 'actions/websocket_actions.jsx';
 
 import Constants from 'utils/constants.jsx';
 const ActionTypes = Constants.ActionTypes;
@@ -43,19 +45,29 @@ export function emitChannelClickEvent(channel) {
         );
     }
     function switchToChannel(chan) {
+        const channelMember = ChannelStore.getMyMember(chan.id);
         const getMyChannelMembersPromise = AsyncClient.getChannelMember(chan.id, UserStore.getCurrentId());
 
         getMyChannelMembersPromise.then(() => {
             AsyncClient.getChannelStats(chan.id, true);
-            AsyncClient.updateLastViewedAt(chan.id);
+            AsyncClient.viewChannel(chan.id, ChannelStore.getCurrentId());
             loadPosts(chan.id);
             trackPage();
         });
+
+        // Mark previous and next channel as read
+        ChannelStore.resetCounts(ChannelStore.getCurrentId());
+        ChannelStore.resetCounts(chan.id);
+
+        BrowserStore.setGlobalItem(chan.team_id, chan.id);
 
         AppDispatcher.handleViewAction({
             type: ActionTypes.CLICK_CHANNEL,
             name: chan.name,
             id: chan.id,
+            team_id: chan.team_id,
+            total_msg_count: chan.total_msg_count,
+            channelMember,
             prev: ChannelStore.getCurrentId()
         });
     }
@@ -182,15 +194,11 @@ export function emitPostFocusEvent(postId, onSuccess) {
 }
 
 export function emitCloseRightHandSide() {
-    AppDispatcher.handleServerAction({
-        type: ActionTypes.RECEIVED_SEARCH,
-        results: null
-    });
+    SearchStore.storeSearchResults(null, false, false);
+    SearchStore.emitSearchChange();
 
-    AppDispatcher.handleServerAction({
-        type: ActionTypes.RECEIVED_POST_SELECTED,
-        postId: null
-    });
+    PostStore.storeSelectedPostId(null);
+    PostStore.emitSelectedPostChange(false, false);
 }
 
 export function emitPostFocusRightHandSideFromSearch(post, isMentionSearch) {
@@ -443,7 +451,7 @@ export function viewLoggedIn() {
     PostStore.clearPendingPosts();
 }
 
-var lastTimeTypingSent = 0;
+let lastTimeTypingSent = 0;
 export function emitLocalUserTypingEvent(channelId, parentId) {
     const t = Date.now();
     if ((t - lastTimeTypingSent) > Constants.UPDATE_TYPING_MS) {
@@ -468,20 +476,7 @@ export function emitUserLoggedOutEvent(redirectTo = '/', shouldSignalLogout = tr
                 BrowserStore.signalLogout();
             }
 
-            BrowserStore.clear();
-            ErrorStore.clearLastError();
-            PreferenceStore.clear();
-            UserStore.clear();
-            TeamStore.clear();
-            newLocalizationSelected(global.window.mm_config.DefaultClientLocale);
-
-            // battlehouse.com
-            if (global.window.mm_config.BHLoginEnabled === 'true') {
-                BHSDK.bh_logout();
-                return; // (should redirect immediately though)
-            }
-
-            browserHistory.push(redirectTo);
+            clientLogout(redirectTo);
         },
         () => {
             browserHistory.push(redirectTo);
@@ -489,12 +484,23 @@ export function emitUserLoggedOutEvent(redirectTo = '/', shouldSignalLogout = tr
     );
 }
 
-export function emitJoinChannelEvent(channel, success, failure) {
-    Client.joinChannel(
-        channel.id,
-        success,
-        failure
-    );
+export function clientLogout(redirectTo = '/') {
+    BrowserStore.clear();
+    ErrorStore.clearLastError();
+    PreferenceStore.clear();
+    UserStore.clear();
+    TeamStore.clear();
+    ChannelStore.clear();
+    stopPeriodicStatusUpdates();
+    WebsocketActions.close();
+
+    // battlehouse.com
+    if (global.window.mm_config.BHLoginEnabled === 'true') {
+        BHSDK.bh_logout();
+        return; // (should redirect immediately though)
+    }
+
+    window.location.href = redirectTo;
 }
 
 export function emitSearchMentionsEvent(user) {
@@ -540,5 +546,60 @@ export function toggleSideBarAction(visible) {
             type: ActionTypes.RECEIVED_POST_SELECTED,
             postId: null
         });
+    }
+}
+
+export function emitBrowserFocus(focus) {
+    AppDispatcher.handleViewAction({
+        type: ActionTypes.BROWSER_CHANGE_FOCUS,
+        focus
+    });
+}
+
+export function redirectUserToDefaultTeam() {
+    const teams = TeamStore.getAll();
+    const teamMembers = TeamStore.getMyTeamMembers();
+    let teamId = BrowserStore.getGlobalItem('team');
+
+    function redirect(teamName, channelName) {
+        browserHistory.push(`/${teamName}/channels/${channelName}`);
+    }
+
+    if (!teams[teamId] && teamMembers.length > 0) {
+        let myTeams = [];
+        for (const index in teamMembers) {
+            if (teamMembers.hasOwnProperty(index)) {
+                const teamMember = teamMembers[index];
+                myTeams.push(teams[teamMember.team_id]);
+            }
+        }
+
+        if (myTeams.length > 0) {
+            myTeams = myTeams.sort((a, b) => a.display_name.localeCompare(b.display_name));
+            teamId = myTeams[0].id;
+        }
+    }
+
+    if (teams[teamId]) {
+        const channelId = BrowserStore.getGlobalItem(teamId);
+        const channel = ChannelStore.getChannelById(channelId);
+        if (channel) {
+            redirect(teams[teamId].name, channel);
+        } else if (channelId) {
+            Client.setTeamId(teamId);
+            Client.getChannel(
+                channelId,
+                (data) => {
+                    redirect(teams[teamId].name, data.channel.name);
+                },
+                () => {
+                    redirect(teams[teamId].name, 'town-square');
+                }
+            );
+        } else {
+            redirect(teams[teamId].name, 'town-square');
+        }
+    } else {
+        browserHistory.push('/select_team');
     }
 }

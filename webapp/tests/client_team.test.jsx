@@ -22,56 +22,6 @@ describe('Client.Team', function() {
         });
     });
 
-    it('signupTeam', function(done) {
-        var client = TestHelper.createClient();
-        var email = TestHelper.fakeEmail();
-
-        client.signupTeam(
-            email,
-            function(data) {
-                assert.equal(data.email, email);
-                done();
-            },
-            function(err) {
-                done(new Error(err.message));
-            }
-        );
-    });
-
-    it('createTeamFromSignup', function(done) {
-        var client = TestHelper.createClient();
-        var email = TestHelper.fakeEmail();
-
-        client.signupTeam(
-            email,
-            function(data) {
-                var teamSignup = {};
-                teamSignup.invites = [];
-                teamSignup.data = decodeURIComponent(data.follow_link.split('&h=')[0].replace('/signup_team_complete/?d=', ''));
-                teamSignup.hash = decodeURIComponent(data.follow_link.split('&h=')[1]);
-
-                teamSignup.user = TestHelper.fakeUser();
-                teamSignup.team = TestHelper.fakeTeam();
-                teamSignup.team.email = teamSignup.user.email;
-
-                client.createTeamFromSignup(
-                    teamSignup,
-                    function(data2) {
-                        assert.equal(data2.team.id.length > 0, true);
-                        assert.equal(data2.user.id.length > 0, true);
-                        done();
-                    },
-                    function(err) {
-                        done(new Error(err.message));
-                    }
-                );
-            },
-            function(err) {
-                done(new Error(err.message));
-            }
-        );
-    });
-
     it('createTeam', function(done) {
         var client = TestHelper.createClient();
         var team = TestHelper.fakeTeam();
@@ -121,6 +71,20 @@ describe('Client.Team', function() {
             TestHelper.basicClient().getMyTeam(
                 function(data) {
                     assert.equal(data.name, TestHelper.basicTeam().name);
+                    done();
+                },
+                function(err) {
+                    done(new Error(err.message));
+                }
+            );
+        });
+    });
+
+    it('getMyTeamMembers', function(done) {
+        TestHelper.initBasic(() => {
+            TestHelper.basicClient().getMyTeamMembers(
+                function(data) {
+                    assert.equal(data.length > 0, true);
                     done();
                 },
                 function(err) {
@@ -237,6 +201,24 @@ describe('Client.Team', function() {
         });
     });
 
+    it('updateTeamDescription', function(done) {
+        TestHelper.initBasic(() => {
+            var team = TestHelper.basicTeam();
+            team.description = 'test_updated';
+
+            TestHelper.basicClient().updateTeam(
+                team,
+                function(data) {
+                    assert.equal(data.description, 'test_updated');
+                    done();
+                },
+                function(err) {
+                    done(new Error(err.message));
+                }
+            );
+        });
+    });
+
     it('addUserToTeam', function(done) {
         TestHelper.initBasic(() => {
             TestHelper.basicClient().createUser(
@@ -302,6 +284,22 @@ describe('Client.Team', function() {
                 user.id,
                 '',
                 function() {
+                    done();
+                },
+                function(err) {
+                    done(new Error(err.message));
+                }
+            );
+        });
+    });
+
+    it('getTeamByName', function(done) {
+        TestHelper.initBasic(() => {
+            TestHelper.basicClient().getTeamByName(
+                TestHelper.basicTeam().name,
+                function(data) {
+                    console.log(data);
+                    assert.equal(data.name, TestHelper.basicTeam().name);
                     done();
                 },
                 function(err) {

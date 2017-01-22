@@ -18,21 +18,28 @@ const ActionTypes = Constants.ActionTypes;
 const Preferences = Constants.Preferences;
 
 export function handleNewPost(post, msg) {
+    const teamId = TeamStore.getCurrentId();
+
     if (ChannelStore.getCurrentId() === post.channel_id) {
         if (window.isActive) {
-            AsyncClient.updateLastViewedAt(null, false);
+            AsyncClient.viewChannel();
         } else {
             AsyncClient.getChannel(post.channel_id);
         }
-    } else if (msg && (TeamStore.getCurrentId() === msg.data.team_id || msg.data.channel_type === Constants.DM_CHANNEL)) {
+    } else if (msg && (teamId === msg.data.team_id || msg.data.channel_type === Constants.DM_CHANNEL)) {
         if (Client.teamId) {
             AsyncClient.getChannel(post.channel_id);
         }
     }
 
-    var websocketMessageProps = null;
+    let websocketMessageProps = null;
     if (msg) {
         websocketMessageProps = msg.data;
+    }
+
+    const myTeams = TeamStore.getMyTeamMembers();
+    if (msg.data.team_id !== teamId && myTeams.filter((m) => m.team_id === msg.data.team_id).length) {
+        AsyncClient.getMyTeamsUnread(teamId);
     }
 
     if (post.root_id && PostStore.getPost(post.channel_id, post.root_id) == null) {
@@ -251,4 +258,112 @@ export function loadProfilesForPosts(posts) {
     }
 
     AsyncClient.getProfilesByIds(list);
+}
+
+export function addReaction(channelId, postId, emojiName) {
+    const reaction = {
+        post_id: postId,
+        user_id: UserStore.getCurrentId(),
+        emoji_name: emojiName
+    };
+
+    AsyncClient.saveReaction(channelId, reaction);
+}
+
+export function removeReaction(channelId, postId, emojiName) {
+    const reaction = {
+        post_id: postId,
+        user_id: UserStore.getCurrentId(),
+        emoji_name: emojiName
+    };
+
+    AsyncClient.deleteReaction(channelId, reaction);
+}
+
+const postQueue = [];
+
+export function queuePost(post, doLoadPost, success, error) {
+    postQueue.push(
+        createPost.bind(
+            this,
+            post,
+            doLoadPost,
+            (data) => {
+                if (success) {
+                    success(data);
+                }
+
+                postSendComplete();
+            },
+            (err) => {
+                if (error) {
+                    error(err);
+                }
+
+                postSendComplete();
+            }
+        )
+    );
+
+    sendFirstPostInQueue();
+}
+
+// Remove the completed post from the queue and send the next one
+function postSendComplete() {
+    postQueue.shift();
+    sendNextPostInQueue();
+}
+
+// Start sending posts if a new queue has started
+function sendFirstPostInQueue() {
+    if (postQueue.length === 1) {
+        sendNextPostInQueue();
+    }
+}
+
+// Send the next post in the queue if there is one
+function sendNextPostInQueue() {
+    const nextPostAction = postQueue[0];
+    if (nextPostAction) {
+        nextPostAction();
+    }
+}
+
+export function createPost(post, doLoadPost, success, error) {
+    Client.createPost(post,
+        (data) => {
+            if (doLoadPost) {
+                loadPosts(post.channel_id);
+            } else {
+                PostStore.removePendingPost(post.pending_post_id);
+            }
+
+            AppDispatcher.handleServerAction({
+                type: ActionTypes.RECEIVED_POST,
+                post: data
+            });
+
+            if (success) {
+                success(data);
+            }
+        },
+
+        (err) => {
+            if (err.id === 'api.post.create_post.root_id.app_error') {
+                PostStore.removePendingPost(post.pending_post_id);
+            } else {
+                post.state = Constants.POST_FAILED;
+                PostStore.updatePendingPost(post);
+            }
+
+            if (error) {
+                error(err);
+            }
+        }
+    );
+}
+
+export function removePostFromStore(post) {
+    PostStore.removePost(post);
+    PostStore.emitChange();
 }

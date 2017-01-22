@@ -12,6 +12,7 @@ import TeamStore from 'stores/team_store.jsx';
 import Constants from 'utils/constants.jsx';
 import * as GlobalActions from 'actions/global_actions.jsx';
 import Client from 'client/web_client.jsx';
+import ProfilePicture from 'components/profile_picture.jsx';
 
 import React from 'react';
 import {FormattedMessage, FormattedHTMLMessage, FormattedDate} from 'react-intl';
@@ -46,18 +47,18 @@ export function createDMIntroMessage(channel, centeredIntro) {
         return (
             <div className={'channel-intro ' + centeredIntro}>
                 <div className='post-profile-img__container channel-intro-img'>
-                    <img
-                        className='post-profile-img'
+                    <ProfilePicture
                         src={Client.getUsersRoute() + '/' + teammate.id + '/image?time=' + teammate.update_at}
-                        height='50'
                         width='50'
+                        height='50'
+                        user={teammate}
                     />
                 </div>
                 <div className='channel-intro-profile'>
                     <strong>
                         <UserProfile
                             user={teammate}
-                            disablePopover={true}
+                            disablePopover={false}
                         />
                     </strong>
                 </div>
@@ -147,10 +148,10 @@ export function createDefaultIntroMessage(channel, centeredIntro) {
 
 export function createStandardIntroMessage(channel, centeredIntro) {
     var uiName = channel.display_name;
-    var creatorName = '';
-
+    var creatorName = Utils.displayUsername(channel.creator_id);
     var uiType;
     var memberMessage;
+
     if (channel.type === 'P') {
         uiType = (
             <FormattedMessage
@@ -204,14 +205,30 @@ export function createStandardIntroMessage(channel, centeredIntro) {
     } else {
         createMessage = (
             <span>
-                <FormattedHTMLMessage
+                <FormattedMessage
                     id='intro_messages.creator'
-                    defaultMessage='This is the start of the <strong>{name}</strong> {type}, created by <strong>{creator}</strong> on <strong>{date}</strong>'
+                    defaultMessage='This is the start of the {name} {type}, created by {creator} on {date}.'
                     values={{
                         name: (uiName),
                         type: (uiType),
-                        date,
-                        creator: creatorName
+                        creator: (creatorName),
+                        date
+                    }}
+                />
+            </span>
+        );
+    }
+
+    var purposeMessage = '';
+    if (channel.purpose && channel.purpose !== '') {
+        purposeMessage = (
+            <span>
+                <FormattedMessage
+                    id='intro_messages.purpose'
+                    defaultMessage=" This {type}'s purpose is: {purpose}"
+                    values={{
+                        purpose: channel.purpose,
+                        type: (uiType)
                     }}
                 />
             </span>
@@ -232,6 +249,7 @@ export function createStandardIntroMessage(channel, centeredIntro) {
             <p className='channel-intro__content'>
                 {createMessage}
                 {memberMessage}
+                {purposeMessage}
                 <br/>
             </p>
             {createInviteChannelMemberButton(channel, uiType)}

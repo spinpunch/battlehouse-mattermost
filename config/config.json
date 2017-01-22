@@ -25,6 +25,7 @@
         "EnableSecurityFixAlert": true,
         "EnableInsecureOutgoingConnections": false,
         "EnableMultifactorAuthentication": false,
+        "EnforceMultifactorAuthentication": false,
         "AllowCorsFrom": "",
         "SessionLengthWebInDays": 30,
         "SessionLengthMobileInDays": 30,
@@ -48,10 +49,15 @@
         "CustomDescriptionText": "",
         "RestrictDirectMessage": "any",
         "RestrictTeamInvite": "all",
+        "RestrictPublicChannelCreation": "all",
+        "RestrictPrivateChannelCreation": "all",
         "RestrictPublicChannelManagement": "all",
         "RestrictPrivateChannelManagement": "all",
+        "RestrictPublicChannelDeletion": "all",
+        "RestrictPrivateChannelDeletion": "all",
         "UserStatusAwayTimeout": 300,
-        "MaxChannelsPerTeam": 2000
+        "MaxChannelsPerTeam": 2000,
+        "MaxNotificationsPerChannel": 1000
     },
     "SqlSettings": {
         "DriverName": "mysql",
@@ -184,6 +190,7 @@
         "UsernameAttribute": "",
         "NicknameAttribute": "",
         "IdAttribute": "",
+        "PositionAttribute": "",
         "SyncIntervalMinutes": 60,
         "SkipCertificateVerification": false,
         "QueryTimeout": 60,
@@ -216,6 +223,7 @@
         "UsernameAttribute": "",
         "NicknameAttribute": "",
         "LocaleAttribute": "",
+        "PositionAttribute": "",
         "LoginButtonText": "With SAML"
     },
     "NativeAppSettings": {
@@ -227,6 +235,14 @@
         "Enable": false,
         "InterNodeListenAddress": ":8075",
         "InterNodeUrls": []
+    },
+    "MetricsSettings": {
+        "Enable": false,
+        "BlockProfileRate": 0,
+        "ListenAddress": ":8067"
+    },
+    "AnalyticsSettings": {
+        "MaxUsersForStatistics": 2500
     },
     "WebrtcSettings": {
         "Enable": false,

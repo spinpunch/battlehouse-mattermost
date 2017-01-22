@@ -17,6 +17,7 @@
     }
 
     .popover-title {
+        @include border-radius(0);
         background: alpha-color($black, .05);
         max-width: 100%;
         overflow: hidden;
@@ -30,6 +31,32 @@
         p {
             &:last-child {
                 margin-bottom: 5px;
+            }
+        }
+    }
+
+    .popover-dm__content {
+        -webkit-border-radius: 0;
+        -moz-border-radius: 0;
+        -ms-border-radius: 0;
+        -o-border-radius: 0;
+        border-radius: 0;
+        max-width: 100%;
+        overflow: hidden;
+        padding: 5px 5px 5px 0px;
+        text-overflow: ellipsis;
+        margin: 0;
+        font-size: 14px;
+        border-top: 1px solid #ebebeb;
+        border-color: rgba(221, 221, 221, 0.2);
+        margin-top: 5px;
+        margin-bottom: -5px;
+        > a {
+            > i {
+                margin-right: 5px;
+            }
+            > span {
+                text-transform: capitalize;
             }
         }
     }

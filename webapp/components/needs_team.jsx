@@ -32,7 +32,6 @@ import GetPublicLinkModal from 'components/get_public_link_modal.jsx';
 import GetTeamInviteLinkModal from 'components/get_team_invite_link_modal.jsx';
 import EditPostModal from 'components/edit_post_modal.jsx';
 import DeletePostModal from 'components/delete_post_modal.jsx';
-import MoreChannelsModal from 'components/more_channels.jsx';
 import TeamSettingsModal from 'components/team_settings_modal.jsx';
 import RemovedFromChannelModal from 'components/removed_from_channel_modal.jsx';
 import ImportThemeModal from 'components/user_settings/import_theme_modal.jsx';
@@ -95,7 +94,7 @@ export default class NeedsTeam extends React.Component {
         // Set up tracking for whether the window is active
         window.isActive = true;
         $(window).on('focus', () => {
-            AsyncClient.updateLastViewedAt();
+            AsyncClient.viewChannel();
             ChannelStore.resetCounts(ChannelStore.getCurrentId());
             ChannelStore.emitChange();
             window.isActive = true;
@@ -104,7 +103,7 @@ export default class NeedsTeam extends React.Component {
         $(window).on('blur', () => {
             window.isActive = false;
             if (UserStore.getCurrentUser()) {
-                AsyncClient.setActiveChannel('');
+                AsyncClient.viewChannel('');
             }
         });
 
@@ -142,6 +141,7 @@ export default class NeedsTeam extends React.Component {
             content.push(
                 this.props.navbar
             );
+            content.push(this.props.team_sidebar);
             content.push(
                 this.props.sidebar
             );
@@ -181,7 +181,6 @@ export default class NeedsTeam extends React.Component {
                     <LeaveTeamModal/>
                     <ImportThemeModal/>
                     <TeamSettingsModal/>
-                    <MoreChannelsModal/>
                     <EditPostModal/>
                     <DeletePostModal/>
                     <RemovedFromChannelModal/>
@@ -199,6 +198,7 @@ NeedsTeam.propTypes = {
     ]),
     navbar: React.PropTypes.element,
     sidebar: React.PropTypes.element,
+    team_sidebar: React.PropTypes.element,
     center: React.PropTypes.element,
     params: React.PropTypes.object,
     user: React.PropTypes.object

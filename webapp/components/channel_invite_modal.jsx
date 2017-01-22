@@ -12,6 +12,8 @@ import TeamStore from 'stores/team_store.jsx';
 import {searchUsers} from 'actions/user_actions.jsx';
 
 import * as AsyncClient from 'utils/async_client.jsx';
+import * as UserAgent from 'utils/user_agent.jsx';
+import Constants from 'utils/constants.jsx';
 
 import React from 'react';
 import {Modal} from 'react-bootstrap';
@@ -31,6 +33,7 @@ export default class ChannelInviteModal extends React.Component {
         this.search = this.search.bind(this);
 
         this.term = '';
+        this.searchTimeoutId = 0;
 
         const channelStats = ChannelStore.getStats(props.channel.id);
         const teamStats = TeamStore.getCurrentStats();
@@ -112,23 +115,30 @@ export default class ChannelInviteModal extends React.Component {
             return;
         }
 
-        searchUsers(
-            term,
-            TeamStore.getCurrentId(),
-            {not_in_channel_id: this.props.channel.id},
-            (users) => {
-                this.setState({search: true, users});
-            }
+        clearTimeout(this.searchTimeoutId);
+
+        this.searchTimeoutId = setTimeout(
+            () => {
+                searchUsers(
+                    term,
+                    TeamStore.getCurrentId(),
+                    {not_in_channel_id: this.props.channel.id},
+                    (users) => {
+                        this.setState({search: true, users});
+                    }
+                );
+            },
+            Constants.SEARCH_TIMEOUT_MILLISECONDS
         );
     }
 
     render() {
-        var inviteError = null;
+        let inviteError = null;
         if (this.state.inviteError) {
             inviteError = (<label className='has-error control-label'>{this.state.inviteError}</label>);
         }
 
-        var content;
+        let content;
         if (this.state.loading) {
             content = (<LoadingScreen/>);
         } else {
@@ -140,6 +150,7 @@ export default class ChannelInviteModal extends React.Component {
                     nextPage={this.nextPage}
                     search={this.search}
                     actions={[ChannelInviteButton]}
+                    focusOnMount={!UserAgent.isMobile()}
                     actionProps={{
                         channel: this.props.channel,
                         onInviteError: this.handleInviteError
@@ -168,18 +179,6 @@ export default class ChannelInviteModal extends React.Component {
                     {inviteError}
                     {content}
                 </Modal.Body>
-                <Modal.Footer>
-                    <button
-                        type='button'
-                        className='btn btn-default'
-                        onClick={this.onHide}
-                    >
-                        <FormattedMessage
-                            id='channel_invite.close'
-                            defaultMessage='Close'
-                        />
-                    </button>
-                </Modal.Footer>
             </Modal>
         );
     }

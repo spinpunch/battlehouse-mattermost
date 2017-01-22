@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mattermost/platform/einterfaces"
 	"github.com/mattermost/platform/model"
 	"github.com/mattermost/platform/utils"
 
@@ -103,6 +104,8 @@ func InitApi() {
 	InitEmoji()
 	InitStatus()
 	InitWebrtc()
+	InitReaction()
+	InitDeprecated()
 
 	// 404 on any api route before web.go has a chance to serve it
 	Srv.Router.Handle("/api/{anything:.*}", http.HandlerFunc(Handle404))
@@ -112,12 +115,21 @@ func InitApi() {
 	InitEmailBatching()
 }
 
-func HandleEtag(etag string, w http.ResponseWriter, r *http.Request) bool {
+func HandleEtag(etag string, routeName string, w http.ResponseWriter, r *http.Request) bool {
+	metrics := einterfaces.GetMetricsInterface()
 	if et := r.Header.Get(model.HEADER_ETAG_CLIENT); len(etag) > 0 {
 		if et == etag {
+			w.Header().Set(model.HEADER_ETAG_SERVER, etag)
 			w.WriteHeader(http.StatusNotModified)
+			if metrics != nil {
+				metrics.IncrementEtagHitCounter(routeName)
+			}
 			return true
 		}
+	}
+
+	if metrics != nil {
+		metrics.IncrementEtagMissCounter(routeName)
 	}
 
 	return false

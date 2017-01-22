@@ -6,6 +6,7 @@ import PostBodyAdditionalContent from 'components/post_view/components/post_body
 import PostMessageContainer from 'components/post_view/components/post_message_container.jsx';
 import FileAttachmentListContainer from './file_attachment_list_container.jsx';
 import ProfilePicture from 'components/profile_picture.jsx';
+import ReactionListContainer from 'components/post_view/components/reaction_list_container.jsx';
 import RhsDropdown from 'components/rhs_dropdown.jsx';
 
 import ChannelStore from 'stores/channel_store.jsx';
@@ -46,6 +47,10 @@ export default class RhsRootPost extends React.Component {
             return true;
         }
 
+        if (nextProps.isBusy !== this.props.isBusy) {
+            return true;
+        }
+
         if (nextProps.compactDisplay !== this.props.compactDisplay) {
             return true;
         }
@@ -55,6 +60,10 @@ export default class RhsRootPost extends React.Component {
         }
 
         if (nextProps.isFlagged !== this.props.isFlagged) {
+            return true;
+        }
+
+        if (nextProps.previewCollapsed !== this.props.previewCollapsed) {
             return true;
         }
 
@@ -180,6 +189,26 @@ export default class RhsRootPost extends React.Component {
             </li>
         );
 
+        if (isOwner || isAdmin) {
+            dropdownContents.push(
+                <li
+                    key='rhs-root-delete'
+                    role='presentation'
+                >
+                    <a
+                        href='#'
+                        role='menuitem'
+                        onClick={() => GlobalActions.showDeletePostModal(post, this.props.commentCount)}
+                    >
+                        <FormattedMessage
+                            id='rhs_root.del'
+                            defaultMessage='Delete'
+                        />
+                    </a>
+                </li>
+            );
+        }
+
         if (isOwner && !isSystemMessage) {
             dropdownContents.push(
                 <li
@@ -206,26 +235,6 @@ export default class RhsRootPost extends React.Component {
             );
         }
 
-        if (isOwner || isAdmin) {
-            dropdownContents.push(
-                <li
-                    key='rhs-root-delete'
-                    role='presentation'
-                >
-                    <a
-                        href='#'
-                        role='menuitem'
-                        onClick={() => GlobalActions.showDeletePostModal(post, this.props.commentCount)}
-                    >
-                        <FormattedMessage
-                            id='rhs_root.del'
-                            defaultMessage='Delete'
-                        />
-                    </a>
-                </li>
-            );
-        }
-
         var rootOptions = '';
         if (dropdownContents.length > 0) {
             rootOptions = (
@@ -243,7 +252,13 @@ export default class RhsRootPost extends React.Component {
             );
         }
 
-        let userProfile = <UserProfile user={user}/>;
+        let userProfile = (
+            <UserProfile
+                user={user}
+                status={this.props.status}
+                isBusy={this.props.isBusy}
+            />
+        );
         let botIndicator;
 
         if (post.props && post.props.from_webhook) {
@@ -252,6 +267,13 @@ export default class RhsRootPost extends React.Component {
                     <UserProfile
                         user={user}
                         overwriteName={post.props.override_username}
+                        disablePopover={true}
+                    />
+                );
+            } else {
+                userProfile = (
+                    <UserProfile
+                        user={user}
                         disablePopover={true}
                     />
                 );
@@ -269,15 +291,31 @@ export default class RhsRootPost extends React.Component {
             );
         }
 
+        let status = this.props.status;
+        if (post.props && post.props.from_webhook === 'true') {
+            status = null;
+        }
+
         let profilePic = (
             <ProfilePicture
                 src={PostUtils.getProfilePicSrcForPost(post, timestamp)}
-                status={this.props.status}
+                status={status}
                 width='36'
                 height='36'
                 user={this.props.user}
+                isBusy={this.props.isBusy}
             />
         );
+
+        if (post.props && post.props.from_webhook) {
+            profilePic = (
+                <ProfilePicture
+                    src={PostUtils.getProfilePicSrcForPost(post, timestamp)}
+                    width='36'
+                    height='36'
+                />
+            );
+        }
 
         if (PostUtils.isSystemMessage(post)) {
             profilePic = (
@@ -292,13 +330,22 @@ export default class RhsRootPost extends React.Component {
         if (this.props.compactDisplay) {
             compactClass = 'post--compact';
 
-            profilePic = (
-                <ProfilePicture
-                    src=''
-                    status={this.props.status}
-                    user={this.props.user}
-                />
-            );
+            if (post.props && post.props.from_webhook) {
+                profilePic = (
+                    <ProfilePicture
+                        src=''
+                    />
+                );
+            } else {
+                profilePic = (
+                    <ProfilePicture
+                        src=''
+                        status={status}
+                        user={this.props.user}
+                        isBusy={this.props.isBusy}
+                    />
+                );
+            }
         }
 
         const profilePicContainer = (<div className='post__img'>{profilePic}</div>);
@@ -387,8 +434,13 @@ export default class RhsRootPost extends React.Component {
                             <PostBodyAdditionalContent
                                 post={post}
                                 message={messageWrapper}
+                                previewCollapsed={this.props.previewCollapsed}
                             />
                             {fileAttachment}
+                            <ReactionListContainer
+                                post={post}
+                                currentUserId={this.props.currentUser.id}
+                            />
                         </div>
                     </div>
                 </div>
@@ -408,5 +460,7 @@ RhsRootPost.propTypes = {
     compactDisplay: React.PropTypes.bool,
     useMilitaryTime: React.PropTypes.bool.isRequired,
     isFlagged: React.PropTypes.bool,
-    status: React.PropTypes.string
+    status: React.PropTypes.string,
+    previewCollapsed: React.PropTypes.string,
+    isBusy: React.PropTypes.bool
 };

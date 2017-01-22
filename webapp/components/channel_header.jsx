@@ -184,11 +184,6 @@ export default class ChannelHeader extends React.Component {
                 e.preventDefault();
                 this.searchMentions(e);
             }
-
-          //@TODO create shortcut for toggling flagged posts
-          // else if (e.keyCode == Constants.KeyCodes.<keycode>) {
-          //   this.toggleFlagged();
-          // }
         }
     }
 
@@ -204,30 +199,6 @@ export default class ChannelHeader extends React.Component {
         this.setState({
             showRenameChannelModal: false
         });
-    }
-
-    showManagementOptions(channel, isAdmin, isSystemAdmin) {
-        if (global.window.mm_license.IsLicensed !== 'true') {
-            return true;
-        }
-
-        if (channel.type === Constants.OPEN_CHANNEL) {
-            if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
-                return false;
-            }
-            if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
-                return false;
-            }
-        } else if (channel.type === Constants.PRIVATE_CHANNEL) {
-            if (global.window.mm_config.RestrictPrivateChannelManagement === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
-                return false;
-            }
-            if (global.window.mm_config.RestrictPrivateChannelManagement === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     initWebrtc(contactId, isOnline) {
@@ -308,6 +279,13 @@ export default class ChannelHeader extends React.Component {
 
                 if (isOffline || busy) {
                     circleClass = 'offline';
+                    webrtcMessage = (
+                        <FormattedMessage
+                            id='channel_header.webrtc.offline'
+                            defaultMessage='The user is offline'
+                        />
+                    );
+
                     if (busy) {
                         webrtcMessage = (
                             <FormattedMessage
@@ -325,6 +303,10 @@ export default class ChannelHeader extends React.Component {
                     );
                 }
 
+                const webrtcTooltip = (
+                    <Tooltip id='webrtcTooltip'>{webrtcMessage}</Tooltip>
+                );
+
                 webrtc = (
                     <div className='webrtc__header'>
                         <a
@@ -332,28 +314,18 @@ export default class ChannelHeader extends React.Component {
                             onClick={() => this.initWebrtc(otherUserId, !isOffline)}
                             disabled={isOffline}
                         >
-                            <svg
-                                id='webrtc-btn'
-                                className='webrtc__button'
-                                xmlns='http://www.w3.org/2000/svg'
+                            <OverlayTrigger
+                                delayShow={Constants.WEBRTC_TIME_DELAY}
+                                placement='bottom'
+                                overlay={webrtcTooltip}
                             >
-                                <circle
-                                    className={circleClass}
-                                    cx='16'
-                                    cy='16'
-                                    r='18'
+                                <div
+                                    id='webrtc-btn'
+                                    className={'webrtc__button ' + circleClass}
                                 >
-                                    <title>
-                                        {webrtcMessage}
-                                    </title>
-                                </circle>
-                                <path
-                                    className='off'
-                                    transform='scale(0.4), translate(17,16)'
-                                    d='M40 8H8c-2.21 0-4 1.79-4 4v24c0 2.21 1.79 4 4 4h32c2.21 0 4-1.79 4-4V12c0-2.21-1.79-4-4-4zm-4 24l-8-6.4V32H12V16h16v6.4l8-6.4v16z'
-                                    fill='white'
-                                />
-                            </svg>
+                                    <span dangerouslySetInnerHTML={{__html: Constants.VIDEO_ICON}}/>
+                                </div>
+                            </OverlayTrigger>
                         </a>
                     </div>
                 );
@@ -447,7 +419,10 @@ export default class ChannelHeader extends React.Component {
             );
 
             dropdownContents.push(
-                <li className='divider'/>
+                <li
+                    key='divider-1'
+                    className='divider'
+                />
             );
 
             if (!ChannelStore.isDefault(channel)) {
@@ -470,47 +445,30 @@ export default class ChannelHeader extends React.Component {
                     </li>
                 );
 
-                if (isAdmin) {
-                    dropdownContents.push(
-                        <li
-                            key='manage_members'
-                            role='presentation'
+                dropdownContents.push(
+                    <li
+                        key='manage_members'
+                        role='presentation'
+                    >
+                        <a
+                            role='menuitem'
+                            href='#'
+                            onClick={() => this.setState({showMembersModal: true})}
                         >
-                            <a
-                                role='menuitem'
-                                href='#'
-                                onClick={() => this.setState({showMembersModal: true})}
-                            >
-                                <FormattedMessage
-                                    id='channel_header.manageMembers'
-                                    defaultMessage='Manage Members'
-                                />
-                            </a>
-                        </li>
-                    );
-                } else {
-                    dropdownContents.push(
-                        <li
-                            key='view_members'
-                            role='presentation'
-                        >
-                            <a
-                                role='menuitem'
-                                href='#'
-                                onClick={() => this.setState({showMembersModal: true})}
-                            >
-                                <FormattedMessage
-                                    id='channel_header.viewMembers'
-                                    defaultMessage='View Members'
-                                />
-                            </a>
-                        </li>
-                    );
-                }
+                            <FormattedMessage
+                                id='channel_header.manageMembers'
+                                defaultMessage='Manage Members'
+                            />
+                        </a>
+                    </li>
+                );
             }
 
             dropdownContents.push(
-                <li className='divider'/>
+                <li
+                    key='divider-2'
+                    className='divider'
+                />
             );
 
             const deleteOption = (
@@ -534,7 +492,7 @@ export default class ChannelHeader extends React.Component {
                 </li>
             );
 
-            if (this.showManagementOptions(channel, isAdmin, isSystemAdmin)) {
+            if (ChannelUtils.showManagementOptions(channel, isAdmin, isSystemAdmin)) {
                 dropdownContents.push(
                     <li
                         key='set_channel_header'
@@ -597,7 +555,9 @@ export default class ChannelHeader extends React.Component {
                         </a>
                     </li>
                 );
+            }
 
+            if (ChannelUtils.showDeleteOption(channel, isAdmin, isSystemAdmin)) {
                 if (!ChannelStore.isDefault(channel)) {
                     dropdownContents.push(deleteOption);
                 }
@@ -606,7 +566,10 @@ export default class ChannelHeader extends React.Component {
             }
 
             dropdownContents.push(
-                <li className='divider'/>
+                <li
+                    key='divider-3'
+                    className='divider'
+                />
             );
 
             const canLeave = channel.type === Constants.PRIVATE_CHANNEL ? this.state.userCount > 1 : true;
@@ -648,10 +611,10 @@ export default class ChannelHeader extends React.Component {
                         id='channelHeader.removeFromFavorites'
                         defaultMessage='Remove from Favorites'
                     /> :
-                    <FormattedMessage
-                        id='channelHeader.addToFavorites'
-                        defaultMessage='Add to Favorites'
-                    />}
+                        <FormattedMessage
+                            id='channelHeader.addToFavorites'
+                            defaultMessage='Add to Favorites'
+                        />}
             </Tooltip>
         );
         const toggleFavorite = (
@@ -671,13 +634,12 @@ export default class ChannelHeader extends React.Component {
         );
 
         let channelMembersModal;
-        if (this.state.showMembersModal) {
+        if (this.state.showMembersModal && channel.name !== Constants.DEFAULT_CHANNEL) {
             channelMembersModal = (
                 <ChannelMembersModal
                     onModalDismissed={() => this.setState({showMembersModal: false})}
                     showInviteModal={() => this.refs.channelInviteModalButton.show()}
                     channel={channel}
-                    isAdmin={isAdmin}
                 />
             );
         }
@@ -739,12 +701,12 @@ export default class ChannelHeader extends React.Component {
                                     </OverlayTrigger>
                                 </div>
                             </th>
-                            <th>
+                            <th className='header-list__members'>
                                 {popoverListMembers}
                             </th>
-                            <th className='search-bar__container'><NavbarSearchBox/></th>
+                            <th className='search-bar__container'><NavbarSearchBox showMentionFlagBtns={false}/></th>
                             <th>
-                                <div className='dropdown channel-header__links'>
+                                <div className='dropdown channel-header__links search-btns'>
                                     <OverlayTrigger
                                         delayShow={Constants.OVERLAY_TIME_DELAY}
                                         placement='bottom'
@@ -761,7 +723,7 @@ export default class ChannelHeader extends React.Component {
                                 </div>
                             </th>
                             <th>
-                                <div className='dropdown channel-header__links'>
+                                <div className='dropdown channel-header__links search-btns'>
                                     <OverlayTrigger
                                         delayShow={Constants.OVERLAY_TIME_DELAY}
                                         placement='bottom'

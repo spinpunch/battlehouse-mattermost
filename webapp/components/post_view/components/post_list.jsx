@@ -1,11 +1,11 @@
 // Copyright (c) 2015 Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
-
 import $ from 'jquery';
 
 import Post from './post.jsx';
 import FloatingTimestamp from './floating_timestamp.jsx';
 import ScrollToBottomArrows from './scroll_to_bottom_arrows.jsx';
+import NewMessageIndicator from './new_message_indicator.jsx';
 
 import * as GlobalActions from 'actions/global_actions.jsx';
 
@@ -56,7 +56,8 @@ export default class PostList extends React.Component {
         this.state = {
             isScrolling: false,
             fullWidthIntro: PreferenceStore.get(Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.CHANNEL_DISPLAY_MODE, Preferences.CHANNEL_DISPLAY_MODE_DEFAULT) === Preferences.CHANNEL_DISPLAY_MODE_FULL_SCREEN,
-            topPostId: null
+            topPostId: null,
+            unViewedCount: 0
         };
 
         if (props.channel) {
@@ -67,13 +68,31 @@ export default class PostList extends React.Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        // TODO: Clean-up intro text creation
         if (this.props.channel && this.props.channel.type === Constants.DM_CHANNEL) {
             const teammateId = Utils.getUserIdFromChannelName(this.props.channel);
             if (!this.props.profiles[teammateId] && nextProps.profiles[teammateId]) {
                 this.introText = createChannelIntroMessage(this.props.channel, this.state.fullWidthIntro);
             }
         }
+
+        const posts = nextProps.postList.posts;
+        const order = nextProps.postList.order;
+        let unViewedCount = 0;
+
+        // Only count if we're  not at the bottom, not in highlight view,
+        // or anything else
+        if (nextProps.scrollType === Constants.ScrollTypes.FREE) {
+            unViewedCount = order.reduce((count, orderId) => {
+                const post = posts[orderId];
+                if (post.create_at > nextProps.lastViewedBottom &&
+                    post.user_id !== nextProps.currentUser.id &&
+                    post.state !== Constants.POST_DELETED) {
+                    return count + 1;
+                }
+                return count;
+            }, 0);
+        }
+        this.setState({unViewedCount});
     }
 
     handleKeyDown(e) {
@@ -274,7 +293,7 @@ export default class PostList extends React.Component {
 
             if (commentRootId) {
                 for (const postId in posts) {
-                    if (posts[postId].root_id === commentRootId) {
+                    if (posts[postId].root_id === commentRootId && !PostUtils.isSystemMessage(posts[postId])) {
                         commentCount += 1;
                         if (posts[postId].user_id === userId) {
                             shouldHighlightThreads = true;
@@ -431,7 +450,7 @@ export default class PostList extends React.Component {
             }
         } else if (this.refs.postlist.scrollHeight !== this.prevScrollHeight) {
             window.requestAnimationFrame(() => {
-                if (this.jumpToPostNode) {
+                if (this.jumpToPostNode && this.refs.postlist) {
                     this.refs.postlist.scrollTop += (this.jumpToPostNode.offsetTop - this.prevOffsetTop);
                 }
             });
@@ -553,6 +572,10 @@ export default class PostList extends React.Component {
                     atBottom={this.wasAtBottom}
                     onClick={this.scrollToBottomAnimated}
                 />
+                <NewMessageIndicator
+                    newMessages={this.state.unViewedCount}
+                    onClick={this.scrollToBottomAnimated}
+                />
                 <div
                     ref='postlist'
                     className='post-list-holder-by-time'
@@ -576,6 +599,7 @@ export default class PostList extends React.Component {
 
 PostList.defaultProps = {
     lastViewed: 0,
+    lastViewedBottom: Number.MAX_VALUE,
     ownNewMessage: false
 };
 
@@ -590,6 +614,7 @@ PostList.propTypes = {
     showMoreMessagesTop: React.PropTypes.bool,
     showMoreMessagesBottom: React.PropTypes.bool,
     lastViewed: React.PropTypes.number,
+    lastViewedBottom: React.PropTypes.number,
     ownNewMessage: React.PropTypes.bool,
     postsToHighlight: React.PropTypes.object,
     displayNameType: React.PropTypes.string,

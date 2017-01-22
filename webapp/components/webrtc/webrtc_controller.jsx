@@ -7,7 +7,7 @@ import WebrtcStore from 'stores/webrtc_store.jsx';
 
 import Client from 'client/web_client.jsx';
 import WebSocketClient from 'client/web_websocket_client.jsx';
-import WebrtcSession from 'client/webrtc_session.jsx';
+import Janus from 'janus';
 
 import SearchBox from '../search_bar.jsx';
 import WebrtcHeader from './components/webrtc_header.jsx';
@@ -44,6 +44,8 @@ export default class WebrtcController extends React.Component {
         this.close = this.close.bind(this);
         this.clearError = this.clearError.bind(this);
 
+        this.getLocalMedia = this.getLocalMedia.bind(this);
+        this.stopMediaStream = this.stopMediaStream.bind(this);
         this.previewVideo = this.previewVideo.bind(this);
         this.stopRinging = this.stopRinging.bind(this);
 
@@ -160,6 +162,30 @@ export default class WebrtcController extends React.Component {
         }, Constants.WEBRTC_CLEAR_ERROR_DELAY);
     }
 
+    getLocalMedia(constraints, element, callback) {
+        const media = constraints || {audio: true, video: true};
+        navigator.mediaDevices.getUserMedia(media).
+        then((stream) => {
+            if (element) {
+                element.srcObject = stream;
+            }
+
+            if (callback && typeof callback === 'function') {
+                callback(null, stream);
+            }
+        }).
+        catch((error) => {
+            callback(error);
+        });
+    }
+
+    stopMediaStream(stream) {
+        const tracks = stream.getTracks();
+        tracks.forEach((track) => {
+            track.stop();
+        });
+    }
+
     previewVideo() {
         if (this.mounted) {
             if (this.localMedia) {
@@ -169,7 +195,7 @@ export default class WebrtcController extends React.Component {
                 });
                 this.localMedia.enabled = true;
             } else {
-                WebrtcSession.getLocalMedia(
+                this.getLocalMedia(
                     {
                         audio: true,
                         video: {
@@ -399,12 +425,11 @@ export default class WebrtcController extends React.Component {
 
         if (this.session) {
             this.session.destroy();
-            this.session.disconnect();
             this.session = null;
         }
 
         if (this.localMedia) {
-            WebrtcSession.stopMediaStream(this.localMedia);
+            this.stopMediaStream(this.localMedia);
             this.localMedia = null;
         }
 
@@ -648,8 +673,8 @@ export default class WebrtcController extends React.Component {
                         });
                     }
 
-                    this.session = new WebrtcSession({
-                        debug: global.mm_config.EnableDeveloper === 'true',
+                    Janus.init({debug: global.mm_config.EnableDeveloper === 'true'});
+                    this.session = new Janus({
                         server: info.gateway_url,
                         iceServers,
                         token: info.token,
@@ -1055,12 +1080,10 @@ export default class WebrtcController extends React.Component {
         const currentId = UserStore.getCurrentId();
         const remoteImage = (<img src={this.state.remoteUserImage}/>);
         let localImage;
-        let localVideoHidden;
+        let localVideoHidden = '';
         let remoteVideoHidden = 'hidden';
-        let remoteVideoHiddenLocal = 'full';
         let error;
         let remoteMute;
-        let videoClass = '';
         let localImageHidden = 'webrtc__local-image hidden';
         let remoteImageHidden = 'webrtc__remote-image';
 
@@ -1148,15 +1171,11 @@ export default class WebrtcController extends React.Component {
 
             if (this.state.isRemotePaused) {
                 remoteVideoHidden = 'hidden';
-                remoteVideoHiddenLocal = 'full';
                 remoteImageHidden = 'webrtc__remote-image';
             } else {
                 remoteVideoHidden = '';
-                remoteVideoHiddenLocal = '';
                 remoteImageHidden = 'webrtc__remote-image hidden';
             }
-        } else {
-            videoClass = 'small';
         }
 
         return (
@@ -1169,10 +1188,7 @@ export default class WebrtcController extends React.Component {
                         toggleSize={this.props.toggleSize}
                     />
                     <div className='post-right__scroll'>
-                        <div
-                            id='videos'
-                            className={videoClass}
-                        >
+                        <div id='videos'>
                             {remoteMute}
                             <div
                                 id='main-video'
@@ -1186,7 +1202,7 @@ export default class WebrtcController extends React.Component {
                             </div>
                             <div
                                 id='local-video'
-                                className={localVideoHidden + ' ' + remoteVideoHiddenLocal}
+                                className={localVideoHidden}
                             >
                                 <video
                                     ref='local-video'
@@ -1218,5 +1234,5 @@ WebrtcController.propTypes = {
     userId: React.PropTypes.string.isRequired,
     isCaller: React.PropTypes.bool.isRequired,
     expanded: React.PropTypes.bool.isRequired,
-    toggleSize: React.PropTypes.function
+    toggleSize: React.PropTypes.func
 };

@@ -171,7 +171,7 @@ func doUploadFile(teamId string, channelId string, userId string, rawFilename st
 	if info.IsImage() {
 		// Check dimensions before loading the whole thing into memory later on
 		if info.Width*info.Height > MaxImageSize {
-			err := model.NewLocAppError("uploadFile", "api.file.upload_file.large_image.app_error", nil, "")
+			err := model.NewLocAppError("uploadFile", "api.file.upload_file.large_image.app_error", map[string]interface{}{"Filename": filename}, "")
 			err.StatusCode = http.StatusBadRequest
 			return nil, err
 		}
@@ -195,48 +195,55 @@ func doUploadFile(teamId string, channelId string, userId string, rawFilename st
 func handleImages(previewPathList []string, thumbnailPathList []string, fileData [][]byte) {
 	for i, data := range fileData {
 		go func(i int, data []byte) {
-			// Decode image bytes into Image object
-			img, imgType, err := image.Decode(bytes.NewReader(fileData[i]))
-			if err != nil {
-				l4g.Error(utils.T("api.file.handle_images_forget.decode.error"), err)
-				return
+			img, width, height := prepareImage(fileData[i])
+			if img != nil {
+				go generateThumbnailImage(*img, thumbnailPathList[i], width, height)
+				go generatePreviewImage(*img, previewPathList[i], width)
 			}
-
-			width := img.Bounds().Dx()
-			height := img.Bounds().Dy()
-
-			// Fill in the background of a potentially-transparent png file as white
-			if imgType == "png" {
-				dst := image.NewRGBA(img.Bounds())
-				draw.Draw(dst, dst.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
-				draw.Draw(dst, dst.Bounds(), img, img.Bounds().Min, draw.Over)
-				img = dst
-			}
-
-			// Flip the image to be upright
-			orientation, _ := getImageOrientation(fileData[i])
-
-			switch orientation {
-			case UprightMirrored:
-				img = imaging.FlipH(img)
-			case UpsideDown:
-				img = imaging.Rotate180(img)
-			case UpsideDownMirrored:
-				img = imaging.FlipV(img)
-			case RotatedCWMirrored:
-				img = imaging.Transpose(img)
-			case RotatedCCW:
-				img = imaging.Rotate270(img)
-			case RotatedCCWMirrored:
-				img = imaging.Transverse(img)
-			case RotatedCW:
-				img = imaging.Rotate90(img)
-			}
-
-			go generateThumbnailImage(img, thumbnailPathList[i], width, height)
-			go generatePreviewImage(img, previewPathList[i], width)
 		}(i, data)
 	}
+}
+
+func prepareImage(fileData []byte) (*image.Image, int, int) {
+	// Decode image bytes into Image object
+	img, imgType, err := image.Decode(bytes.NewReader(fileData))
+	if err != nil {
+		l4g.Error(utils.T("api.file.handle_images_forget.decode.error"), err)
+		return nil, 0, 0
+	}
+
+	width := img.Bounds().Dx()
+	height := img.Bounds().Dy()
+
+	// Fill in the background of a potentially-transparent png file as white
+	if imgType == "png" {
+		dst := image.NewRGBA(img.Bounds())
+		draw.Draw(dst, dst.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
+		draw.Draw(dst, dst.Bounds(), img, img.Bounds().Min, draw.Over)
+		img = dst
+	}
+
+	// Flip the image to be upright
+	orientation, _ := getImageOrientation(fileData)
+
+	switch orientation {
+	case UprightMirrored:
+		img = imaging.FlipH(img)
+	case UpsideDown:
+		img = imaging.Rotate180(img)
+	case UpsideDownMirrored:
+		img = imaging.FlipV(img)
+	case RotatedCWMirrored:
+		img = imaging.Transpose(img)
+	case RotatedCCW:
+		img = imaging.Rotate270(img)
+	case RotatedCCWMirrored:
+		img = imaging.Transverse(img)
+	case RotatedCW:
+		img = imaging.Rotate90(img)
+	}
+
+	return &img, width, height
 }
 
 func getImageOrientation(imageData []byte) (int, error) {
@@ -522,7 +529,7 @@ func writeFileResponse(filename string, contentType string, bytes []byte, w http
 		w.Header().Del("Content-Type") // Content-Type will be set automatically by the http writer
 	}
 
-	w.Header().Set("Content-Disposition", "attachment;filename=\""+filename+"\"")
+	w.Header().Set("Content-Disposition", "attachment;filename=\""+filename+"\"; filename*=UTF-8''"+url.QueryEscape(filename))
 
 	// prevent file links from being embedded in iframes
 	w.Header().Set("X-Frame-Options", "DENY")
@@ -577,7 +584,7 @@ func migrateFilenamesToFileInfos(post *model.Post) []*model.FileInfo {
 		return []*model.FileInfo{}
 	}
 
-	cchan := Srv.Store.Channel().Get(post.ChannelId)
+	cchan := Srv.Store.Channel().Get(post.ChannelId, true)
 
 	// There's a weird bug that rarely happens where a post ends up with duplicate Filenames so remove those
 	filenames := utils.RemoveDuplicatesFromStringArray(post.Filenames)
@@ -826,11 +833,12 @@ func ReadFile(path string) ([]byte, *model.AppError) {
 			return nil, model.NewLocAppError("ReadFile", "api.file.read_file.s3.app_error", nil, err.Error())
 		}
 		bucket := utils.Cfg.FileSettings.AmazonS3Bucket
-		reader, err := s3Clnt.GetObject(bucket, path)
+		minioObject, err := s3Clnt.GetObject(bucket, path)
+		defer minioObject.Close()
 		if err != nil {
 			return nil, model.NewLocAppError("ReadFile", "api.file.read_file.s3.app_error", nil, err.Error())
 		}
-		if f, err := ioutil.ReadAll(reader); err != nil {
+		if f, err := ioutil.ReadAll(minioObject); err != nil {
 			return nil, model.NewLocAppError("ReadFile", "api.file.read_file.s3.app_error", nil, err.Error())
 		} else {
 			return f, nil

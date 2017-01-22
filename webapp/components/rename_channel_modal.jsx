@@ -3,11 +3,10 @@
 
 import ReactDOM from 'react-dom';
 import * as Utils from 'utils/utils.jsx';
-import Client from 'client/web_client.jsx';
-import * as AsyncClient from 'utils/async_client.jsx';
 import Constants from 'utils/constants.jsx';
 
 import {intlShape, injectIntl, defineMessages, FormattedMessage} from 'react-intl';
+import {updateChannel} from 'actions/channel_actions.jsx';
 
 import {Modal} from 'react-bootstrap';
 
@@ -123,7 +122,7 @@ export class RenameChannelModal extends React.Component {
 
         const channel = Object.assign({}, this.props.channel);
         const oldName = channel.name;
-        const oldDisplayName = channel.displayName;
+        const oldDisplayName = channel.display_name;
         const state = {serverError: ''};
         const {formatMessage} = this.props.intl;
 
@@ -161,10 +160,8 @@ export class RenameChannelModal extends React.Component {
             return;
         }
 
-        Client.updateChannel(
-            channel,
+        updateChannel(channel,
             () => {
-                AsyncClient.getChannel(channel.id);
                 this.handleHide();
             },
             (err) => {

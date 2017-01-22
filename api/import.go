@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"io"
 	"regexp"
+	"unicode/utf8"
 
 	l4g "github.com/alecthomas/log4go"
 	"github.com/mattermost/platform/model"
@@ -19,15 +20,40 @@ import (
 //
 
 func ImportPost(post *model.Post) {
-	post.Hashtags, _ = model.ParseHashtags(post.Message)
+	// Workaround for empty messages, which may be the case if they are webhook posts.
+	firstIteration := true
+	for messageRuneCount := utf8.RuneCountInString(post.Message); messageRuneCount > 0 || firstIteration; messageRuneCount = utf8.RuneCountInString(post.Message) {
+		firstIteration = false
+		var remainder string
+		if messageRuneCount > model.POST_MESSAGE_MAX_RUNES {
+			remainder = string(([]rune(post.Message))[model.POST_MESSAGE_MAX_RUNES:])
+			post.Message = truncateRunes(post.Message, model.POST_MESSAGE_MAX_RUNES)
+		} else {
+			remainder = ""
+		}
 
-	if result := <-Srv.Store.Post().Save(post); result.Err != nil {
-		l4g.Debug(utils.T("api.import.import_post.saving.debug"), post.UserId, post.Message)
+		post.Hashtags, _ = model.ParseHashtags(post.Message)
+
+		if result := <-Srv.Store.Post().Save(post); result.Err != nil {
+			l4g.Debug(utils.T("api.import.import_post.saving.debug"), post.UserId, post.Message)
+		}
+
+		for _, fileId := range post.FileIds {
+			if result := <-Srv.Store.FileInfo().AttachToPost(fileId, post.Id); result.Err != nil {
+				l4g.Error(utils.T("api.import.import_post.attach_files.error"), post.Id, post.FileIds, result.Err)
+			}
+		}
+
+		post.Id = ""
+		post.CreateAt++
+		post.Message = remainder
 	}
 }
 
 func ImportUser(team *model.Team, user *model.User) *model.User {
 	user.MakeNonNil()
+
+	user.Roles = model.ROLE_SYSTEM_USER.Id
 
 	if result := <-Srv.Store.User().Save(user); result.Err != nil {
 		l4g.Error(utils.T("api.import.import_user.saving.error"), result.Err)
@@ -62,22 +88,16 @@ func ImportFile(file io.Reader, teamId string, channelId string, userId string, 
 	io.Copy(buf, file)
 	data := buf.Bytes()
 
-	previewPathList := []string{}
-	thumbnailPathList := []string{}
-	imageDataList := [][]byte{}
-
 	fileInfo, err := doUploadFile(teamId, channelId, userId, fileName, data)
 	if err != nil {
 		return nil, err
 	}
 
-	if fileInfo.PreviewPath != "" || fileInfo.ThumbnailPath != "" {
-		previewPathList = append(previewPathList, fileInfo.PreviewPath)
-		thumbnailPathList = append(thumbnailPathList, fileInfo.ThumbnailPath)
-		imageDataList = append(imageDataList, data)
+	img, width, height := prepareImage(data)
+	if img != nil {
+		generateThumbnailImage(*img, fileInfo.ThumbnailPath, width, height)
+		generatePreviewImage(*img, fileInfo.PreviewPath, width)
 	}
-
-	go handleImages(previewPathList, thumbnailPathList, imageDataList)
 
 	return fileInfo, nil
 }

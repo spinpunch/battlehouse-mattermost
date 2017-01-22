@@ -13,6 +13,7 @@ import {removeUserFromChannel} from 'actions/channel_actions.jsx';
 
 import * as AsyncClient from 'utils/async_client.jsx';
 import * as UserAgent from 'utils/user_agent.jsx';
+import Constants from 'utils/constants.jsx';
 
 import React from 'react';
 import {Modal} from 'react-bootstrap';
@@ -33,6 +34,7 @@ export default class ChannelMembersModal extends React.Component {
         this.nextPage = this.nextPage.bind(this);
 
         this.term = '';
+        this.searchTimeoutId = 0;
 
         const stats = ChannelStore.getStats(props.channel.id);
 
@@ -128,13 +130,20 @@ export default class ChannelMembersModal extends React.Component {
             return;
         }
 
-        searchUsers(
-            term,
-            TeamStore.getCurrentId(),
-            {in_channel_id: this.props.channel.id},
-            (users) => {
-                this.setState({search: true, users});
-            }
+        clearTimeout(this.searchTimeoutId);
+
+        this.searchTimeoutId = setTimeout(
+            () => {
+                searchUsers(
+                    term,
+                    TeamStore.getCurrentId(),
+                    {in_channel_id: this.props.channel.id},
+                    (users) => {
+                        this.setState({search: true, users});
+                    }
+                );
+            },
+            Constants.SEARCH_TIMEOUT_MILLISECONDS
         );
     }
 
@@ -143,11 +152,6 @@ export default class ChannelMembersModal extends React.Component {
         if (this.state.loading) {
             content = (<LoadingScreen/>);
         } else {
-            let removeButton = null;
-            if (this.props.isAdmin) {
-                removeButton = [this.createRemoveMemberButton];
-            }
-
             content = (
                 <SearchableUserList
                     users={this.state.users}
@@ -155,7 +159,7 @@ export default class ChannelMembersModal extends React.Component {
                     total={this.state.total}
                     nextPage={this.nextPage}
                     search={this.search}
-                    actions={removeButton}
+                    actions={[this.createRemoveMemberButton]}
                     focusOnMount={!UserAgent.isMobile()}
                 />
             );
@@ -164,7 +168,7 @@ export default class ChannelMembersModal extends React.Component {
         return (
             <div>
                 <Modal
-                    dialogClassName='more-modal'
+                    dialogClassName='more-modal more-modal--action'
                     show={this.state.show}
                     onHide={this.onHide}
                     onExited={this.props.onModalDismissed}
@@ -196,18 +200,6 @@ export default class ChannelMembersModal extends React.Component {
                     >
                         {content}
                     </Modal.Body>
-                    <Modal.Footer>
-                        <button
-                            type='button'
-                            className='btn btn-default'
-                            onClick={this.onHide}
-                        >
-                            <FormattedMessage
-                                id='channel_members_modal.close'
-                                defaultMessage='Close'
-                            />
-                        </button>
-                    </Modal.Footer>
                 </Modal>
             </div>
         );
@@ -217,6 +209,5 @@ export default class ChannelMembersModal extends React.Component {
 ChannelMembersModal.propTypes = {
     onModalDismissed: React.PropTypes.func.isRequired,
     showInviteModal: React.PropTypes.func.isRequired,
-    channel: React.PropTypes.object.isRequired,
-    isAdmin: React.PropTypes.bool.isRequired
+    channel: React.PropTypes.object.isRequired
 };

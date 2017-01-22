@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"strings"
 	"time"
 
@@ -37,31 +36,18 @@ const TIME_TO_WAIT_FOR_CONNECTIONS_TO_CLOSE_ON_SERVER_SHUTDOWN = time.Second
 
 var Srv *Server
 
-func AttachProfiler(router *mux.Router) {
-	router.HandleFunc("/debug/pprof/", pprof.Index)
-	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-
-	// Manually add support for paths linked to by index page at /debug/pprof/
-	router.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
-	router.Handle("/debug/pprof/heap", pprof.Handler("heap"))
-	router.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
-	router.Handle("/debug/pprof/block", pprof.Handler("block"))
-}
-
-func NewServer(enableProfiler bool) {
-
+func NewServer() {
 	l4g.Info(utils.T("api.server.new_server.init.info"))
 
 	Srv = &Server{}
-	Srv.Store = store.NewSqlStore()
+}
 
+func InitStores() {
+	Srv.Store = store.NewSqlStore()
+}
+
+func InitRouter() {
 	Srv.Router = mux.NewRouter()
-	if enableProfiler {
-		AttachProfiler(Srv.Router)
-		l4g.Info("Enabled HTTP Profiler")
-	}
 	Srv.Router.NotFoundHandler = http.HandlerFunc(Handle404)
 }
 

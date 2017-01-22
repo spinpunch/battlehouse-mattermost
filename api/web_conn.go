@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mattermost/platform/einterfaces"
 	"github.com/mattermost/platform/model"
 	"github.com/mattermost/platform/utils"
 
@@ -26,6 +27,7 @@ type WebConn struct {
 	WebSocket                 *websocket.Conn
 	Send                      chan model.WebSocketMessage
 	SessionToken              string
+	SessionExpiresAt          int64
 	UserId                    string
 	T                         goi18n.TranslateFunc
 	Locale                    string
@@ -39,12 +41,13 @@ func NewWebConn(c *Context, ws *websocket.Conn) *WebConn {
 	}
 
 	return &WebConn{
-		Send:         make(chan model.WebSocketMessage, 256),
-		WebSocket:    ws,
-		UserId:       c.Session.UserId,
-		SessionToken: c.Session.Token,
-		T:            c.T,
-		Locale:       c.Locale,
+		Send:             make(chan model.WebSocketMessage, 256),
+		WebSocket:        ws,
+		UserId:           c.Session.UserId,
+		SessionToken:     c.Session.Token,
+		SessionExpiresAt: c.Session.ExpiresAt,
+		T:                c.T,
+		Locale:           c.Locale,
 	}
 }
 
@@ -111,6 +114,12 @@ func (c *WebConn) writePump() {
 				return
 			}
 
+			if msg.EventType() == model.WEBSOCKET_EVENT_POSTED {
+				if einterfaces.GetMetricsInterface() != nil {
+					einterfaces.GetMetricsInterface().IncrementPostBroadcast()
+				}
+			}
+
 		case <-ticker.C:
 			c.WebSocket.SetWriteDeadline(time.Now().Add(WRITE_WAIT))
 			if err := c.WebSocket.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
@@ -137,10 +146,28 @@ func (c *WebConn) writePump() {
 func (webCon *WebConn) InvalidateCache() {
 	webCon.AllChannelMembers = nil
 	webCon.LastAllChannelMembersTime = 0
+	webCon.SessionExpiresAt = 0
 }
 
 func (webCon *WebConn) isAuthenticated() bool {
-	return webCon.SessionToken != ""
+	// Check the expiry to see if we need to check for a new session
+	if webCon.SessionExpiresAt < model.GetMillis() {
+		if webCon.SessionToken == "" {
+			return false
+		}
+
+		session := GetSession(webCon.SessionToken)
+		if session == nil || session.IsExpired() {
+			webCon.SessionToken = ""
+			webCon.SessionExpiresAt = 0
+			return false
+		}
+
+		webCon.SessionToken = session.Token
+		webCon.SessionExpiresAt = session.ExpiresAt
+	}
+
+	return true
 }
 
 func (webCon *WebConn) SendHello() {
@@ -170,6 +197,13 @@ func (webCon *WebConn) ShouldSendEvent(msg *model.WebSocketEvent) bool {
 
 	// Only report events to users who are in the channel for the event
 	if len(msg.Broadcast.ChannelId) > 0 {
+
+		// Only broadcast typing messages if less than 1K people in channel
+		if msg.Event == model.WEBSOCKET_EVENT_TYPING {
+			if Srv.Store.Channel().GetMemberCountFromCache(msg.Broadcast.ChannelId) > *utils.Cfg.TeamSettings.MaxNotificationsPerChannel {
+				return false
+			}
+		}
 
 		if model.GetMillis()-webCon.LastAllChannelMembersTime > 1000*60*15 { // 15 minutes
 			webCon.AllChannelMembers = nil

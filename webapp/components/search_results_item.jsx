@@ -101,6 +101,8 @@ export default class SearchResultsItem extends React.Component {
             <ProfilePicture
                 src={PostUtils.getProfilePicSrcForPost(post, timestamp)}
                 user={this.props.user}
+                status={this.props.status}
+                isBusy={this.props.isBusy}
             />
 
         );
@@ -111,42 +113,132 @@ export default class SearchResultsItem extends React.Component {
             compactClass = 'post--compact';
         }
 
-        let flag;
-        let flagFunc;
-        let flagVisible = '';
-        let flagTooltip = (
-            <Tooltip id='flagTooltip'>
-                <FormattedMessage
-                    id='flag_post.flag'
-                    defaultMessage='Flag for follow up'
-                />
-            </Tooltip>
-        );
-        if (this.props.isFlagged) {
-            flagVisible = 'visible';
-            flagTooltip = (
+        let message;
+        let flagContent;
+        let rhsControls;
+        if (post.state === Constants.POST_DELETED) {
+            message = (
+                <p>
+                    <FormattedMessage
+                        id='post_body.deleted'
+                        defaultMessage='(message deleted)'
+                    />
+                </p>
+            );
+        } else {
+            let flag;
+            let flagFunc;
+            let flagVisible = '';
+            let flagTooltip = (
                 <Tooltip id='flagTooltip'>
                     <FormattedMessage
-                        id='flag_post.unflag'
-                        defaultMessage='Unflag'
+                        id='flag_post.flag'
+                        defaultMessage='Flag for follow up'
                     />
                 </Tooltip>
             );
-            flagFunc = this.unflagPost;
-            flag = (
-                <span
-                    className='icon'
-                    dangerouslySetInnerHTML={{__html: flagIcon}}
+
+            if (this.props.isFlagged) {
+                flagVisible = 'visible';
+                flagTooltip = (
+                    <Tooltip id='flagTooltip'>
+                        <FormattedMessage
+                            id='flag_post.unflag'
+                            defaultMessage='Unflag'
+                        />
+                    </Tooltip>
+                );
+                flagFunc = this.unflagPost;
+                flag = (
+                    <span
+                        className='icon'
+                        dangerouslySetInnerHTML={{__html: flagIcon}}
+                    />
+                );
+            } else {
+                flag = (
+                    <span
+                        className='icon'
+                        dangerouslySetInnerHTML={{__html: flagIcon}}
+                    />
+                );
+                flagFunc = this.flagPost;
+            }
+
+            flagContent = (
+                <OverlayTrigger
+                    delayShow={Constants.OVERLAY_TIME_DELAY}
+                    placement='top'
+                    overlay={flagTooltip}
+                >
+                    <a
+                        href='#'
+                        className={'flag-icon__container ' + flagVisible}
+                        onClick={flagFunc}
+                    >
+                        {flag}
+                    </a>
+                </OverlayTrigger>
+            );
+
+            rhsControls = (
+                <li className='col__controls'>
+                    <a
+                        href='#'
+                        className='comment-icon__container search-item__comment'
+                        onClick={this.handleFocusRHSClick}
+                    >
+                        <span
+                            className='comment-icon'
+                            dangerouslySetInnerHTML={{__html: Constants.REPLY_ICON}}
+                        />
+                    </a>
+                    <a
+                        onClick={
+                            () => {
+                                if (Utils.isMobile()) {
+                                    AppDispatcher.handleServerAction({
+                                        type: ActionTypes.RECEIVED_SEARCH,
+                                        results: null
+                                    });
+
+                                    AppDispatcher.handleServerAction({
+                                        type: ActionTypes.RECEIVED_SEARCH_TERM,
+                                        term: null,
+                                        do_search: false,
+                                        is_mention_search: false
+                                    });
+
+                                    AppDispatcher.handleServerAction({
+                                        type: ActionTypes.RECEIVED_POST_SELECTED,
+                                        postId: null
+                                    });
+
+                                    this.hideSidebar();
+                                }
+                                this.shrinkSidebar();
+                                browserHistory.push(TeamStore.getCurrentTeamRelativeUrl() + '/pl/' + post.id);
+                            }
+                        }
+                        className='search-item__jump'
+                    >
+                        <FormattedMessage
+                            id='search_item.jump'
+                            defaultMessage='Jump'
+                        />
+                    </a>
+                </li>
+            );
+
+            message = (
+                <PostMessageContainer
+                    post={post}
+                    options={{
+                        searchTerm: this.props.term,
+                        mentionHighlight: this.props.isMentionSearch
+                    }}
                 />
             );
-        } else {
-            flag = (
-                <span
-                    className='icon'
-                    dangerouslySetInnerHTML={{__html: flagIcon}}
-                />
-            );
-            flagFunc = this.flagPost;
         }
 
         return (
@@ -175,6 +267,8 @@ export default class SearchResultsItem extends React.Component {
                                         user={user}
                                         overwriteName={overrideUsername}
                                         disablePopover={disableProfilePopover}
+                                        status={this.props.status}
+                                        isBusy={this.props.isBusy}
                                     />
                                 </strong></li>
                                 {botIndicator}
@@ -187,75 +281,12 @@ export default class SearchResultsItem extends React.Component {
                                             minute='2-digit'
                                         />
                                     </time>
-                                    <OverlayTrigger
-                                        delayShow={Constants.OVERLAY_TIME_DELAY}
-                                        placement='top'
-                                        overlay={flagTooltip}
-                                    >
-                                        <a
-                                            href='#'
-                                            className={'flag-icon__container ' + flagVisible}
-                                            onClick={flagFunc}
-                                        >
-                                            {flag}
-                                        </a>
-                                    </OverlayTrigger>
+                                    {flagContent}
                                 </li>
-                                <li className='col__controls'>
-                                    <a
-                                        href='#'
-                                        className='comment-icon__container search-item__comment'
-                                        onClick={this.handleFocusRHSClick}
-                                    >
-                                        <span
-                                            className='comment-icon'
-                                            dangerouslySetInnerHTML={{__html: Constants.REPLY_ICON}}
-                                        />
-                                    </a>
-                                    <a
-                                        onClick={
-                                            () => {
-                                                if (Utils.isMobile()) {
-                                                    AppDispatcher.handleServerAction({
-                                                        type: ActionTypes.RECEIVED_SEARCH,
-                                                        results: null
-                                                    });
-
-                                                    AppDispatcher.handleServerAction({
-                                                        type: ActionTypes.RECEIVED_SEARCH_TERM,
-                                                        term: null,
-                                                        do_search: false,
-                                                        is_mention_search: false
-                                                    });
-
-                                                    AppDispatcher.handleServerAction({
-                                                        type: ActionTypes.RECEIVED_POST_SELECTED,
-                                                        postId: null
-                                                    });
-
-                                                    this.hideSidebar();
-                                                }
-                                                this.shrinkSidebar();
-                                                browserHistory.push(TeamStore.getCurrentTeamRelativeUrl() + '/pl/' + post.id);
-                                            }
-                                        }
-                                        className='search-item__jump'
-                                    >
-                                        <FormattedMessage
-                                            id='search_item.jump'
-                                            defaultMessage='Jump'
-                                        />
-                                    </a>
-                                </li>
+                                {rhsControls}
                             </ul>
                             <div className='search-item-snippet'>
-                                <PostMessageContainer
-                                    post={post}
-                                    options={{
-                                        searchTerm: this.props.term,
-                                        mentionHighlight: this.props.isMentionSearch
-                                    }}
-                                />
+                                {message}
                             </div>
                         </div>
                     </div>
@@ -274,6 +305,8 @@ SearchResultsItem.propTypes = {
     isFlaggedSearch: React.PropTypes.bool,
     term: React.PropTypes.string,
     useMilitaryTime: React.PropTypes.bool.isRequired,
-    shrink: React.PropTypes.function,
-    isFlagged: React.PropTypes.bool
+    shrink: React.PropTypes.func,
+    isFlagged: React.PropTypes.bool,
+    isBusy: React.PropTypes.bool,
+    status: React.PropTypes.string
 };

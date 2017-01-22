@@ -5,26 +5,45 @@ package store
 
 import (
 	"database/sql"
+	"fmt"
+	"strconv"
+	"strings"
 
 	l4g "github.com/alecthomas/log4go"
 	"github.com/go-gorp/gorp"
+	"github.com/mattermost/platform/einterfaces"
 	"github.com/mattermost/platform/model"
 	"github.com/mattermost/platform/utils"
 )
 
 const (
-	MISSING_CHANNEL_ERROR                   = "store.sql_channel.get_by_name.missing.app_error"
-	MISSING_CHANNEL_MEMBER_ERROR            = "store.sql_channel.get_member.missing.app_error"
-	CHANNEL_EXISTS_ERROR                    = "store.sql_channel.save_channel.exists.app_error"
+	MISSING_CHANNEL_ERROR        = "store.sql_channel.get_by_name.missing.app_error"
+	MISSING_CHANNEL_MEMBER_ERROR = "store.sql_channel.get_member.missing.app_error"
+	CHANNEL_EXISTS_ERROR         = "store.sql_channel.save_channel.exists.app_error"
+
 	ALL_CHANNEL_MEMBERS_FOR_USER_CACHE_SIZE = model.SESSION_CACHE_SIZE
 	ALL_CHANNEL_MEMBERS_FOR_USER_CACHE_SEC  = 900 // 15 mins
+
+	CHANNEL_MEMBERS_COUNTS_CACHE_SIZE = 20000
+	CHANNEL_MEMBERS_COUNTS_CACHE_SEC  = 900 // 15 mins
+
+	CHANNEL_CACHE_SIZE = 5000
+	CHANNEL_CACHE_SEC  = 900 // 15 mins
 )
 
 type SqlChannelStore struct {
 	*SqlStore
 }
 
-var allChannelMembersForUserCache *utils.Cache = utils.NewLru(ALL_CHANNEL_MEMBERS_FOR_USER_CACHE_SIZE)
+var channelMemberCountsCache = utils.NewLru(CHANNEL_MEMBERS_COUNTS_CACHE_SIZE)
+var allChannelMembersForUserCache = utils.NewLru(ALL_CHANNEL_MEMBERS_FOR_USER_CACHE_SIZE)
+var channelCache = utils.NewLru(CHANNEL_CACHE_SIZE)
+
+func ClearChannelCaches() {
+	channelMemberCountsCache.Purge()
+	allChannelMembersForUserCache.Purge()
+	channelCache.Purge()
+}
 
 func NewSqlChannelStore(sqlStore *SqlStore) ChannelStore {
 	s := &SqlChannelStore{sqlStore}
@@ -60,6 +79,8 @@ func (s SqlChannelStore) CreateIndexesIfNotExists() {
 
 	s.CreateIndexIfNotExists("idx_channelmembers_channel_id", "ChannelMembers", "ChannelId")
 	s.CreateIndexIfNotExists("idx_channelmembers_user_id", "ChannelMembers", "UserId")
+
+	s.CreateFullTextIndexIfNotExists("idx_channels_txt", "Channels", "Name, DisplayName")
 }
 
 func (s SqlChannelStore) Save(channel *model.Channel) StoreChannel {
@@ -187,7 +208,7 @@ func (s SqlChannelStore) saveChannelT(transaction *gorp.Transaction, channel *mo
 		if count, err := transaction.SelectInt("SELECT COUNT(0) FROM Channels WHERE TeamId = :TeamId AND DeleteAt = 0 AND (Type = 'O' OR Type = 'P')", map[string]interface{}{"TeamId": channel.TeamId}); err != nil {
 			result.Err = model.NewLocAppError("SqlChannelStore.Save", "store.sql_channel.save_channel.current_count.app_error", nil, "teamId="+channel.TeamId+", "+err.Error())
 			return result
-		} else if count > 20000 {
+		} else if count > *utils.Cfg.TeamSettings.MaxChannelsPerTeam {
 			result.Err = model.NewLocAppError("SqlChannelStore.Save", "store.sql_channel.save_channel.limit.app_error", nil, "teamId="+channel.TeamId)
 			return result
 		}
@@ -196,7 +217,7 @@ func (s SqlChannelStore) saveChannelT(transaction *gorp.Transaction, channel *mo
 	if err := transaction.Insert(channel); err != nil {
 		if IsUniqueConstraintError(err.Error(), []string{"Name", "channels_name_teamid_key"}) {
 			dupChannel := model.Channel{}
-			s.GetMaster().SelectOne(&dupChannel, "SELECT * FROM Channels WHERE TeamId = :TeamId AND Name = :Name AND DeleteAt > 0", map[string]interface{}{"TeamId": channel.TeamId, "Name": channel.Name})
+			s.GetMaster().SelectOne(&dupChannel, "SELECT * FROM Channels WHERE TeamId = :TeamId AND Name = :Name", map[string]interface{}{"TeamId": channel.TeamId, "Name": channel.Name})
 			if dupChannel.DeleteAt > 0 {
 				result.Err = model.NewLocAppError("SqlChannelStore.Save", "store.sql_channel.save_channel.previously.app_error", nil, "id="+channel.Id+", "+err.Error())
 			} else {
@@ -281,19 +302,24 @@ func (s SqlChannelStore) extraUpdated(channel *model.Channel) StoreChannel {
 	return storeChannel
 }
 
-func (s SqlChannelStore) Get(id string) StoreChannel {
-	return s.get(id, false)
+func (us SqlChannelStore) InvalidateChannel(id string) {
+	channelCache.Remove(id)
+}
+
+func (s SqlChannelStore) Get(id string, allowFromCache bool) StoreChannel {
+	return s.get(id, false, allowFromCache)
 }
 
 func (s SqlChannelStore) GetFromMaster(id string) StoreChannel {
-	return s.get(id, true)
+	return s.get(id, true, false)
 }
 
-func (s SqlChannelStore) get(id string, master bool) StoreChannel {
+func (s SqlChannelStore) get(id string, master bool, allowFromCache bool) StoreChannel {
 	storeChannel := make(StoreChannel, 1)
 
 	go func() {
 		result := StoreResult{}
+		metrics := einterfaces.GetMetricsInterface()
 
 		var db *gorp.DbMap
 		if master {
@@ -302,12 +328,33 @@ func (s SqlChannelStore) get(id string, master bool) StoreChannel {
 			db = s.GetReplica()
 		}
 
+		if allowFromCache {
+			if cacheItem, ok := channelCache.Get(id); ok {
+				if metrics != nil {
+					metrics.IncrementMemCacheHitCounter("Channel")
+				}
+				result.Data = cacheItem.(*model.Channel)
+				storeChannel <- result
+				close(storeChannel)
+				return
+			} else {
+				if metrics != nil {
+					metrics.IncrementMemCacheMissCounter("Channel")
+				}
+			}
+		} else {
+			if metrics != nil {
+				metrics.IncrementMemCacheMissCounter("Channel")
+			}
+		}
+
 		if obj, err := db.Get(model.Channel{}, id); err != nil {
 			result.Err = model.NewLocAppError("SqlChannelStore.Get", "store.sql_channel.get.find.app_error", nil, "id="+id+", "+err.Error())
 		} else if obj == nil {
 			result.Err = model.NewLocAppError("SqlChannelStore.Get", "store.sql_channel.get.existing.app_error", nil, "id="+id)
 		} else {
 			result.Data = obj.(*model.Channel)
+			channelCache.AddWithExpiresInSecs(id, obj.(*model.Channel), CHANNEL_MEMBERS_COUNTS_CACHE_SEC)
 		}
 
 		storeChannel <- result
@@ -387,7 +434,7 @@ func (s SqlChannelStore) GetChannels(teamId string, userId string) StoreChannel 
 	return storeChannel
 }
 
-func (s SqlChannelStore) GetMoreChannels(teamId string, userId string) StoreChannel {
+func (s SqlChannelStore) GetMoreChannels(teamId string, userId string, offset int, limit int) StoreChannel {
 	storeChannel := make(StoreChannel, 1)
 
 	go func() {
@@ -395,7 +442,7 @@ func (s SqlChannelStore) GetMoreChannels(teamId string, userId string) StoreChan
 
 		data := &model.ChannelList{}
 		_, err := s.GetReplica().Select(data,
-			`SELECT 
+			`SELECT
 			    *
 			FROM
 			    Channels
@@ -403,7 +450,7 @@ func (s SqlChannelStore) GetMoreChannels(teamId string, userId string) StoreChan
 			    TeamId = :TeamId1
 					AND Type IN ('O')
 					AND DeleteAt = 0
-			        AND Id NOT IN (SELECT 
+			        AND Id NOT IN (SELECT
 			            Channels.Id
 			        FROM
 			            Channels,
@@ -413,8 +460,10 @@ func (s SqlChannelStore) GetMoreChannels(teamId string, userId string) StoreChan
 			                AND TeamId = :TeamId2
 			                AND UserId = :UserId
 			                AND DeleteAt = 0)
-			ORDER BY DisplayName`,
-			map[string]interface{}{"TeamId1": teamId, "TeamId2": teamId, "UserId": userId})
+			ORDER BY DisplayName
+			LIMIT :Limit
+			OFFSET :Offset`,
+			map[string]interface{}{"TeamId1": teamId, "TeamId2": teamId, "UserId": userId, "Limit": limit, "Offset": offset})
 
 		if err != nil {
 			result.Err = model.NewLocAppError("SqlChannelStore.GetMoreChannels", "store.sql_channel.get_more_channels.get.app_error", nil, "teamId="+teamId+", userId="+userId+", err="+err.Error())
@@ -491,14 +540,29 @@ func (s SqlChannelStore) GetTeamChannels(teamId string) StoreChannel {
 }
 
 func (s SqlChannelStore) GetByName(teamId string, name string) StoreChannel {
+	return s.getByName(teamId, name, false)
+}
+
+func (s SqlChannelStore) GetByNameIncludeDeleted(teamId string, name string) StoreChannel {
+	return s.getByName(teamId, name, true)
+}
+
+func (s SqlChannelStore) getByName(teamId string, name string, includeDeleted bool) StoreChannel {
 	storeChannel := make(StoreChannel, 1)
+
+	var query string
+	if includeDeleted {
+		query = "SELECT * FROM Channels WHERE (TeamId = :TeamId OR TeamId = '') AND Name = :Name"
+	} else {
+		query = "SELECT * FROM Channels WHERE (TeamId = :TeamId OR TeamId = '') AND Name = :Name AND DeleteAt = 0"
+	}
 
 	go func() {
 		result := StoreResult{}
 
 		channel := model.Channel{}
 
-		if err := s.GetReplica().SelectOne(&channel, "SELECT * FROM Channels WHERE (TeamId = :TeamId OR TeamId = '') AND Name = :Name AND DeleteAt = 0", map[string]interface{}{"TeamId": teamId, "Name": name}); err != nil {
+		if err := s.GetReplica().SelectOne(&channel, query, map[string]interface{}{"TeamId": teamId, "Name": name}); err != nil {
 			if err == sql.ErrNoRows {
 				result.Err = model.NewLocAppError("SqlChannelStore.GetByName", MISSING_CHANNEL_ERROR, nil, "teamId="+teamId+", "+"name="+name+", "+err.Error())
 			} else {
@@ -653,12 +717,20 @@ func (us SqlChannelStore) InvalidateAllChannelMembersForUser(userId string) {
 }
 
 func (us SqlChannelStore) IsUserInChannelUseCache(userId string, channelId string) bool {
+	metrics := einterfaces.GetMetricsInterface()
 	if cacheItem, ok := allChannelMembersForUserCache.Get(userId); ok {
+		if metrics != nil {
+			metrics.IncrementMemCacheHitCounter("All Channel Members for User")
+		}
 		ids := cacheItem.(map[string]string)
 		if _, ok := ids[channelId]; ok {
 			return true
 		} else {
 			return false
+		}
+	} else {
+		if metrics != nil {
+			metrics.IncrementMemCacheMissCounter("All Channel Members for User")
 		}
 	}
 
@@ -715,13 +787,25 @@ func (s SqlChannelStore) GetAllChannelMembersForUser(userId string, allowFromCac
 
 	go func() {
 		result := StoreResult{}
+		metrics := einterfaces.GetMetricsInterface()
 
 		if allowFromCache {
 			if cacheItem, ok := allChannelMembersForUserCache.Get(userId); ok {
+				if metrics != nil {
+					metrics.IncrementMemCacheHitCounter("All Channel Members for User")
+				}
 				result.Data = cacheItem.(map[string]string)
 				storeChannel <- result
 				close(storeChannel)
 				return
+			} else {
+				if metrics != nil {
+					metrics.IncrementMemCacheMissCounter("All Channel Members for User")
+				}
+			}
+		} else {
+			if metrics != nil {
+				metrics.IncrementMemCacheMissCounter("All Channel Members for User")
 			}
 		}
 
@@ -751,11 +835,57 @@ func (s SqlChannelStore) GetAllChannelMembersForUser(userId string, allowFromCac
 	return storeChannel
 }
 
-func (s SqlChannelStore) GetMemberCount(channelId string) StoreChannel {
+func (us SqlChannelStore) InvalidateMemberCount(channelId string) {
+	channelMemberCountsCache.Remove(channelId)
+}
+
+func (s SqlChannelStore) GetMemberCountFromCache(channelId string) int64 {
+	metrics := einterfaces.GetMetricsInterface()
+
+	if cacheItem, ok := channelMemberCountsCache.Get(channelId); ok {
+		if metrics != nil {
+			metrics.IncrementMemCacheHitCounter("Channel Member Counts")
+		}
+		return cacheItem.(int64)
+	} else {
+		if metrics != nil {
+			metrics.IncrementMemCacheMissCounter("Channel Member Counts")
+		}
+	}
+
+	if result := <-s.GetMemberCount(channelId, true); result.Err != nil {
+		return 0
+	} else {
+		return result.Data.(int64)
+	}
+}
+
+func (s SqlChannelStore) GetMemberCount(channelId string, allowFromCache bool) StoreChannel {
 	storeChannel := make(StoreChannel, 1)
+	metrics := einterfaces.GetMetricsInterface()
 
 	go func() {
 		result := StoreResult{}
+
+		if allowFromCache {
+			if cacheItem, ok := channelMemberCountsCache.Get(channelId); ok {
+				if metrics != nil {
+					metrics.IncrementMemCacheHitCounter("Channel Member Counts")
+				}
+				result.Data = cacheItem.(int64)
+				storeChannel <- result
+				close(storeChannel)
+				return
+			} else {
+				if metrics != nil {
+					metrics.IncrementMemCacheMissCounter("Channel Member Counts")
+				}
+			}
+		} else {
+			if metrics != nil {
+				metrics.IncrementMemCacheMissCounter("Channel Member Counts")
+			}
+		}
 
 		count, err := s.GetReplica().SelectInt(`
 			SELECT
@@ -771,6 +901,10 @@ func (s SqlChannelStore) GetMemberCount(channelId string) StoreChannel {
 			result.Err = model.NewLocAppError("SqlChannelStore.GetMemberCount", "store.sql_channel.get_member_count.app_error", nil, "channel_id="+channelId+", "+err.Error())
 		} else {
 			result.Data = count
+
+			if allowFromCache {
+				channelMemberCountsCache.AddWithExpiresInSecs(channelId, count, CHANNEL_MEMBERS_COUNTS_CACHE_SEC)
+			}
 		}
 
 		storeChannel <- result
@@ -787,7 +921,7 @@ func (s SqlChannelStore) RemoveMember(channelId string, userId string) StoreChan
 		result := StoreResult{}
 
 		// Grab the channel we are saving this member to
-		if cr := <-s.Get(channelId); cr.Err != nil {
+		if cr := <-s.Get(channelId, true); cr.Err != nil {
 			result.Err = cr.Err
 		} else {
 			channel := cr.Data.(*model.Channel)
@@ -879,13 +1013,24 @@ func (s SqlChannelStore) SetLastViewedAt(channelId string, userId string, newLas
 	return storeChannel
 }
 
-func (s SqlChannelStore) UpdateLastViewedAt(channelId string, userId string) StoreChannel {
+func (s SqlChannelStore) UpdateLastViewedAt(channelIds []string, userId string) StoreChannel {
 	storeChannel := make(StoreChannel, 1)
 
 	go func() {
 		result := StoreResult{}
 
 		var query string
+		props := make(map[string]interface{})
+
+		idQuery := ""
+		for index, channelId := range channelIds {
+			if len(idQuery) > 0 {
+				idQuery += " OR "
+			}
+
+			props["channelId"+strconv.Itoa(index)] = channelId
+			idQuery += "ChannelId = :channelId" + strconv.Itoa(index)
+		}
 
 		if utils.Cfg.SqlSettings.DriverName == model.DATABASE_DRIVER_POSTGRES {
 			query = `UPDATE
@@ -900,7 +1045,7 @@ func (s SqlChannelStore) UpdateLastViewedAt(channelId string, userId string) Sto
 			WHERE
 			    Channels.Id = ChannelMembers.ChannelId
 			        AND UserId = :UserId
-			        AND ChannelId = :ChannelId`
+			        AND (` + idQuery + `)`
 		} else if utils.Cfg.SqlSettings.DriverName == model.DATABASE_DRIVER_MYSQL {
 			query = `UPDATE
 				ChannelMembers, Channels
@@ -912,12 +1057,14 @@ func (s SqlChannelStore) UpdateLastViewedAt(channelId string, userId string) Sto
 			WHERE
 			    Channels.Id = ChannelMembers.ChannelId
 			        AND UserId = :UserId
-			        AND ChannelId = :ChannelId`
+			        AND (` + idQuery + `)`
 		}
 
-		_, err := s.GetMaster().Exec(query, map[string]interface{}{"ChannelId": channelId, "UserId": userId})
+		props["UserId"] = userId
+
+		_, err := s.GetMaster().Exec(query, props)
 		if err != nil {
-			result.Err = model.NewLocAppError("SqlChannelStore.UpdateLastViewedAt", "store.sql_channel.update_last_viewed_at.app_error", nil, "channel_id="+channelId+", user_id="+userId+", "+err.Error())
+			result.Err = model.NewLocAppError("SqlChannelStore.UpdateLastViewedAt", "store.sql_channel.update_last_viewed_at.app_error", nil, "channel_ids="+strings.Join(channelIds, ",")+", user_id="+userId+", "+err.Error())
 		}
 
 		storeChannel <- result
@@ -1072,6 +1219,147 @@ func (s SqlChannelStore) GetMembersForUser(teamId string, userId string) StoreCh
 
 		if err != nil {
 			result.Err = model.NewLocAppError("SqlChannelStore.GetMembersForUser", "store.sql_channel.get_members.app_error", nil, "teamId="+teamId+", userId="+userId+", err="+err.Error())
+		} else {
+			result.Data = members
+		}
+
+		storeChannel <- result
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
+func (s SqlChannelStore) SearchInTeam(teamId string, term string) StoreChannel {
+	storeChannel := make(StoreChannel, 1)
+
+	go func() {
+		searchQuery := `
+			SELECT
+			    *
+			FROM
+			    Channels
+			WHERE
+			    TeamId = :TeamId
+				AND Type = 'O'
+				AND DeleteAt = 0
+			    SEARCH_CLAUSE
+			ORDER BY DisplayName
+			LIMIT 100`
+
+		storeChannel <- s.performSearch(searchQuery, term, map[string]interface{}{"TeamId": teamId})
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
+func (s SqlChannelStore) SearchMore(userId string, teamId string, term string) StoreChannel {
+	storeChannel := make(StoreChannel, 1)
+
+	go func() {
+		searchQuery := `
+			SELECT
+			    *
+			FROM
+			    Channels
+			WHERE
+			    TeamId = :TeamId
+				AND Type = 'O'
+				AND DeleteAt = 0
+			    AND Id NOT IN (SELECT
+			        Channels.Id
+			    FROM
+			        Channels,
+			        ChannelMembers
+			    WHERE
+			        Id = ChannelId
+			        AND TeamId = :TeamId
+			        AND UserId = :UserId
+			        AND DeleteAt = 0)
+			    SEARCH_CLAUSE
+			ORDER BY DisplayName
+			LIMIT 100`
+
+		storeChannel <- s.performSearch(searchQuery, term, map[string]interface{}{"TeamId": teamId, "UserId": userId})
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
+func (s SqlChannelStore) performSearch(searchQuery string, term string, parameters map[string]interface{}) StoreResult {
+	result := StoreResult{}
+
+	// these chars have special meaning and can be treated as spaces
+	for _, c := range specialSearchChar {
+		term = strings.Replace(term, c, " ", -1)
+	}
+
+	if term == "" {
+		searchQuery = strings.Replace(searchQuery, "SEARCH_CLAUSE", "", 1)
+	} else if utils.Cfg.SqlSettings.DriverName == model.DATABASE_DRIVER_POSTGRES {
+		splitTerm := strings.Fields(term)
+		for i, t := range strings.Fields(term) {
+			if i == len(splitTerm)-1 {
+				splitTerm[i] = t + ":*"
+			} else {
+				splitTerm[i] = t + ":* &"
+			}
+		}
+
+		term = strings.Join(splitTerm, " ")
+
+		searchClause := fmt.Sprintf("AND (%s) @@  to_tsquery('simple', :Term)", "Name || ' ' || DisplayName")
+		searchQuery = strings.Replace(searchQuery, "SEARCH_CLAUSE", searchClause, 1)
+	} else if utils.Cfg.SqlSettings.DriverName == model.DATABASE_DRIVER_MYSQL {
+		splitTerm := strings.Fields(term)
+		for i, t := range strings.Fields(term) {
+			splitTerm[i] = "+" + t + "*"
+		}
+
+		term = strings.Join(splitTerm, " ")
+
+		searchClause := fmt.Sprintf("AND MATCH(%s) AGAINST (:Term IN BOOLEAN MODE)", "Name, DisplayName")
+		searchQuery = strings.Replace(searchQuery, "SEARCH_CLAUSE", searchClause, 1)
+	}
+
+	var channels model.ChannelList
+
+	parameters["Term"] = term
+
+	if _, err := s.GetReplica().Select(&channels, searchQuery, parameters); err != nil {
+		result.Err = model.NewLocAppError("SqlChannelStore.Search", "store.sql_channel.search.app_error", nil, "term="+term+", "+", "+err.Error())
+	} else {
+		result.Data = &channels
+	}
+
+	return result
+}
+
+func (s SqlChannelStore) GetMembersByIds(channelId string, userIds []string) StoreChannel {
+	storeChannel := make(StoreChannel, 1)
+
+	go func() {
+		result := StoreResult{}
+
+		var members model.ChannelMembers
+		props := make(map[string]interface{})
+		idQuery := ""
+
+		for index, userId := range userIds {
+			if len(idQuery) > 0 {
+				idQuery += ", "
+			}
+
+			props["userId"+strconv.Itoa(index)] = userId
+			idQuery += ":userId" + strconv.Itoa(index)
+		}
+
+		props["ChannelId"] = channelId
+
+		if _, err := s.GetReplica().Select(&members, "SELECT * FROM ChannelMembers WHERE ChannelId = :ChannelId AND UserId IN ("+idQuery+")", props); err != nil {
+			result.Err = model.NewLocAppError("SqlChannelStore.GetMembersByIds", "store.sql_channel.get_members_by_ids.app_error", nil, "channelId="+channelId+" "+err.Error())
 		} else {
 			result.Data = members
 		}

@@ -27,6 +27,7 @@ func NewSqlTeamStore(sqlStore *SqlStore) TeamStore {
 		table.ColMap("Id").SetMaxSize(26)
 		table.ColMap("DisplayName").SetMaxSize(64)
 		table.ColMap("Name").SetMaxSize(64).SetUnique(true)
+		table.ColMap("Description").SetMaxSize(255)
 		table.ColMap("Email").SetMaxSize(128)
 		table.ColMap("CompanyName").SetMaxSize(64)
 		table.ColMap("AllowedDomains").SetMaxSize(500)
@@ -43,6 +44,7 @@ func NewSqlTeamStore(sqlStore *SqlStore) TeamStore {
 
 func (s SqlTeamStore) CreateIndexesIfNotExists() {
 	s.CreateIndexIfNotExists("idx_teams_name", "Teams", "Name")
+	s.RemoveIndexIfExists("idx_teams_description", "Teams")
 	s.CreateIndexIfNotExists("idx_teams_invite_id", "Teams", "InviteId")
 	s.CreateIndexIfNotExists("idx_teams_update_at", "Teams", "UpdateAt")
 	s.CreateIndexIfNotExists("idx_teams_create_at", "Teams", "CreateAt")
@@ -572,6 +574,35 @@ func (s SqlTeamStore) GetTeamsForUser(userId string) StoreChannel {
 			result.Err = model.NewLocAppError("SqlTeamStore.GetMembers", "store.sql_team.get_members.app_error", nil, "userId="+userId+" "+err.Error())
 		} else {
 			result.Data = members
+		}
+
+		storeChannel <- result
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
+func (s SqlTeamStore) GetTeamsUnreadForUser(teamId, userId string) StoreChannel {
+	storeChannel := make(StoreChannel, 1)
+
+	go func() {
+		result := StoreResult{}
+
+		var data []*model.ChannelUnread
+		_, err := s.GetReplica().Select(&data,
+			`SELECT
+				Channels.TeamId, Channels.TotalMsgCount, ChannelMembers.MsgCount, ChannelMembers.MentionCount, ChannelMembers.NotifyProps
+			FROM
+				Channels, ChannelMembers
+			WHERE
+				Id = ChannelId AND UserId = :UserId AND DeleteAt = 0 AND TeamId != :TeamId`,
+			map[string]interface{}{"UserId": userId, "TeamId": teamId})
+
+		if err != nil {
+			result.Err = model.NewLocAppError("SqlTeamStore.GetTeamsUnreadForUser", "store.sql_team.get_unread.app_error", nil, "userId="+userId+" "+err.Error())
+		} else {
+			result.Data = data
 		}
 
 		storeChannel <- result

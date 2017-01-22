@@ -1,15 +1,22 @@
 @charset 'UTF-8';
 
 @media screen and (max-width: 960px) {
-    .channel-header {
-        .search-bar__container {
-            .search__form {
-                width: 150px;
-            }
+    .textarea-wrapper {
+        .textbox-preview-link,
+        .textbox-help-link {
+            display: none;
         }
+    }
 
+    .channel-header {
         .heading {
-            width: 130px;
+            max-width: 100px;
+        }
+    }
+
+    .search__form {
+        .sidebar--right & {
+            width: 300px;
         }
     }
 
@@ -25,8 +32,14 @@
                 display: none;
             }
 
-            .control-label {
+            .post-error {
+                left: 32px;
+                position: relative;
                 top: 0;
+
+                .sidebar--right & {
+                    left: 0;
+                }
             }
         }
 
@@ -73,7 +86,7 @@
     }
 
     .sidebar--right {
-        @include single-transition(all, .5s, ease);
+        @include single-transition(all, .35s, ease);
         @include translateX(100%);
 
         &.move--left,

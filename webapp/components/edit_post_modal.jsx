@@ -38,6 +38,7 @@ export default class EditPostModal extends React.Component {
         this.onModalShown = this.onModalShown.bind(this);
         this.onModalHide = this.onModalHide.bind(this);
         this.onModalKeyDown = this.onModalKeyDown.bind(this);
+        this.handlePostError = this.handlePostError.bind(this);
 
         this.state = {
             editText: '',
@@ -47,15 +48,33 @@ export default class EditPostModal extends React.Component {
             channel_id: '',
             comments: 0,
             refocusId: '',
-            ctrlSend: PreferenceStore.getBool(Constants.Preferences.CATEGORY_ADVANCED_SETTINGS, 'send_on_ctrl_enter')
+            ctrlSend: PreferenceStore.getBool(Constants.Preferences.CATEGORY_ADVANCED_SETTINGS, 'send_on_ctrl_enter'),
+            postError: ''
         };
     }
 
-    handleEdit() {
-        var updatedPost = {};
-        updatedPost.message = this.state.editText.trim();
+    handlePostError(postError) {
+        if (this.state.postError !== postError) {
+            this.setState({postError});
+        }
+    }
 
-        if (updatedPost.message === this.state.originalText.trim()) {
+    handleEdit() {
+        const updatedPost = {
+            message: this.state.editText,
+            id: this.state.post_id,
+            channel_id: this.state.channel_id
+        };
+
+        if (this.state.postError) {
+            this.setState({errorClass: 'animation--highlight'});
+            setTimeout(() => {
+                this.setState({errorClass: null});
+            }, Constants.ANIMATION_TIMEOUT);
+            return;
+        }
+
+        if (updatedPost.message === this.state.originalText) {
             // no changes so just close the modal
             $('#edit_post').modal('hide');
             return;
@@ -63,7 +82,7 @@ export default class EditPostModal extends React.Component {
 
         MessageHistoryStore.storeMessageInHistory(updatedPost.message);
 
-        if (updatedPost.message.length === 0) {
+        if (updatedPost.message.trim().length === 0) {
             var tempState = this.state;
             Reflect.deleteProperty(tempState, 'editText');
             BrowserStore.setItem('edit_state_transfer', tempState);
@@ -71,9 +90,6 @@ export default class EditPostModal extends React.Component {
             GlobalActions.showDeletePostModal(PostStore.getPost(this.state.channel_id, this.state.post_id), this.state.comments);
             return;
         }
-
-        updatedPost.id = this.state.post_id;
-        updatedPost.channel_id = this.state.channel_id;
 
         Client.updatePost(
             updatedPost,
@@ -90,8 +106,9 @@ export default class EditPostModal extends React.Component {
     }
 
     handleChange(e) {
+        const message = e.target.value;
         this.setState({
-            editText: e.target.value
+            editText: message
         });
     }
 
@@ -195,9 +212,11 @@ export default class EditPostModal extends React.Component {
     }
 
     render() {
-        var error = (<div className='form-group'><br/></div>);
-        if (this.state.error) {
-            error = (<div className='form-group has-error'><br/><label className='control-label'>{this.state.error}</label></div>);
+        const errorBoxClass = 'edit-post-footer' + (this.state.postError ? ' has-error' : '');
+        let postError = null;
+        if (this.state.postError) {
+            const postErrorClass = 'post-error' + (this.state.errorClass ? (' ' + this.state.errorClass) : '');
+            postError = (<label className={postErrorClass}>{this.state.postError}</label>);
         }
 
         return (
@@ -235,14 +254,18 @@ export default class EditPostModal extends React.Component {
                                 onChange={this.handleChange}
                                 onKeyPress={this.handleEditKeyPress}
                                 onKeyDown={this.handleKeyDown}
+                                handlePostError={this.handlePostError}
                                 value={this.state.editText}
                                 channelId={this.state.channel_id}
                                 createMessage={Utils.localizeMessage('edit_post.editPost', 'Edit the post...')}
                                 supportsCommands={false}
+                                suggestionListStyle='bottom'
                                 id='edit_textbox'
                                 ref='editbox'
                             />
-                            {error}
+                            <div className={errorBoxClass}>
+                                {postError}
+                            </div>
                         </div>
                         <div className='modal-footer'>
                             <button

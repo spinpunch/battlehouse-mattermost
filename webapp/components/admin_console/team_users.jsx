@@ -43,6 +43,8 @@ export default class UserList extends React.Component {
         this.search = this.search.bind(this);
         this.loadComplete = this.loadComplete.bind(this);
 
+        this.searchTimeoutId = 0;
+
         const stats = TeamStore.getStats(this.props.params.team);
 
         this.state = {
@@ -71,14 +73,20 @@ export default class UserList extends React.Component {
     componentWillReceiveProps(nextProps) {
         if (nextProps.params.team !== this.props.params.team) {
             const stats = TeamStore.getStats(nextProps.params.team);
+
             this.setState({
                 team: AdminStore.getTeam(nextProps.params.team),
                 users: [],
                 teamMembers: TeamStore.getMembersInTeam(nextProps.params.team),
-                total: stats.total_member_count
+                total: stats.total_member_count,
+                serverError: null,
+                showPasswordModal: false,
+                loading: true,
+                user: null
             });
 
-            this.getTeamProfiles(nextProps.params.team);
+            loadProfilesAndTeamMembers(0, Constants.PROFILE_CHUNK_SIZE, nextProps.params.team, this.loadComplete);
+            getTeamStats(nextProps.params.team);
         }
     }
 
@@ -148,14 +156,21 @@ export default class UserList extends React.Component {
         const options = {};
         options[UserSearchOptions.ALLOW_INACTIVE] = true;
 
-        searchUsers(
-            term,
-            this.props.params.team,
-            options,
-            (users) => {
-                this.setState({loading: true, search: true, users});
-                loadTeamMembersForProfilesList(users, this.props.params.team, this.loadComplete);
-            }
+        clearTimeout(this.searchTimeoutId);
+
+        this.searchTimeoutId = setTimeout(
+            () => {
+                searchUsers(
+                    term,
+                    this.props.params.team,
+                    options,
+                    (users) => {
+                        this.setState({loading: true, search: true, users});
+                        loadTeamMembersForProfilesList(users, this.props.params.team, this.loadComplete);
+                    }
+                );
+            },
+            Constants.SEARCH_TIMEOUT_MILLISECONDS
         );
     }
 
@@ -191,6 +206,7 @@ export default class UserList extends React.Component {
                         const service = (user.auth_service === Constants.LDAP_SERVICE || user.auth_service === Constants.SAML_SERVICE) ? user.auth_service.toUpperCase() : Utils.toTitleCase(user.auth_service);
                         info.push(
                             <FormattedHTMLMessage
+                                key='admin.user_item.authServiceNotEmail'
                                 id='admin.user_item.authServiceNotEmail'
                                 defaultMessage='<strong>Sign-in Method:</strong> {service}'
                                 values={{
@@ -201,6 +217,7 @@ export default class UserList extends React.Component {
                     } else {
                         info.push(
                             <FormattedHTMLMessage
+                                key='admin.user_item.authServiceEmail'
                                 id='admin.user_item.authServiceEmail'
                                 defaultMessage='<strong>Sign-in Method:</strong> Email'
                             />
@@ -212,6 +229,7 @@ export default class UserList extends React.Component {
                         if (user.mfa_active) {
                             info.push(
                                 <FormattedHTMLMessage
+                                    key='admin.user_item.mfaYes'
                                     id='admin.user_item.mfaYes'
                                     defaultMessage='<strong>MFA</strong>: Yes'
                                 />
@@ -219,6 +237,7 @@ export default class UserList extends React.Component {
                         } else {
                             info.push(
                                 <FormattedHTMLMessage
+                                    key='admin.user_item.mfaNo'
                                     id='admin.user_item.mfaNo'
                                     defaultMessage='<strong>MFA</strong>: No'
                                 />

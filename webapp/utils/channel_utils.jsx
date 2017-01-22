@@ -76,10 +76,91 @@ export function completeDirectChannelInfo(channel) {
     });
 }
 
+const defaultPrefix = 'D'; // fallback for future types
+const typeToPrefixMap = {[Constants.OPEN_CHANNEL]: 'A', [Constants.PRIVATE_CHANNEL]: 'B', [Constants.DM_CHANNEL]: 'C'};
+
 export function sortChannelsByDisplayName(a, b) {
     const locale = LocalizationStore.getLocale();
 
-    return buildDisplayNameAndTypeComparable(a).localeCompare(buildDisplayNameAndTypeComparable(b), locale, {numeric: true});
+    if (a.type !== b.type) {
+        return (typeToPrefixMap[a.type] || defaultPrefix).localeCompare((typeToPrefixMap[b.type] || defaultPrefix), locale);
+    }
+
+    if (a.display_name !== b.display_name) {
+        return a.display_name.localeCompare(b.display_name, locale, {numeric: true});
+    }
+
+    return a.name.localeCompare(b.name, locale, {numeric: true});
+}
+
+export function showCreateOption(channelType, isAdmin, isSystemAdmin) {
+    if (global.window.mm_license.IsLicensed !== 'true') {
+        return true;
+    }
+
+    if (channelType === Constants.OPEN_CHANNEL) {
+        if (global.window.mm_config.RestrictPublicChannelCreation === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
+            return false;
+        } else if (global.window.mm_config.RestrictPublicChannelCreation === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
+            return false;
+        }
+    } else if (channelType === Constants.PRIVATE_CHANNEL) {
+        if (global.window.mm_config.RestrictPrivateChannelCreation === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
+            return false;
+        } else if (global.window.mm_config.RestrictPrivateChannelCreation === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+export function showManagementOptions(channel, isAdmin, isSystemAdmin) {
+    if (global.window.mm_license.IsLicensed !== 'true') {
+        return true;
+    }
+
+    if (channel.type === Constants.OPEN_CHANNEL) {
+        if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
+            return false;
+        }
+        if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
+            return false;
+        }
+    } else if (channel.type === Constants.PRIVATE_CHANNEL) {
+        if (global.window.mm_config.RestrictPrivateChannelManagement === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
+            return false;
+        }
+        if (global.window.mm_config.RestrictPrivateChannelManagement === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+export function showDeleteOption(channel, isAdmin, isSystemAdmin) {
+    if (global.window.mm_license.IsLicensed !== 'true') {
+        return true;
+    }
+
+    if (channel.type === Constants.OPEN_CHANNEL) {
+        if (global.window.mm_config.RestrictPublicChannelDeletion === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
+            return false;
+        }
+        if (global.window.mm_config.RestrictPublicChannelDeletion === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
+            return false;
+        }
+    } else if (channel.type === Constants.PRIVATE_CHANNEL) {
+        if (global.window.mm_config.RestrictPrivateChannelDeletion === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
+            return false;
+        }
+        if (global.window.mm_config.RestrictPrivateChannelDeletion === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 /*
@@ -129,11 +210,4 @@ function not(f) {
 
 function andX(...fns) {
     return (...args) => fns.every((f) => f(...args));
-}
-
-const defaultPrefix = 'D'; // fallback for future types
-const typeToPrefixMap = {[Constants.OPEN_CHANNEL]: 'A', [Constants.PRIVATE_CHANNEL]: 'B', [Constants.DM_CHANNEL]: 'C'};
-
-function buildDisplayNameAndTypeComparable(channel) {
-    return (typeToPrefixMap[channel.type] || defaultPrefix) + channel.display_name + channel.name;
 }

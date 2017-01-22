@@ -114,6 +114,19 @@ export default class AdminSidebar extends React.Component {
         document.title = Utils.localizeMessage('sidebar_right_menu.console', 'System Console') + ' - ' + currentSiteName;
     }
 
+    sortTeams(a, b) {
+        const teamA = a.display_name.toLowerCase();
+        const teamB = b.display_name.toLowerCase();
+
+        if (teamA < teamB) {
+            return -1;
+        }
+        if (teamA > teamB) {
+            return 1;
+        }
+        return 0;
+    }
+
     renderAddTeamButton() {
         const addTeamTooltip = (
             <Tooltip id='add-team-tooltip'>
@@ -146,18 +159,18 @@ export default class AdminSidebar extends React.Component {
 
     renderTeams() {
         const teams = [];
+        const teamsArray = [];
 
-        for (const key in this.state.selectedTeams) {
-            if (!this.state.selectedTeams.hasOwnProperty(key)) {
-                continue;
+        Reflect.ownKeys(this.state.selectedTeams).forEach((key) => {
+            if (this.state.teams[key]) {
+                teamsArray.push(this.state.teams[key]);
             }
+        });
 
-            const team = this.state.teams[key];
+        teamsArray.sort(this.sortTeams);
 
-            if (!team) {
-                continue;
-            }
-
+        for (let i = 0; i < teamsArray.length; i++) {
+            const team = teamsArray[i];
             teams.push(
                 <AdminSidebarTeam
                     key={team.id}
@@ -192,7 +205,9 @@ export default class AdminSidebar extends React.Component {
         let ldapSettings = null;
         let samlSettings = null;
         let clusterSettings = null;
+        let metricsSettings = null;
         let complianceSettings = null;
+        let mfaSettings = null;
 
         let license = null;
         let audits = null;
@@ -241,6 +256,20 @@ export default class AdminSidebar extends React.Component {
                 );
             }
 
+            if (global.window.mm_license.Metrics === 'true') {
+                metricsSettings = (
+                    <AdminSidebarSection
+                        name='metrics'
+                        title={
+                            <FormattedMessage
+                                id='admin.sidebar.metrics'
+                                defaultMessage='Performance Monitoring (Beta)'
+                            />
+                        }
+                    />
+                );
+            }
+
             if (global.window.mm_license.SAML === 'true') {
                 samlSettings = (
                     <AdminSidebarSection
@@ -263,6 +292,20 @@ export default class AdminSidebar extends React.Component {
                             <FormattedMessage
                                 id='admin.sidebar.compliance'
                                 defaultMessage='Compliance'
+                            />
+                        }
+                    />
+                );
+            }
+
+            if (global.window.mm_license.MFA === 'true') {
+                mfaSettings = (
+                    <AdminSidebarSection
+                        name='mfa'
+                        title={
+                            <FormattedMessage
+                                id='admin.sidebar.mfa'
+                                defaultMessage='MFA'
                             />
                         }
                     />
@@ -492,6 +535,7 @@ export default class AdminSidebar extends React.Component {
                                 {oauthSettings}
                                 {ldapSettings}
                                 {samlSettings}
+                                {mfaSettings}
                             </AdminSidebarSection>
                             <AdminSidebarSection
                                 name='security'
@@ -716,6 +760,7 @@ export default class AdminSidebar extends React.Component {
                                     }
                                 />
                                 {clusterSettings}
+                                {metricsSettings}
                             </AdminSidebarSection>
                         </AdminSidebarCategory>
                         {this.renderTeams()}

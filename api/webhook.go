@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	l4g "github.com/alecthomas/log4go"
 	"github.com/gorilla/mux"
@@ -54,7 +55,7 @@ func createIncomingHook(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cchan := Srv.Store.Channel().Get(hook.ChannelId)
+	cchan := Srv.Store.Channel().Get(hook.ChannelId, true)
 
 	hook.UserId = c.Session.UserId
 	hook.TeamId = c.TeamId
@@ -173,7 +174,7 @@ func createOutgoingHook(c *Context, w http.ResponseWriter, r *http.Request) {
 	hook.TeamId = c.TeamId
 
 	if len(hook.ChannelId) != 0 {
-		cchan := Srv.Store.Channel().Get(hook.ChannelId)
+		cchan := Srv.Store.Channel().Get(hook.ChannelId, true)
 
 		var channel *model.Channel
 		if result := <-cchan; result.Err != nil {
@@ -387,18 +388,35 @@ func incomingWebhook(c *Context, w http.ResponseWriter, r *http.Request) {
 	text := parsedRequest.Text
 	if len(text) == 0 && parsedRequest.Attachments == nil {
 		c.Err = model.NewLocAppError("incomingWebhook", "web.incoming_webhook.text.app_error", nil, "")
+		c.Err.StatusCode = http.StatusBadRequest
+		return
+	}
+
+	textSize := utf8.RuneCountInString(text)
+	if textSize > model.POST_MESSAGE_MAX_RUNES {
+		c.Err = model.NewLocAppError("incomingWebhook", "web.incoming_webhook.text.length.app_error", map[string]interface{}{"Max": model.POST_MESSAGE_MAX_RUNES, "Actual": textSize}, "")
+		c.Err.StatusCode = http.StatusBadRequest
 		return
 	}
 
 	channelName := parsedRequest.ChannelName
 	webhookType := parsedRequest.Type
 
-	//attachments is in here for slack compatibility
+	// attachments is in here for slack compatibility
 	if parsedRequest.Attachments != nil {
 		if len(parsedRequest.Props) == 0 {
 			parsedRequest.Props = make(model.StringInterface)
 		}
 		parsedRequest.Props["attachments"] = parsedRequest.Attachments
+
+		attachmentSize := utf8.RuneCountInString(model.StringInterfaceToJson(parsedRequest.Props))
+		// Minus 100 to leave room for setting post type in the Props
+		if attachmentSize > model.POST_PROPS_MAX_RUNES-100 {
+			c.Err = model.NewLocAppError("incomingWebhook", "web.incoming_webhook.attachment.app_error", map[string]interface{}{"Max": model.POST_PROPS_MAX_RUNES - 100, "Actual": attachmentSize}, "")
+			c.Err.StatusCode = http.StatusBadRequest
+			return
+		}
+
 		webhookType = model.POST_SLACK_ATTACHMENT
 	}
 
@@ -429,7 +447,7 @@ func incomingWebhook(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		cchan = Srv.Store.Channel().GetByName(hook.TeamId, channelName)
 	} else {
-		cchan = Srv.Store.Channel().Get(hook.ChannelId)
+		cchan = Srv.Store.Channel().Get(hook.ChannelId, true)
 	}
 
 	overrideUsername := parsedRequest.Username

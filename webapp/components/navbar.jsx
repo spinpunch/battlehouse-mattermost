@@ -146,6 +146,7 @@ export default class Navbar extends React.Component {
             if (e.target.className !== 'navbar-toggle' && e.target.className !== 'icon-bar') {
                 $('.app__body .inner-wrap').removeClass('move--right move--left move--left-small');
                 $('.app__body .sidebar--left').removeClass('move--right');
+                $('.multi-teams .team-sidebar').removeClass('move--right');
                 $('.app__body .sidebar--right').removeClass('move--left');
                 $('.app__body .sidebar--menu').removeClass('move--left');
             }
@@ -155,6 +156,7 @@ export default class Navbar extends React.Component {
     toggleLeftSidebar() {
         $('.app__body .inner-wrap').toggleClass('move--right');
         $('.app__body .sidebar--left').toggleClass('move--right');
+        $('.multi-teams .team-sidebar').toggleClass('move--right');
     }
 
     toggleRightSidebar() {
@@ -218,30 +220,6 @@ export default class Navbar extends React.Component {
         this.setState({
             showChannelSwitchModal: false
         });
-    }
-
-    showManagementOptions(channel, isAdmin, isSystemAdmin) {
-        if (global.window.mm_license.IsLicensed !== 'true') {
-            return true;
-        }
-
-        if (channel.type === Constants.OPEN_CHANNEL) {
-            if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
-                return false;
-            }
-            if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
-                return false;
-            }
-        } else if (channel.type === Constants.PRIVATE_CHANNEL) {
-            if (global.window.mm_config.RestrictPrivateChannelManagement === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
-                return false;
-            }
-            if (global.window.mm_config.RestrictPrivateChannelManagement === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     toggleFavorite = (e) => {
@@ -386,7 +364,7 @@ export default class Navbar extends React.Component {
                     </li>
                 );
 
-                if (this.showManagementOptions(channel, isAdmin, isSystemAdmin)) {
+                if (ChannelUtils.showManagementOptions(channel, isAdmin, isSystemAdmin)) {
                     setChannelHeaderOption = (
                         <li role='presentation'>
                             <a
@@ -442,7 +420,7 @@ export default class Navbar extends React.Component {
                     );
                 }
 
-                if (this.showManagementOptions(channel, isAdmin, isSystemAdmin) || this.state.userCount === 1) {
+                if (ChannelUtils.showDeleteOption(channel, isAdmin, isSystemAdmin) || this.state.userCount === 1) {
                     if (!ChannelStore.isDefault(channel)) {
                         deleteChannelOption = (
                             <li role='presentation'>
@@ -501,10 +479,10 @@ export default class Navbar extends React.Component {
                                 id='channelHeader.removeFromFavorites'
                                 defaultMessage='Remove from Favorites'
                             /> :
-                            <FormattedMessage
-                                id='channelHeader.addToFavorites'
-                                defaultMessage='Add to Favorites'
-                            />}
+                                <FormattedMessage
+                                    id='channelHeader.addToFavorites'
+                                    defaultMessage='Add to Favorites'
+                                />}
                     </a>
                 </li>
             );
@@ -537,11 +515,11 @@ export default class Navbar extends React.Component {
                             role='menu'
                         >
                             {viewInfoOption}
+                            {notificationPreferenceOption}
                             {addMembersOption}
                             {manageMembersOption}
                             {setChannelHeaderOption}
                             {setChannelPurposeOption}
-                            {notificationPreferenceOption}
                             {renameChannelOption}
                             {deleteChannelOption}
                             {leaveChannelOption}

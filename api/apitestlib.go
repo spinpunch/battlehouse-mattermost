@@ -36,7 +36,9 @@ func SetupEnterprise() *TestHelper {
 		*utils.Cfg.RateLimitSettings.Enable = false
 		utils.DisableDebugLogForTest()
 		utils.License.Features.SetDefaults()
-		NewServer(false)
+		NewServer()
+		InitStores()
+		InitRouter()
 		StartServer()
 		utils.InitHTML()
 		InitApi()
@@ -57,7 +59,9 @@ func Setup() *TestHelper {
 		utils.Cfg.TeamSettings.MaxUsersPerTeam = 50
 		*utils.Cfg.RateLimitSettings.Enable = false
 		utils.DisableDebugLogForTest()
-		NewServer(false)
+		NewServer()
+		InitStores()
+		InitRouter()
 		StartServer()
 		InitApi()
 		utils.EnableDebugLogForTest()
@@ -90,10 +94,7 @@ func (me *TestHelper) InitSystemAdmin() *TestHelper {
 	me.SystemAdminUser = me.CreateUser(me.SystemAdminClient)
 	LinkUserToTeam(me.SystemAdminUser, me.SystemAdminTeam)
 	me.SystemAdminClient.SetTeamId(me.SystemAdminTeam.Id)
-	c := &Context{}
-	c.RequestId = model.NewId()
-	c.IpAddress = "cmd_line"
-	UpdateUserRoles(c, me.SystemAdminUser, model.ROLE_SYSTEM_USER.Id+" "+model.ROLE_SYSTEM_ADMIN.Id)
+	UpdateUserRoles(me.SystemAdminUser, model.ROLE_SYSTEM_USER.Id+" "+model.ROLE_SYSTEM_ADMIN.Id)
 	me.SystemAdminUser.Password = "Password1"
 	me.LoginSystemAdmin()
 	me.SystemAdminChannel = me.CreateChannel(me.SystemAdminClient, me.SystemAdminTeam)
@@ -167,6 +168,42 @@ func UpdateUserToTeamAdmin(user *model.User, team *model.Team) {
 		time.Sleep(time.Second)
 		panic(tmr.Err)
 	}
+	utils.EnableDebugLogForTest()
+}
+
+func MakeUserChannelAdmin(user *model.User, channel *model.Channel) {
+	utils.DisableDebugLogForTest()
+
+	if cmr := <-Srv.Store.Channel().GetMember(channel.Id, user.Id); cmr.Err == nil {
+		cm := cmr.Data.(model.ChannelMember)
+		cm.Roles = "channel_admin channel_user"
+		if sr := <-Srv.Store.Channel().UpdateMember(&cm); sr.Err != nil {
+			utils.EnableDebugLogForTest()
+			panic(sr.Err)
+		}
+	} else {
+		utils.EnableDebugLogForTest()
+		panic(cmr.Err)
+	}
+
+	utils.EnableDebugLogForTest()
+}
+
+func MakeUserChannelUser(user *model.User, channel *model.Channel) {
+	utils.DisableDebugLogForTest()
+
+	if cmr := <-Srv.Store.Channel().GetMember(channel.Id, user.Id); cmr.Err == nil {
+		cm := cmr.Data.(model.ChannelMember)
+		cm.Roles = "channel_user"
+		if sr := <-Srv.Store.Channel().UpdateMember(&cm); sr.Err != nil {
+			utils.EnableDebugLogForTest()
+			panic(sr.Err)
+		}
+	} else {
+		utils.EnableDebugLogForTest()
+		panic(cmr.Err)
+	}
+
 	utils.EnableDebugLogForTest()
 }
 

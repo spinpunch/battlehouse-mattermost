@@ -453,7 +453,33 @@ func TestUserStoreGetProfilesByIds(t *testing.T) {
 	Must(store.User().Save(u2))
 	Must(store.Team().SaveMember(&model.TeamMember{TeamId: teamId, UserId: u2.Id}))
 
-	if r1 := <-store.User().GetProfileByIds([]string{u1.Id, u2.Id}); r1.Err != nil {
+	if r1 := <-store.User().GetProfileByIds([]string{u1.Id}, false); r1.Err != nil {
+		t.Fatal(r1.Err)
+	} else {
+		users := r1.Data.(map[string]*model.User)
+		if len(users) != 1 {
+			t.Fatal("invalid returned users")
+		}
+
+		if users[u1.Id].Id != u1.Id {
+			t.Fatal("invalid returned user")
+		}
+	}
+
+	if r1 := <-store.User().GetProfileByIds([]string{u1.Id}, true); r1.Err != nil {
+		t.Fatal(r1.Err)
+	} else {
+		users := r1.Data.(map[string]*model.User)
+		if len(users) != 1 {
+			t.Fatal("invalid returned users")
+		}
+
+		if users[u1.Id].Id != u1.Id {
+			t.Fatal("invalid returned user")
+		}
+	}
+
+	if r1 := <-store.User().GetProfileByIds([]string{u1.Id, u2.Id}, true); r1.Err != nil {
 		t.Fatal(r1.Err)
 	} else {
 		users := r1.Data.(map[string]*model.User)
@@ -466,7 +492,33 @@ func TestUserStoreGetProfilesByIds(t *testing.T) {
 		}
 	}
 
-	if r1 := <-store.User().GetProfileByIds([]string{u1.Id}); r1.Err != nil {
+	if r1 := <-store.User().GetProfileByIds([]string{u1.Id, u2.Id}, true); r1.Err != nil {
+		t.Fatal(r1.Err)
+	} else {
+		users := r1.Data.(map[string]*model.User)
+		if len(users) != 2 {
+			t.Fatal("invalid returned users")
+		}
+
+		if users[u1.Id].Id != u1.Id {
+			t.Fatal("invalid returned user")
+		}
+	}
+
+	if r1 := <-store.User().GetProfileByIds([]string{u1.Id, u2.Id}, false); r1.Err != nil {
+		t.Fatal(r1.Err)
+	} else {
+		users := r1.Data.(map[string]*model.User)
+		if len(users) != 2 {
+			t.Fatal("invalid returned users")
+		}
+
+		if users[u1.Id].Id != u1.Id {
+			t.Fatal("invalid returned user")
+		}
+	}
+
+	if r1 := <-store.User().GetProfileByIds([]string{u1.Id}, false); r1.Err != nil {
 		t.Fatal(r1.Err)
 	} else {
 		users := r1.Data.(map[string]*model.User)
@@ -756,7 +808,7 @@ func TestUserStoreUpdateAuthData(t *testing.T) {
 	service := "someservice"
 	authData := model.NewId()
 
-	if err := (<-store.User().UpdateAuthData(u1.Id, service, &authData, "")).Err; err != nil {
+	if err := (<-store.User().UpdateAuthData(u1.Id, service, &authData, "", true)).Err; err != nil {
 		t.Fatal(err)
 	}
 
@@ -934,7 +986,7 @@ func TestUserStoreSearch(t *testing.T) {
 	u1.FirstName = "Tim"
 	u1.LastName = "Bill"
 	u1.Nickname = "Rob"
-	u1.Email = "harold" + model.NewId()
+	u1.Email = "harold" + model.NewId() + "@simulator.amazonses.com"
 	Must(store.User().Save(u1))
 
 	u2 := &model.User{}
@@ -980,6 +1032,26 @@ func TestUserStoreSearch(t *testing.T) {
 			t.Fatal("should not have found inactive user")
 		}
 	}
+
+	searchOptions[USER_SEARCH_OPTION_NAMES_ONLY] = false
+
+	if r1 := <-store.User().Search(tid, u1.Email, searchOptions); r1.Err != nil {
+		t.Fatal(r1.Err)
+	} else {
+		profiles := r1.Data.([]*model.User)
+		found1 := false
+		for _, profile := range profiles {
+			if profile.Id == u1.Id {
+				found1 = true
+			}
+		}
+
+		if !found1 {
+			t.Fatal("should have found user")
+		}
+	}
+
+	searchOptions[USER_SEARCH_OPTION_NAMES_ONLY] = true
 
 	// * should be treated as a space
 	if r1 := <-store.User().Search(tid, "jimb*", searchOptions); r1.Err != nil {

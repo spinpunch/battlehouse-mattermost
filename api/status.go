@@ -16,6 +16,10 @@ import (
 
 var statusCache *utils.Cache = utils.NewLru(model.STATUS_CACHE_SIZE)
 
+func ClearStatusCache() {
+	statusCache.Purge()
+}
+
 func AddStatusCacheSkipClusterSend(status *model.Status) {
 	statusCache.Add(status.UserId, status)
 }
@@ -33,44 +37,36 @@ func InitStatus() {
 
 	BaseRoutes.Users.Handle("/status", ApiUserRequired(getStatusesHttp)).Methods("GET")
 	BaseRoutes.Users.Handle("/status/ids", ApiUserRequired(getStatusesByIdsHttp)).Methods("POST")
-	BaseRoutes.Users.Handle("/status/set_active_channel", ApiUserRequired(setActiveChannel)).Methods("POST")
 	BaseRoutes.WebSocket.Handle("get_statuses", ApiWebSocketHandler(getStatusesWebSocket))
 	BaseRoutes.WebSocket.Handle("get_statuses_by_ids", ApiWebSocketHandler(getStatusesByIdsWebSocket))
 }
 
 func getStatusesHttp(c *Context, w http.ResponseWriter, r *http.Request) {
-	statusMap, err := GetAllStatuses()
-	if err != nil {
-		c.Err = err
-		return
-	}
-
+	statusMap := model.StatusMapToInterfaceMap(GetAllStatuses())
 	w.Write([]byte(model.StringInterfaceToJson(statusMap)))
 }
 
 func getStatusesWebSocket(req *model.WebSocketRequest) (map[string]interface{}, *model.AppError) {
-	statusMap, err := GetAllStatuses()
-	if err != nil {
-		return nil, err
-	}
-
-	return statusMap, nil
+	statusMap := GetAllStatuses()
+	return model.StatusMapToInterfaceMap(statusMap), nil
 }
 
-// Only returns 300 statuses max
-func GetAllStatuses() (map[string]interface{}, *model.AppError) {
-	if result := <-Srv.Store.Status().GetOnlineAway(); result.Err != nil {
-		return nil, result.Err
-	} else {
-		statuses := result.Data.([]*model.Status)
+func GetAllStatuses() map[string]*model.Status {
+	userIds := statusCache.Keys()
+	statusMap := map[string]*model.Status{}
 
-		statusMap := map[string]interface{}{}
-		for _, s := range statuses {
-			statusMap[s.UserId] = s.Status
+	for _, userId := range userIds {
+		if id, ok := userId.(string); !ok {
+			continue
+		} else {
+			status := GetStatusFromCache(id)
+			if status != nil {
+				statusMap[id] = status
+			}
 		}
-
-		return statusMap, nil
 	}
+
+	return statusMap
 }
 
 func getStatusesByIdsHttp(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -107,13 +103,20 @@ func getStatusesByIdsWebSocket(req *model.WebSocketRequest) (map[string]interfac
 
 func GetStatusesByIds(userIds []string) (map[string]interface{}, *model.AppError) {
 	statusMap := map[string]interface{}{}
+	metrics := einterfaces.GetMetricsInterface()
 
 	missingUserIds := []string{}
 	for _, userId := range userIds {
 		if result, ok := statusCache.Get(userId); ok {
 			statusMap[userId] = result.(*model.Status).Status
+			if metrics != nil {
+				metrics.IncrementMemCacheHitCounter("Status")
+			}
 		} else {
 			missingUserIds = append(missingUserIds, userId)
+			if metrics != nil {
+				metrics.IncrementMemCacheMissCounter("Status")
+			}
 		}
 	}
 
@@ -258,12 +261,21 @@ func SetStatusAwayIfNeeded(userId string, manual bool) {
 	go Publish(event)
 }
 
-func GetStatus(userId string) (*model.Status, *model.AppError) {
+func GetStatusFromCache(userId string) *model.Status {
 	if result, ok := statusCache.Get(userId); ok {
 		status := result.(*model.Status)
 		statusCopy := &model.Status{}
 		*statusCopy = *status
-		return statusCopy, nil
+		return statusCopy
+	}
+
+	return nil
+}
+
+func GetStatus(userId string) (*model.Status, *model.AppError) {
+	status := GetStatusFromCache(userId)
+	if status != nil {
+		return status, nil
 	}
 
 	if result := <-Srv.Store.Status().Get(userId); result.Err != nil {
@@ -293,43 +305,4 @@ func DoesStatusAllowPushNotification(user *model.User, status *model.Status, cha
 	}
 
 	return false
-}
-
-func setActiveChannel(c *Context, w http.ResponseWriter, r *http.Request) {
-	data := model.MapFromJson(r.Body)
-
-	var channelId string
-	var ok bool
-	if channelId, ok = data["channel_id"]; !ok || len(channelId) > 26 {
-		c.SetInvalidParam("setActiveChannel", "channel_id")
-		return
-	}
-
-	if err := SetActiveChannel(c.Session.UserId, channelId); err != nil {
-		c.Err = err
-		return
-	}
-
-	ReturnStatusOK(w)
-}
-
-func SetActiveChannel(userId string, channelId string) *model.AppError {
-	status, err := GetStatus(userId)
-	if err != nil {
-		status = &model.Status{userId, model.STATUS_ONLINE, false, model.GetMillis(), channelId}
-	} else {
-		status.ActiveChannel = channelId
-		if !status.Manual {
-			status.Status = model.STATUS_ONLINE
-		}
-		status.LastActivityAt = model.GetMillis()
-	}
-
-	AddStatusCache(status)
-
-	if result := <-Srv.Store.Status().SaveOrUpdate(status); result.Err != nil {
-		return result.Err
-	}
-
-	return nil
 }

@@ -41,6 +41,7 @@ export default class SamlSettings extends AdminSettings {
         config.SamlSettings.EmailAttribute = this.state.emailAttribute;
         config.SamlSettings.UsernameAttribute = this.state.usernameAttribute;
         config.SamlSettings.NicknameAttribute = this.state.nicknameAttribute;
+        config.SamlSettings.PositionAttribute = this.state.positionAttribute;
         config.SamlSettings.LocaleAttribute = this.state.localeAttribute;
         config.SamlSettings.LoginButtonText = this.state.loginButtonText;
 
@@ -65,6 +66,7 @@ export default class SamlSettings extends AdminSettings {
             emailAttribute: settings.EmailAttribute,
             usernameAttribute: settings.UsernameAttribute,
             nicknameAttribute: settings.NicknameAttribute,
+            positionAttribute: settings.PositionAttribute,
             localeAttribute: settings.LocaleAttribute,
             loginButtonText: settings.LoginButtonText
         };
@@ -294,9 +296,9 @@ export default class SamlSettings extends AdminSettings {
             <SettingsGroup>
                 <div className='banner'>
                     <div className='banner__content'>
-                        <FormattedMessage
+                        <FormattedHTMLMessage
                             id='admin.saml.bannerDesc'
-                            defaultMessage='If a user attribute changes on the SAML server it will be updated the next time the user enters their credentials to log in to Mattermost. This includes if a user is made inactive or removed from a SAML Identity Provider. Remote logout with SAML servers is considered in a future release.'
+                            defaultMessage='User attributes in SAML server, including user deactivation or removal, are updated in Mattermost during user login. Learn more at: <a href=\"https://docs.mattermost.com/deployment/sso-saml.html\">https://docs.mattermost.com/deployment/sso-saml.html</a>'
                         />
                     </div>
                 </div>
@@ -505,6 +507,25 @@ export default class SamlSettings extends AdminSettings {
                         />
                     }
                     value={this.state.nicknameAttribute}
+                    onChange={this.handleChange}
+                    disabled={!this.state.enable}
+                />
+                <TextSetting
+                    id='positionAttribute'
+                    label={
+                        <FormattedMessage
+                            id='admin.saml.positionAttrTitle'
+                            defaultMessage='Position Attribute:'
+                        />
+                    }
+                    placeholder={Utils.localizeMessage('admin.saml.positionAttrEx', 'E.g.: "Role"')}
+                    helpText={
+                        <FormattedMessage
+                            id='admin.saml.positionAttrDesc'
+                            defaultMessage='(Optional) The attribute in the SAML Assertion that will be used to populate the position of users in Mattermost.'
+                        />
+                    }
+                    value={this.state.positionAttribute}
                     onChange={this.handleChange}
                     disabled={!this.state.enable}
                 />

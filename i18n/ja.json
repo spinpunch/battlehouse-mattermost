@@ -217,7 +217,7 @@
   },
   {
     "id": "api.channel.create_direct_channel.invalid_user.app_error",
-    "translation": "他のユーザーIDが不正です"
+    "translation": "他のユーザーIDが不正です "
   },
   {
     "id": "api.channel.delete_channel.archived",
@@ -300,6 +300,18 @@
     "translation": "%vがチャンネルから脱退しました。"
   },
   {
+    "id": "api.channel.post_update_channel_displayname_message_and_forget.create_post.error",
+    "translation": "表示名更新メッセージ %v を投稿できませんでした"
+  },
+  {
+    "id": "api.channel.post_update_channel_displayname_message_and_forget.retrieve_user.error",
+    "translation": "チャンネル表示名更新メッセージ%vを保存する際にユーザーを取得できませんでした"
+  },
+  {
+    "id": "api.channel.post_update_channel_displayname_message_and_forget.updated_from",
+    "translation": "%sがチャンネル表示名を %s から %s に更新しました"
+  },
+  {
     "id": "api.channel.post_update_channel_header_message_and_forget.join_leave.error",
     "translation": "参加/脱退のメッセージを投稿できませんでした %v"
   },
@@ -322,6 +334,10 @@
   {
     "id": "api.channel.post_user_add_remove_message_and_forget.error",
     "translation": "参加/脱退のメッセージ%vを投稿できませんでした"
+  },
+  {
+    "id": "api.channel.remove.default.app_error",
+    "translation": "デフォルトのチャンネル{{.Channel}}から脱退することはできません"
   },
   {
     "id": "api.channel.remove_member.permissions.app_error",
@@ -365,7 +381,7 @@
   },
   {
     "id": "api.command.delete.app_error",
-    "translation": "削除コマンドに必要な権限が付与されていません"
+    "translation": "コマンドの削除に必要な権限が付与されていません"
   },
   {
     "id": "api.command.disabled.app_error",
@@ -440,6 +456,14 @@
     "translation": "コマンドトークンを再生成するために必要な権限が付与されていません"
   },
   {
+    "id": "api.command.team_mismatch.app_error",
+    "translation": "他チームのコマンドは更新できません"
+  },
+  {
+    "id": "api.command.update.app_error",
+    "translation": "コマンドの更新に必要な権限が付与されていません"
+  },
+  {
     "id": "api.command_away.desc",
     "translation": "離席状態に設定します"
   },
@@ -458,6 +482,10 @@
   {
     "id": "api.command_collapse.name",
     "translation": "折りたたみ"
+  },
+  {
+    "id": "api.command_collapse.success",
+    "translation": "画像のリンクはデフォルトで折りたたまれます"
   },
   {
     "id": "api.command_echo.create.app_error",
@@ -480,6 +508,10 @@
     "translation": "'メッセージ' [遅延秒数]"
   },
   {
+    "id": "api.command_echo.message.app_error",
+    "translation": "/echo コマンドはメッセージを指定しなくてはいけません。"
+  },
+  {
     "id": "api.command_echo.name",
     "translation": "エコー"
   },
@@ -490,6 +522,10 @@
   {
     "id": "api.command_expand.name",
     "translation": "展開"
+  },
+  {
+    "id": "api.command_expand.success",
+    "translation": "画像リンクはデフォルトで展開されます"
   },
   {
     "id": "api.command_expand_collapse.fail.app_error",
@@ -534,10 +570,6 @@
   {
     "id": "api.command_logout.name",
     "translation": "ログアウト"
-  },
-  {
-    "id": "api.command_logout.success_message",
-    "translation": "ログアウト中です…"
   },
   {
     "id": "api.command_me.desc",
@@ -608,44 +640,144 @@
     "translation": "あなたはオンライン状態です"
   },
   {
-    "id": "api.command_shortcuts.browser",
-    "translation": "#### 内蔵ブラウザーコマンド\n\nALT+左: 履歴の前のチャンネル\nALT+右: 履歴の次のチャンネル\nCTRL+プラス: フォントを大きくする(ズームイン)\nCTRL+マイナス: フォントを小さくする(ズームアウト)\nSHIFT+UP (入力欄で): 一つ上の行のテキストをハイライトする\nSHIFT+DOWN (入力欄で): 一つ下の行のテキストをハイライトする\nSHIFT+ENTER (入力欄で): 改行する\n"
+    "id": "api.command_shortcuts.browser.channel_next",
+    "translation": "{{.ChannelNextCmd}}: 履歴の次のチャンネル\n"
   },
   {
-    "id": "api.command_shortcuts.browser_mac",
-    "translation": "#### 内蔵ブラウザーコマンド\n\nCMD+[: 履歴の前のチャンネル\nCMD+]: 履歴の次のチャンネル\nCMD+プラス: フォントを大きくする(ズームイン)\nCMD+マイナス: フォントを小さくする(ズームアウト)\nSHIFT+UP (入力欄で): 一つ上の行のテキストをハイライトする\nSHIFT+DOWN (入力欄で): 一つ下の行のテキストをハイライトする\nSHIFT+ENTER (入力欄で): 改行する\n"
+    "id": "api.command_shortcuts.browser.channel_next.cmd",
+    "translation": "ALT+右"
+  },
+  {
+    "id": "api.command_shortcuts.browser.channel_next.cmd_mac",
+    "translation": "CMD+]"
+  },
+  {
+    "id": "api.command_shortcuts.browser.channel_prev",
+    "translation": "{{.ChannelPrevCmd}}: 履歴の前のチャンネル\n"
+  },
+  {
+    "id": "api.command_shortcuts.browser.channel_prev.cmd",
+    "translation": "ALT+左"
+  },
+  {
+    "id": "api.command_shortcuts.browser.channel_prev.cmd_mac",
+    "translation": "CMD+["
+  },
+  {
+    "id": "api.command_shortcuts.browser.font_decrease",
+    "translation": "{{.CmdOrCtrl}}+マイナス: フォントを小さくする(ズームアウト)\n"
+  },
+  {
+    "id": "api.command_shortcuts.browser.font_increase",
+    "translation": "{{.CmdOrCtrl}}+プラス: フォントを大きくする(ズームイン)\n"
+  },
+  {
+    "id": "api.command_shortcuts.browser.header",
+    "translation": "#### 内蔵ブラウザーコマンド\n\n"
+  },
+  {
+    "id": "api.command_shortcuts.browser.highlight_next",
+    "translation": "SHIFT+DOWN (入力欄で): 一つ下の行のテキストをハイライトする\n"
+  },
+  {
+    "id": "api.command_shortcuts.browser.highlight_prev",
+    "translation": "SHIFT+UP (入力欄で): 一つ上の行のテキストをハイライトする\n"
+  },
+  {
+    "id": "api.command_shortcuts.browser.newline",
+    "translation": "SHIFT+ENTER (入力欄で): 改行する\n"
+  },
+  {
+    "id": "api.command_shortcuts.cmd",
+    "translation": "CMD"
+  },
+  {
+    "id": "api.command_shortcuts.ctrl",
+    "translation": "CTRL"
   },
   {
     "id": "api.command_shortcuts.desc",
     "translation": "キーボードショートカットのリストを表示する"
   },
   {
-    "id": "api.command_shortcuts.files",
-    "translation": "#### ファイル\n\nCTRL+U: ファイルをアップロードする\n\n"
+    "id": "api.command_shortcuts.files.header",
+    "translation": "#### ファイル\n\n"
   },
   {
-    "id": "api.command_shortcuts.files_mac",
-    "translation": "#### ファイル\n\nCMD+U: ファイルをアップロードする\n\n"
+    "id": "api.command_shortcuts.files.upload",
+    "translation": "{{.CmdOrCtrl}}+U: ファイルをアップロードする\n\n"
   },
   {
-    "id": "api.command_shortcuts.msgs",
-    "translation": "#### メッセージ\n\nESC: 現在のチャンネルの全てのメッセージを既読にする\nCTRL+UP (空白の入力欄で): 一つ前に入力したメッセージやスラッシュコマンドを呼び出す\nCTRL+DOWN (空白の入力欄で): 一つ次に入力したメッセージやスラッシュコマンドを呼び出す\nUP (空白の入力欄で): 現在のチャンネルの最新のメッセージを修正する\n@[文字]+TAB: [文字]で始まる@usernameを自動補完する\n#[文字]+TAB: [文字]で始まるチャンネルを自動補完する\n:[文字]+TAB: [文字]で始まる絵文字を自動補完する\n\n"
+    "id": "api.command_shortcuts.header",
+    "translation": "### キーボードショートカット\n\n"
   },
   {
-    "id": "api.command_shortcuts.msgs_mac",
-    "translation": "#### メッセージ\n\nESC: 現在のチャンネルの全てのメッセージを既読にする\nCMD+UP (空白の入力欄で): 一つ前に入力したメッセージやスラッシュコマンドを呼び出す\nCMD+DOWN (空白の入力欄で): 一つ次に入力したメッセージやスラッシュコマンドを呼び出す\nUP (空白の入力欄で): 現在のチャンネルの最新のメッセージを修正する\n@[文字]+TAB: [文字]で始まる@usernameを自動補完する\n#[文字]+TAB: [文字]で始まるチャンネルを自動補完する\n:[文字]+TAB: [文字]で始まる絵文字を自動補完する\n\n"
+    "id": "api.command_shortcuts.msgs.comp_channel",
+    "translation": "~[文字]+TAB: [文字]で始まるチャンネルを自動補完する\n"
+  },
+  {
+    "id": "api.command_shortcuts.msgs.comp_emoji",
+    "translation": ":[文字]+TAB: [文字]で始まる絵文字を自動補完する\n\n"
+  },
+  {
+    "id": "api.command_shortcuts.msgs.comp_username",
+    "translation": "@[文字]+TAB: [文字]で始まる @ユーザー名 を自動補完する\n"
+  },
+  {
+    "id": "api.command_shortcuts.msgs.edit",
+    "translation": "UP (空白の入力欄で): 現在のチャンネルの最新のメッセージを修正する\n"
+  },
+  {
+    "id": "api.command_shortcuts.msgs.header",
+    "translation": "#### メッセージ\n\n"
+  },
+  {
+    "id": "api.command_shortcuts.msgs.mark_as_read",
+    "translation": "ESC: 現在のチャンネルの全てのメッセージを既読にする\n"
+  },
+  {
+    "id": "api.command_shortcuts.msgs.reprint_next",
+    "translation": "{{.CmdOrCtrl}}+DOWN (空白の入力欄で): 一つ次に入力したメッセージやスラッシュコマンドを呼び出す\n"
+  },
+  {
+    "id": "api.command_shortcuts.msgs.reprint_prev",
+    "translation": "{{.CmdOrCtrl}}+UP (空白の入力欄で): 一つ前に入力したメッセージやスラッシュコマンドを呼び出す\n"
   },
   {
     "id": "api.command_shortcuts.name",
     "translation": "ショートカット"
   },
   {
-    "id": "api.command_shortcuts.nav",
-    "translation": "### キーボードショートカット\n\n#### 移動\n\nALT+UP: 左側のサイドバーの前のチャンネルまたはダイレクトメッセージに移動する\nALT+DOWN: 左側のサイドバーの次のチャンネルまたはダイレクトメッセージに移動する\nALT+SHIFT+UP: 左側のサイドバーの未読のメッセージのある前のチャンネルまたはダイレクトメッセージに移動する\nALT+SHIFT+DOWN: 左側のサイドバーの未読のメッセージのある次のチャンネルまたはダイレクトメッセージに移動する\nCTRL+K: 高速チャンネル切り替えダイアログボックスを開く\nCTRL+SHIFT+A: アカウント設定を開く\nCTRL+SHIFT+M: 最近の自分についての投稿を開く\n\n"
+    "id": "api.command_shortcuts.nav.header",
+    "translation": "#### 移動\n\n"
   },
   {
-    "id": "api.command_shortcuts.nav_mac",
-    "translation": "### キーボードショートカット\n\n#### 移動\n\nALT+UP: 左側のサイドバーの前のチャンネルまたはダイレクトメッセージに移動する\nALT+DOWN: 左側のサイドバーの次のチャンネルまたはダイレクトメッセージに移動する\nALT+SHIFT+UP: 左側のサイドバーの未読のメッセージのある前のチャンネルまたはダイレクトメッセージに移動する\nALT+SHIFT+DOWN: 左側のサイドバーの未読のメッセージのある次のチャンネルまたはダイレクトメッセージに移動する\nCMD+K: 高速チャンネル切り替えダイアログボックスを開く\nCMD+SHIFT+A: アカウント設定を開く\nCMD+SHIFT+M: 最近の自分についての投稿を開く\n\n"
+    "id": "api.command_shortcuts.nav.next",
+    "translation": "ALT+DOWN: 左側のサイドバーの次のチャンネルまたはダイレクトメッセージに移動する\n"
+  },
+  {
+    "id": "api.command_shortcuts.nav.prev",
+    "translation": "ALT+UP: 左側のサイドバーの前のチャンネルまたはダイレクトメッセージに移動する\n"
+  },
+  {
+    "id": "api.command_shortcuts.nav.recent_mentions",
+    "translation": "{{.CmdOrCtrl}}+SHIFT+M: 最近の自分についての投稿を開く\n\n"
+  },
+  {
+    "id": "api.command_shortcuts.nav.settings",
+    "translation": "{{.CmdOrCtrl}}+SHIFT+A: アカウント設定を開く\n"
+  },
+  {
+    "id": "api.command_shortcuts.nav.switcher",
+    "translation": "{{.CmdOrCtrl}}+K: 高速チャンネル切り替えダイアログボックスを開く\n"
+  },
+  {
+    "id": "api.command_shortcuts.nav.unread_next",
+    "translation": "ALT+SHIFT+DOWN: 左側のサイドバーの未読のメッセージのある次のチャンネルまたはダイレクトメッセージに移動する\n"
+  },
+  {
+    "id": "api.command_shortcuts.nav.unread_prev",
+    "translation": "ALT+SHIFT+UP: 左側のサイドバーの未読のメッセージのある前のチャンネルまたはダイレクトメッセージに移動する\n"
   },
   {
     "id": "api.command_shrug.desc",
@@ -676,12 +808,24 @@
     "translation": "不正なセッショントークンです token=%v、err=%v"
   },
   {
+    "id": "api.context.invalidate_all_caches",
+    "translation": "全てのキャッシュを破棄しています"
+  },
+  {
     "id": "api.context.last_activity_at.error",
     "translation": "LastActivityAtを更新できませんでした user_id=%v、session_id=%v、err=%v"
   },
   {
     "id": "api.context.log.error",
     "translation": "%v:%v code=%v rid=%v uid=%v ip=%v %v [詳細: %v]"
+  },
+  {
+    "id": "api.context.mfa_required.app_error",
+    "translation": "このサーバーでは多要素認証が必要です。"
+  },
+  {
+    "id": "api.context.missing_teamid.app_error",
+    "translation": "チームIDが見付かりません"
   },
   {
     "id": "api.context.permissions.app_error",
@@ -783,7 +927,11 @@
   },
   {
     "id": "api.emoji.create.too_large.app_error",
-    "translation": "絵文字を作成できません。画像サイズは64KB未満でなければなりません。"
+    "translation": "絵文字を作成できません。画像サイズは1MB未満でなければなりません。"
+  },
+  {
+    "id": "api.emoji.delete.delete_reactions.app_error",
+    "translation": "絵文字名 %v の絵文字を削除する際にリアクションを削除できません"
   },
   {
     "id": "api.emoji.delete.permissions.app_error",
@@ -814,8 +962,20 @@
     "translation": "絵文字を作成できません。ファイルはPNGまたはJPEG、GIFにしてください。"
   },
   {
-    "id": "api.emoji.upload.large_image.app_error",
-    "translation": "絵文字を作成できません。画像は128x128ピクセル以内である必要があります。"
+    "id": "api.emoji.upload.large_image.decode_error",
+    "translation": "絵文字を作成できません。画像をデコードする際にエラーが発生しました。"
+  },
+  {
+    "id": "api.emoji.upload.large_image.encode_error",
+    "translation": "絵文字を作成できません。画像をエンコードする際にエラーが発生しました。"
+  },
+  {
+    "id": "api.emoji.upload.large_image.gif_decode_error",
+    "translation": "絵文字を作成できません。GIF画像をデコードする際にエラーが発生しました。"
+  },
+  {
+    "id": "api.emoji.upload.large_image.gif_encode_error",
+    "translation": "絵文字を作成できません。GIF画像をエンコードする際にエラーが発生しました。"
   },
   {
     "id": "api.file.get_file.public_disabled.app_error",
@@ -859,7 +1019,7 @@
   },
   {
     "id": "api.file.handle_images_forget.decode.error",
-    "translation": "画像をデコードできません  err=%v"
+    "translation": "画像をデコードできません err=%v"
   },
   {
     "id": "api.file.handle_images_forget.encode_jpeg.error",
@@ -983,7 +1143,7 @@
   },
   {
     "id": "api.file.upload_file.large_image.app_error",
-    "translation": "画像ファイルをアップロードできません。ファイルが大き過ぎます。"
+    "translation": "最大サイズ以上のファイルはアップロードできません: {{.Filename}}"
   },
   {
     "id": "api.file.upload_file.storage.app_error",
@@ -1012,6 +1172,10 @@
   {
     "id": "api.general.init.debug",
     "translation": "全般APIルートを初期化しています"
+  },
+  {
+    "id": "api.import.import_post.attach_files.error",
+    "translation": "投稿へのファイル添付エラー。 postId=%v, fileIds=%v, message=%v"
   },
   {
     "id": "api.import.import_post.saving.debug",
@@ -1255,7 +1419,7 @@
   },
   {
     "id": "api.post.delete_flagged_post.app_error.warn",
-    "translation": "投稿を削除する際に、フラッグの付いた投稿の設定を削除できません。err=%v"
+    "translation": "投稿を削除する際に、フラグの付いた投稿の設定を削除できません。err=%v"
   },
   {
     "id": "api.post.delete_post.permissions.app_error",
@@ -1264,6 +1428,18 @@
   {
     "id": "api.post.delete_post_files.app_error.warn",
     "translation": "投稿のファイルを削除する際にエラーが発生しました post_id=%v, err=%v"
+  },
+  {
+    "id": "api.post.disabled_all",
+    "translation": "チャンネルに{{.Users}}以上のユーザーがいるため@allは無効化されています。"
+  },
+  {
+    "id": "api.post.disabled_channel",
+    "translation": "チャンネルに{{.Users}}以上のユーザーがいるため@channelは無効化されています。"
+  },
+  {
+    "id": "api.post.disabled_here",
+    "translation": "チャンネルに{{.Users}}以上のユーザーがいるため@hereは無効化されています。"
   },
   {
     "id": "api.post.get_message_for_notification.files_sent",
@@ -1325,7 +1501,7 @@
   },
   {
     "id": "api.post.init.debug",
-    "translation": "POST APIルートを初期化しています"
+    "translation": "投稿APIルートを初期化しています"
   },
   {
     "id": "api.post.make_direct_channel_visible.get_2_members.error",
@@ -1472,6 +1648,26 @@
     "translation": "session.user_id={{.SessionUserId}}, preference.user_id={{.PreferenceUserId}}"
   },
   {
+    "id": "api.reaction.delete_reaction.mismatched_channel_id.app_error",
+    "translation": "チャンネルIDがURL内の投稿IDと一致しないためリアクションを削除できませんでした"
+  },
+  {
+    "id": "api.reaction.init.debug",
+    "translation": "リアクションAPIルートを初期化しています"
+  },
+  {
+    "id": "api.reaction.list_reactions.mismatched_channel_id.app_error",
+    "translation": "チャンネルIDがURL内の投稿IDと一致しないためリアクションを取得できませんでした"
+  },
+  {
+    "id": "api.reaction.save_reaction.mismatched_channel_id.app_error",
+    "translation": "チャンネルIDがURL内の投稿IDと一致しないためリアクションを保存できませんでした"
+  },
+  {
+    "id": "api.reaction.send_reaction_event.post.app_error",
+    "translation": "リアクションに対するウェブソケットイベントを送信する際に、投稿を取得することができませんでした"
+  },
+  {
     "id": "api.saml.save_certificate.app_error",
     "translation": "証明書が正常に保存されませんでした。"
   },
@@ -1610,6 +1806,10 @@
   {
     "id": "api.slackimport.slack_add_users.merge_existing",
     "translation": "既に存在するユーザーとマージしました: {{.Email}}, {{.Username}}\r\n"
+  },
+  {
+    "id": "api.slackimport.slack_add_users.merge_existing_failed",
+    "translation": "既存のアカウント{{.Email}}, {{.Username}} とユーザーをマージしようとしましたが、このチームにユーザーを追加できませんでした。\r\n"
   },
   {
     "id": "api.slackimport.slack_add_users.unable_import",
@@ -1753,7 +1953,7 @@
   },
   {
     "id": "api.team.import_team.unavailable.app_error",
-    "translation": "ファイルサイズが分かりません"
+    "translation": "不正なリクエスト: ファイルサイズ項目が存在しません。"
   },
   {
     "id": "api.team.init.debug",
@@ -1825,7 +2025,7 @@
   },
   {
     "id": "api.templates.email_change_body.info",
-    "translation": "あなたの{{.TeamDisplayName}}用の電子メールアドレスが{{.NewEmail}}に変更されました。<br>あなたがこの変更をしていない場合には、システム管理者に問い合わせてください。"
+    "translation": "あなたの{{.TeamDisplayName}}用の電子メールアドレスが{{.NewEmail}}に変更されました。<br>あなたが変更したのでなければ、システム管理者に問い合わせてください。"
   },
   {
     "id": "api.templates.email_change_body.title",
@@ -1906,6 +2106,26 @@
   {
     "id": "api.templates.invite_subject",
     "translation": "{{ .SenderName }}が{{.SiteName}}の{{ .TeamDisplayName }}に参加するように招待しています。"
+  },
+  {
+    "id": "api.templates.mfa_activated_body.info",
+    "translation": "{{ .SiteURL }}のあなたのアカウントに多要素認証が追加されました。<br>あなたが変更したのでなければ、システム管理者に問い合わせてください。"
+  },
+  {
+    "id": "api.templates.mfa_activated_body.title",
+    "translation": "多要素認証が追加されました"
+  },
+  {
+    "id": "api.templates.mfa_change_subject",
+    "translation": "{{ .SiteName }}のあなたの多要素認証がアップデートされました"
+  },
+  {
+    "id": "api.templates.mfa_deactivated_body.info",
+    "translation": "{{ .SiteURL }}のあなたのアカウントから多要素認証が削除されました。<br>あなたが変更したのでなければ、システム管理者に問い合わせてください。"
+  },
+  {
+    "id": "api.templates.mfa_deactivated_body.title",
+    "translation": "多要素認証が削除されました"
   },
   {
     "id": "api.templates.password_change_body.info",
@@ -2049,7 +2269,7 @@
   },
   {
     "id": "api.user.activate_mfa.email_and_ldap_only.app_error",
-    "translation": "MFAはこのアカウントタイプでは使用できません"
+    "translation": "多要素認証はこのアカウントタイプでは使用できません"
   },
   {
     "id": "api.user.add_direct_channels_and_forget.failed.error",
@@ -2093,11 +2313,11 @@
   },
   {
     "id": "api.user.check_user_mfa.bad_code.app_error",
-    "translation": "不正なMFAトークンです。"
+    "translation": "不正な多要素認証トークンです。"
   },
   {
     "id": "api.user.check_user_mfa.not_available.app_error",
-    "translation": "MFAは設定されていないか、このサーバーではサポートされていません"
+    "translation": "多要素認証は設定されていないか、このサーバーではサポートされていません"
   },
   {
     "id": "api.user.check_user_password.invalid.app_error",
@@ -2189,7 +2409,7 @@
   },
   {
     "id": "api.user.generate_mfa_qr.not_available.app_error",
-    "translation": "このサーバーでは、MFAは設定されていないか利用できません"
+    "translation": "このサーバーでは、多要素認証は設定されていないか利用できません"
   },
   {
     "id": "api.user.get_authorization_code.unsupported.app_error",
@@ -2225,7 +2445,7 @@
   },
   {
     "id": "api.user.login.not_provided.app_error",
-    "translation": "ユーザーIDまたはチーム名と電子メールアドレスの組み合わせを指定しなくてはいけません"
+    "translation": "ユーザーIDまたはチーム名と電子メールのいずれかを入力しなければなりません"
   },
   {
     "id": "api.user.login.not_verified.app_error",
@@ -2353,7 +2573,7 @@
   },
   {
     "id": "api.user.update_mfa.not_available.app_error",
-    "translation": "MFAはこのサーバーで設定されていないか利用できません"
+    "translation": "多要素認証はこのサーバーで設定されていないか利用できません"
   },
   {
     "id": "api.user.update_password.context.app_error",
@@ -2672,6 +2892,10 @@
     "translation": "カスタム絵文字の制限機能が現在のライセンスでは無効になっています。システム管理者にエンタープライズライセンスをアップグレードするように連絡してください。"
   },
   {
+    "id": "ent.ldap.create_fail",
+    "translation": "LDAPユーザーを作成できません。"
+  },
+  {
     "id": "ent.ldap.disabled.app_error",
     "translation": "AD/LDAPが無効化されている、またはライセンスがAD/LDAPをサポートしていません。"
   },
@@ -2728,24 +2952,32 @@
     "translation": "不正なAD/LDAPフィルターです"
   },
   {
+    "id": "ent.metrics.starting.info",
+    "translation": "メトリクスとプロファイリングのサーバーは%vで接続待ちです"
+  },
+  {
+    "id": "ent.metrics.stopping.info",
+    "translation": "メトリクスとプロファイリングのサーバーは%vで停止しています"
+  },
+  {
     "id": "ent.mfa.activate.authenticate.app_error",
-    "translation": "MFAトークンを認証できません"
+    "translation": "多要素認証トークンを認証できません"
   },
   {
     "id": "ent.mfa.activate.bad_token.app_error",
-    "translation": "不正なMFAトークンです"
+    "translation": "不正な多要素認証トークンです"
   },
   {
     "id": "ent.mfa.activate.save_active.app_erro",
-    "translation": "ユーザーのMFAの活動状態を更新できませんでした"
+    "translation": "ユーザーの多要素認証の活動状態を更新できませんでした"
   },
   {
     "id": "ent.mfa.deactivate.save_active.app_erro",
-    "translation": "ユーザーのMFAの活動状態を更新できませんでした"
+    "translation": "ユーザーの多要素認証の活動状態を更新できませんでした"
   },
   {
     "id": "ent.mfa.deactivate.save_secret.app_error",
-    "translation": "MFAの秘密情報をクリアーできません"
+    "translation": "多要素認証の秘密情報をクリアーできません"
   },
   {
     "id": "ent.mfa.generate_qr_code.create_code.app_error",
@@ -2753,7 +2985,7 @@
   },
   {
     "id": "ent.mfa.generate_qr_code.save_secret.app_error",
-    "translation": "MFAの秘密情報を保存できません"
+    "translation": "多要素認証の秘密情報を保存できません"
   },
   {
     "id": "ent.mfa.license_disable.app_error",
@@ -2761,7 +2993,7 @@
   },
   {
     "id": "ent.mfa.validate_token.authenticate.app_error",
-    "translation": "MFAトークンを認証できません"
+    "translation": "多要素認証トークンを認証できません"
   },
   {
     "id": "ent.migration.migratetoldap.duplicate_field",
@@ -2905,7 +3137,7 @@
   },
   {
     "id": "manaultesting.manual_test.uid.debug",
-    "translation": "URLにUIDがありません"
+    "translation": "URLにuidがありません"
   },
   {
     "id": "manaultesting.test_autolink.info",
@@ -2933,7 +3165,7 @@
   },
   {
     "id": "mattermost.load_license.find.warn",
-    "translation": "有効なライセンスが見付かりません"
+    "translation": "エンタープライズ版の機能を利用するには https://mattermost.com から取得できるライセンスキーが必要です。"
   },
   {
     "id": "mattermost.security_bulletin.error",
@@ -3304,6 +3536,10 @@
     "translation": "ファイル設定の最大ファイルサイズが不正です。ゼロ以上の数を指定してください。"
   },
   {
+    "id": "model.config.is_valid.max_notify_per_channel.app_error",
+    "translation": "チーム設定のチャンネル毎の最大通知数が不正です。  正の数を指定してください。"
+  },
+  {
     "id": "model.config.is_valid.max_users.app_error",
     "translation": "チーム設定のチーム毎の最大ユーザー数が不正です。正の数を指定してください。"
   },
@@ -3405,7 +3641,7 @@
   },
   {
     "id": "model.config.is_valid.webrtc_stun_uri.app_error",
-    "translation": "WebRTC STUN URIは、stun:から始まる有効なURIにしてください"
+    "translation": "WebRTC STUN URIは、stun:で始まる有効なURLにしてください"
   },
   {
     "id": "model.config.is_valid.webrtc_turn_shared_key.app_error",
@@ -3621,7 +3857,7 @@
   },
   {
     "id": "model.post.is_valid.root_parent.app_error",
-    "translation": "親IDが設定されている場合は、正しいルートIDを設定してください"
+    "translation": "親IDが設定されている場合、無効なルートIDが設定されていなければなりません"
   },
   {
     "id": "model.post.is_valid.type.app_error",
@@ -3656,6 +3892,22 @@
     "translation": "値が長過ぎます"
   },
   {
+    "id": "model.reaction.is_valid.create_at.app_error",
+    "translation": "作成日時は有効な時刻にしてください"
+  },
+  {
+    "id": "model.reaction.is_valid.emoji_name.app_error",
+    "translation": "不正な絵文字名です"
+  },
+  {
+    "id": "model.reaction.is_valid.post_id.app_error",
+    "translation": "不正な投稿IDです"
+  },
+  {
+    "id": "model.reaction.is_valid.user_id.app_error",
+    "translation": "不正なユーザーIDです"
+  },
+  {
     "id": "model.team.is_valid.characters.app_error",
     "translation": "名前は2文字以上の小文字の英数字にしてください"
   },
@@ -3666,6 +3918,10 @@
   {
     "id": "model.team.is_valid.create_at.app_error",
     "translation": "作成日時は有効な時刻にしてください"
+  },
+  {
+    "id": "model.team.is_valid.description.app_error",
+    "translation": "不正な説明です"
   },
   {
     "id": "model.team.is_valid.domains.app_error",
@@ -3746,6 +4002,10 @@
   {
     "id": "model.user.is_valid.nickname.app_error",
     "translation": "不正なニックネームです"
+  },
+  {
+    "id": "model.user.is_valid.position.app_error",
+    "translation": "不正な役職: 35文字以上にはできません"
   },
   {
     "id": "model.user.is_valid.pwd.app_error",
@@ -4053,7 +4313,7 @@
   },
   {
     "id": "store.sql_channel.get_member.missing.app_error",
-    "translation": "そのユーザーIDとチャンネルIDに合致するチャンネルのメンバーが見付かりません"
+    "translation": "そのユーザーIDとチャンネルIDに合致するチャンネルのメンバーが見付かりませんでした"
   },
   {
     "id": "store.sql_channel.get_member_count.app_error",
@@ -4065,6 +4325,10 @@
   },
   {
     "id": "store.sql_channel.get_members.app_error",
+    "translation": "チャンネルのメンバーが取得できませんでした"
+  },
+  {
+    "id": "store.sql_channel.get_members_by_ids.app_error",
     "translation": "チャンネルのメンバーが取得できませんでした"
   },
   {
@@ -4154,6 +4418,10 @@
   {
     "id": "store.sql_channel.save_member.save.app_error",
     "translation": "チャンネルのメンバーを保存できませんでした"
+  },
+  {
+    "id": "store.sql_channel.search.app_error",
+    "translation": "チャンネルを検索する際にエラーが発生しました"
   },
   {
     "id": "store.sql_channel.set_last_viewed_at.app_error",
@@ -4520,6 +4788,46 @@
     "translation": "設定を更新できませんでした"
   },
   {
+    "id": "store.sql_reaction.delete.begin.app_error",
+    "translation": "リアクションの削除中はトランザクションを開けません"
+  },
+  {
+    "id": "store.sql_reaction.delete.commit.app_error",
+    "translation": "リアクションの削除中はトランザクションをコミットできません"
+  },
+  {
+    "id": "store.sql_reaction.delete.save.app_error",
+    "translation": "リアクションを削除できません"
+  },
+  {
+    "id": "store.sql_reaction.delete_all_with_emoj_name.delete_reactions.app_error",
+    "translation": "指定された絵文字名のリアクションは削除できません"
+  },
+  {
+    "id": "store.sql_reaction.delete_all_with_emoj_name.get_reactions.app_error",
+    "translation": "指定された絵文字名のリアクションを取得できません"
+  },
+  {
+    "id": "store.sql_reaction.delete_all_with_emoji_name.update_post.warn",
+    "translation": "リアクションの削除中にPost.HasReactionsは更新できません post_id=%v, error=%v"
+  },
+  {
+    "id": "store.sql_reaction.get_for_post.app_error",
+    "translation": "投稿に対するリアクションを取得できません"
+  },
+  {
+    "id": "store.sql_reaction.save.begin.app_error",
+    "translation": "リアクションの保存中はトランザクションを開けません"
+  },
+  {
+    "id": "store.sql_reaction.save.commit.app_error",
+    "translation": "リアクションの保存中はトランザクションをコミットできません"
+  },
+  {
+    "id": "store.sql_reaction.save.save.app_error",
+    "translation": "リアクションを保存できません"
+  },
+  {
     "id": "store.sql_session.analytics_session_count.app_error",
     "translation": "セッション数を取得できませんでした"
   },
@@ -4669,7 +4977,7 @@
   },
   {
     "id": "store.sql_team.get_member.missing.app_error",
-    "translation": "そのユーザーIDとチームIDに合致するチームのメンバーが見付かりません"
+    "translation": "そのユーザーIDとチームIDに合致するチームのメンバーが見付かりませんでした"
   },
   {
     "id": "store.sql_team.get_member_count.app_error",
@@ -4686,6 +4994,10 @@
   {
     "id": "store.sql_team.get_teams_for_email.app_error",
     "translation": "チームを検索中に問題が発生しました"
+  },
+  {
+    "id": "store.sql_team.get_unread.app_error",
+    "translation": "チームの未読メッセージを取得できませんでした"
   },
   {
     "id": "store.sql_team.permanent_delete.app_error",
@@ -4709,7 +5021,7 @@
   },
   {
     "id": "store.sql_team.save_member.exists.app_error",
-    "translation": "そのIDを持つチャンネルのメンバーは既に存在します"
+    "translation": "そのIDを持つチームのメンバーは既に存在します"
   },
   {
     "id": "store.sql_team.save_member.save.app_error",
@@ -4897,11 +5209,11 @@
   },
   {
     "id": "store.sql_user.update_mfa_active.app_error",
-    "translation": "ユーザーのMFAの活動状態を更新できませんでした"
+    "translation": "ユーザーの多要素認証の活動状態を更新できませんでした"
   },
   {
     "id": "store.sql_user.update_mfa_secret.app_error",
-    "translation": "ユーザーのMFA秘密情報を更新する際にエラーが発生しました"
+    "translation": "ユーザーの多要素認証秘密情報を更新する際にエラーが発生しました"
   },
   {
     "id": "store.sql_user.update_password.app_error",
@@ -5097,7 +5409,7 @@
   },
   {
     "id": "web.check_browser_compatibility.app_error",
-    "translation": "あなたの使用中のブラウザーはサポートされていません。以下のブラウザーを使ってください。Google Chrome 21以降、Internet Explorer 11以降、Firefox 14以降、Safari 9以降"
+    "translation": "あなたの使用中のブラウザーはサポートされていません。以下のブラウザーを使用してください。Google Chrome 21以降、Internet Explorer 11以降、Firefox 14以降、Safari 9以降"
   },
   {
     "id": "web.claim_account.team.error",
@@ -5140,6 +5452,10 @@
     "translation": "戻る"
   },
   {
+    "id": "web.incoming_webhook.attachment.app_error",
+    "translation": "最大添付サイズは{{.Max}}文字ですが、受け取ったサイズは{{.Actual}}です。"
+  },
+  {
     "id": "web.incoming_webhook.channel.app_error",
     "translation": "チャンネルが見付かりません"
   },
@@ -5162,6 +5478,10 @@
   {
     "id": "web.incoming_webhook.text.app_error",
     "translation": "テキストは指定されていません"
+  },
+  {
+    "id": "web.incoming_webhook.text.length.app_error",
+    "translation": "最大文字数は{{.Max}}文字ですが、受け取ったサイズは{{.Actual}}です"
   },
   {
     "id": "web.incoming_webhook.user.app_error",
