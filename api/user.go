@@ -2877,7 +2877,8 @@ func getProfilesByIds(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if result := <-Srv.Store.User().GetProfileByIds(userIds, true); result.Err != nil {
+	// battlehouse.com: disallow caching here because it seems to return pre-sanitized profiles (?)
+	if result := <-Srv.Store.User().GetProfileByIds(userIds, false); result.Err != nil {
 		c.Err = result.Err
 		return
 	} else {
