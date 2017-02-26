@@ -24,7 +24,7 @@ const (
 	MODE_BETA       = "beta"
 	MODE_PROD       = "prod"
 	LOG_ROTATE_SIZE = 10000
-	CLIENT_DIR      = "webapp/dist"
+	CLIENT_DIR      = "webapp/dist" // battlehouse.com
 )
 
 var Cfg *model.Config = &model.Config{}
@@ -129,7 +129,7 @@ func GetLogFileLocation(fileLocation string) string {
 	}
 }
 
-func GetWebserverRoot(config *model.Config) string {
+func GetWebserverRoot(config *model.Config) string { // battlehouse.com
 	// if path starts with "/", use absolute path
 	if strings.HasPrefix(*config.ServiceSettings.WebserverRoot, "/") {
 		return *config.ServiceSettings.WebserverRoot
@@ -294,7 +294,7 @@ func getClientConfig(c *model.Config) map[string]string {
 
 	props["WebsocketPort"] = fmt.Sprintf("%v", *c.ServiceSettings.WebsocketPort)
 	props["WebsocketSecurePort"] = fmt.Sprintf("%v", *c.ServiceSettings.WebsocketSecurePort)
-	props["BHLoginEnabled"] = strconv.FormatBool(c.ServiceSettings.BHLoginEnabled)
+	props["BHLoginEnabled"] = strconv.FormatBool(c.ServiceSettings.BHLoginEnabled) // battlehouse.com
 
 	props["DefaultClientLocale"] = *c.LocalizationSettings.DefaultClientLocale
 	props["AvailableLocales"] = *c.LocalizationSettings.AvailableLocales

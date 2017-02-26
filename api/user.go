@@ -54,6 +54,7 @@ func InitUser() {
 	BaseRoutes.Users.Handle("/verify_email", ApiAppHandler(verifyEmail)).Methods("POST")
 	BaseRoutes.Users.Handle("/resend_verification", ApiAppHandler(resendVerification)).Methods("POST")
 	BaseRoutes.Users.Handle("/newimage", ApiUserRequired(uploadProfileImage)).Methods("POST")
+	// battlehouse.com - update another user's portrait
 	BaseRoutes.NeedUser.Handle("/newimage", ApiUserRequired(uploadProfileImageForUser)).Methods("POST")
 	BaseRoutes.Users.Handle("/me", ApiUserRequired(getMe)).Methods("GET")
 	BaseRoutes.Users.Handle("/initial_load", ApiAppHandler(getInitialLoad)).Methods("GET")
@@ -110,7 +111,7 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	var team *model.Team
 	shouldSendWelcomeEmail := true
 
-	// allow API caller to say the email is already verified
+	// battlehouse.com - allow API caller to say the email is already verified
 
 	// user.EmailVerified = false
 	if user.EmailVerified {
@@ -183,6 +184,7 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// battlehouse.com
 	skipTutorial := r.URL.Query().Get("skipTutorial") == "1"
 
 	ruser, err := CreateUser(user, skipTutorial)

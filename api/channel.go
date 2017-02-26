@@ -658,6 +658,7 @@ func JoinDefaultChannels(teamId string, user *model.User, channelRole string) *m
 		T:      utils.TfuncWithFallback(user.Locale),
 	}
 
+	// battlehouse.com - cleaned this up!
 	channelsToJoin := make([]*model.Channel, 0)
 
 	if *utils.Cfg.TeamSettings.AutoJoinAllChannels {

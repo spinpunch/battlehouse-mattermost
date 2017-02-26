@@ -229,8 +229,8 @@ type TeamSettings struct {
 	EnableUserCreation               bool
 	EnableOpenServer                 *bool
 	RestrictCreationToDomains        string
-	AutoJoinAllChannels              *bool
-	DefaultNameDisplayFormat         *string
+	AutoJoinAllChannels              *bool   // battlehouse.com
+	DefaultNameDisplayFormat         *string // battlehouse.com
 	EnableCustomBrand                *bool
 	CustomBrandText                  *string
 	CustomDescriptionText            *string
