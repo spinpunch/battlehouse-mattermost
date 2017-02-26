@@ -264,7 +264,7 @@ func updateChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 			oldChannel.Type = channel.Type
 		}
 
-		InvalidateCacheForChannel(oldChannel.Id)
+		InvalidateCacheForChannel(oldChannel)
 		if ucresult := <-Srv.Store.Channel().Update(oldChannel); ucresult.Err != nil {
 			c.Err = ucresult.Err
 			return
@@ -313,7 +313,7 @@ func updateChannelHeader(c *Context, w http.ResponseWriter, r *http.Request) {
 		oldChannelHeader := channel.Header
 		channel.Header = channelHeader
 
-		InvalidateCacheForChannel(channel.Id)
+		InvalidateCacheForChannel(channel)
 		if ucresult := <-Srv.Store.Channel().Update(channel); ucresult.Err != nil {
 			c.Err = ucresult.Err
 			return
@@ -421,7 +421,7 @@ func updateChannelPurpose(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		channel.Purpose = channelPurpose
 
-		InvalidateCacheForChannel(channel.Id)
+		InvalidateCacheForChannel(channel)
 		if ucresult := <-Srv.Store.Channel().Update(channel); ucresult.Err != nil {
 			c.Err = ucresult.Err
 			return
@@ -538,7 +538,7 @@ func join(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func JoinChannelByName(c *Context, userId string, teamId string, channelName string) (*model.AppError, *model.Channel) {
-	channelChannel := Srv.Store.Channel().GetByName(teamId, channelName)
+	channelChannel := Srv.Store.Channel().GetByName(teamId, channelName, true)
 	userChannel := Srv.Store.User().Get(userId)
 
 	return joinChannel(c, channelChannel, userChannel)
@@ -635,7 +635,7 @@ func AddUserToChannel(user *model.User, channel *model.Channel) (*model.ChannelM
 	}
 
 	InvalidateCacheForUser(user.Id)
-	InvalidateCacheForChannel(channel.Id)
+	InvalidateCacheForChannelMembers(channel.Id)
 
 	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_ADDED, "", channel.Id, "", nil)
 	message.Add("user_id", user.Id)
@@ -673,7 +673,7 @@ func JoinDefaultChannels(teamId string, user *model.User, channelRole string) *m
 		}
 	} else {
 		for _, channelName := range []string{"town-square", "off-topic"} {
-			if result := <-Srv.Store.Channel().GetByName(teamId, channelName); result.Err != nil {
+			if result := <-Srv.Store.Channel().GetByName(teamId, channelName, true); result.Err != nil {
 				err = result.Err
 				// ignore this channel, but continue with the rest
 			} else {
@@ -698,7 +698,7 @@ func JoinDefaultChannels(teamId string, user *model.User, channelRole string) *m
 			UserId:    user.Id,
 		}
 
-		InvalidateCacheForChannel(channel.Id)
+		InvalidateCacheForChannelMembers(channel.Id)
 
 		// if auto-join is happening, do not post noisy join announcement
 		if !*utils.Cfg.TeamSettings.AutoJoinAllChannels {
@@ -844,6 +844,7 @@ func deleteChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 			if result := <-Srv.Store.Webhook().DeleteIncoming(hook.Id, now); result.Err != nil {
 				l4g.Error(utils.T("api.channel.delete_channel.incoming_webhook.error"), hook.Id)
 			}
+			InvalidateCacheForWebhook(hook.Id)
 		}
 
 		for _, hook := range outgoingHooks {
@@ -856,7 +857,7 @@ func deleteChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 			c.Err = dresult.Err
 			return
 		}
-		InvalidateCacheForChannel(channel.Id)
+		InvalidateCacheForChannel(channel)
 
 		c.LogAudit("name=" + channel.Name)
 
@@ -925,7 +926,7 @@ func getChannelByName(c *Context, w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	channelName := params["channel_name"]
 
-	cchan := Srv.Store.Channel().GetByName(c.TeamId, channelName)
+	cchan := Srv.Store.Channel().GetByName(c.TeamId, channelName, true)
 
 	if cresult := <-cchan; cresult.Err != nil {
 		c.Err = cresult.Err
@@ -1138,7 +1139,7 @@ func RemoveUserFromChannel(userIdToRemove string, removerUserId string, channel 
 	}
 
 	InvalidateCacheForUser(userIdToRemove)
-	InvalidateCacheForChannel(channel.Id)
+	InvalidateCacheForChannelMembers(channel.Id)
 
 	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_REMOVED, "", channel.Id, "", nil)
 	message.Add("user_id", userIdToRemove)

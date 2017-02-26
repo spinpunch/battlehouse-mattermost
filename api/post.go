@@ -166,9 +166,6 @@ func CreatePost(c *Context, post *model.Post, triggerWebhooks bool) (*model.Post
 		}
 	}
 
-	InvalidateCacheForChannel(rpost.ChannelId)
-	InvalidateCacheForChannelPosts(rpost.ChannelId)
-
 	handlePostEvents(c, rpost, triggerWebhooks)
 
 	return rpost, nil
@@ -300,7 +297,8 @@ func handlePostEvents(c *Context, post *model.Post, triggerWebhooks bool) {
 		channel = result.Data.(*model.Channel)
 	}
 
-	sendNotifications(c, post, team, channel)
+	InvalidateCacheForChannel(channel)
+	InvalidateCacheForChannelPosts(channel.Id)
 
 	var user *model.User
 	if result := <-uchan; result.Err != nil {
@@ -309,6 +307,8 @@ func handlePostEvents(c *Context, post *model.Post, triggerWebhooks bool) {
 	} else {
 		user = result.Data.(*model.User)
 	}
+
+	sendNotifications(c, post, team, channel, user)
 
 	if triggerWebhooks {
 		go handleWebhookEvents(c, post, team, channel, user)
@@ -607,7 +607,7 @@ func getExplicitMentions(message string, keywords map[string][]string) (map[stri
 	return mentioned, potentialOthersMentioned, hereMentioned, channelMentioned, allMentioned
 }
 
-func sendNotifications(c *Context, post *model.Post, team *model.Team, channel *model.Channel) []string {
+func sendNotifications(c *Context, post *model.Post, team *model.Team, channel *model.Channel, sender *model.User) []string {
 	mentionedUsersList := make([]string, 0)
 	var fchan store.StoreChannel
 	var senderUsername string
@@ -624,12 +624,6 @@ func sendNotifications(c *Context, post *model.Post, team *model.Team, channel *
 			return nil
 		} else {
 			profileMap = result.Data.(map[string]*model.User)
-		}
-
-		// If the user who made the post is mention don't send a notification
-		if _, ok := profileMap[post.UserId]; !ok {
-			l4g.Error(utils.T("api.post.send_notifications_and_forget.user_id.error"), post.UserId)
-			return nil
 		}
 
 		mentionedUserIds := make(map[string]bool)
@@ -702,30 +696,26 @@ func sendNotifications(c *Context, post *model.Post, team *model.Team, channel *
 			updateMentionChans = append(updateMentionChans, Srv.Store.Channel().IncrementMentionCount(post.ChannelId, id))
 		}
 
-		var sender *model.User
 		senderName := make(map[string]string)
 		for _, id := range mentionedUsersList {
 			senderName[id] = ""
-			if profile, ok := profileMap[post.UserId]; ok {
-				if value, ok := post.Props["override_username"]; ok && post.Props["from_webhook"] == "true" {
-					senderName[id] = value.(string)
+			if value, ok := post.Props["override_username"]; ok && post.Props["from_webhook"] == "true" {
+				senderName[id] = value.(string)
+			} else {
+				// Get the Display name preference from the receiver
+				if result := <-Srv.Store.Preference().Get(id, model.PREFERENCE_CATEGORY_DISPLAY_SETTINGS, "name_format"); result.Err != nil {
+					// Show default sender's name if user doesn't set display settings.
+					senderName[id] = sender.Username
 				} else {
-					//Get the Display name preference from the receiver
-					if result := <-Srv.Store.Preference().Get(id, model.PREFERENCE_CATEGORY_DISPLAY_SETTINGS, "name_format"); result.Err != nil {
-						// Show default sender's name if user doesn't set display settings.
-						senderName[id] = profile.Username
-					} else {
-						senderName[id] = profile.GetDisplayNameForPreference(result.Data.(model.Preference).Value)
-					}
+					senderName[id] = sender.GetDisplayNameForPreference(result.Data.(model.Preference).Value)
 				}
-				sender = profile
 			}
 		}
 
 		if value, ok := post.Props["override_username"]; ok && post.Props["from_webhook"] == "true" {
 			senderUsername = value.(string)
 		} else {
-			senderUsername = profileMap[post.UserId].Username
+			senderUsername = sender.Username
 		}
 
 		if utils.Cfg.EmailSettings.SendEmailNotifications {
