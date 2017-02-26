@@ -1,5 +1,9 @@
 [
   {
+    "id": "battlehouse.api.post.create_post.no_invite_links.error",
+    "translation": "Please post invite links **outside** of Clan HQ. Most people here already play the games, so you will get more responses elsewhere :D"
+  },
+  {
     "id": "April",
     "translation": "April"
   },

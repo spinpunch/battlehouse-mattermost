@@ -53,6 +53,9 @@ func InitPost() {
 	BaseRoutes.NeedPost.Handle("/get_file_infos", ApiUserRequired(getFileInfosForPost)).Methods("GET")
 }
 
+// battlehouse.com filtering
+var bhInviteRe = regexp.MustCompile(`bh_invite=[0-9a-fA-F]+`)
+
 func createPost(c *Context, w http.ResponseWriter, r *http.Request) {
 	post := model.PostFromJson(r.Body)
 	if post == nil {
@@ -79,6 +82,22 @@ func createPost(c *Context, w http.ResponseWriter, r *http.Request) {
 	if channel.DeleteAt != 0 {
 		c.Err = model.NewLocAppError("createPost", "api.post.create_post.can_not_post_to_deleted.error", nil, "")
 		c.Err.StatusCode = http.StatusBadRequest
+		return
+	}
+
+	// battlehouse.com filtering
+	if bhInviteRe.FindStringSubmatch(post.Message) != nil {
+		SendEphemeralPost(
+			c.TeamId,
+			post.UserId,
+			&model.Post{
+				ChannelId: post.ChannelId,
+				Message:   c.T("battlehouse.api.post.create_post.no_invite_links.error"),
+				CreateAt:  model.GetMillis(),
+			},
+		)
+		c.Err = model.NewLocAppError("createPost", "battlehouse.api.post.create_post.no_invite_links.error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
 		return
 	}
 
