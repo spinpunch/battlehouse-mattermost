@@ -42,6 +42,8 @@ func InitUser() {
 	BaseRoutes.Users.Handle("/update", ApiUserRequired(updateUser)).Methods("POST")
 	// battlehouse.com - special API to silently force-push new username/email
 	BaseRoutes.NeedUser.Handle("/update_bh", ApiAdminSystemRequired(updateUserBH)).Methods("POST")
+	// battlehouse.com - remotely revoke all sessions for a user, for kicking/banning
+	BaseRoutes.NeedUser.Handle("/revoke_bh", ApiAdminSystemRequired(revokeUserBH)).Methods("POST")
 	BaseRoutes.Users.Handle("/update_active", ApiUserRequired(updateActive)).Methods("POST")
 	BaseRoutes.Users.Handle("/update_notify", ApiUserRequired(updateUserNotify)).Methods("POST")
 	BaseRoutes.Users.Handle("/newpassword", ApiUserRequired(updatePassword)).Methods("POST")
@@ -1536,6 +1538,23 @@ func updateUser(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 // battlehouse.com
+func revokeUserBH(c *Context, w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := params["user_id"]
+
+	if !HasPermissionToUser(c, userId) {
+		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
+	}
+
+	RevokeAllSession(c, userId)
+
+	rdata := map[string]string{}
+	rdata["status"] = "ok"
+	w.Write([]byte(model.MapToJson(rdata)))
+}
+
 func updateUserBH(c *Context, w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	userId := params["user_id"]
