@@ -191,7 +191,7 @@ export default class SidebarHeaderDropdown extends React.Component {
             return null;
         }
 
-        if (currentUser != null) {
+        if (0 /* battlehouse.com - never show this - currentUser != null */) {
             isAdmin = TeamStore.isTeamAdminForCurrentTeam() || UserStore.isSystemAdminForCurrentUser();
             isSystemAdmin = UserStore.isSystemAdminForCurrentUser();
 
