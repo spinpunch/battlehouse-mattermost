@@ -86,7 +86,7 @@ func createPost(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// battlehouse.com filtering
-	if bhInviteRe.FindStringSubmatch(post.Message) != nil {
+	if (channel.Type == model.CHANNEL_OPEN) && (bhInviteRe.FindStringSubmatch(post.Message) != nil) {
 		SendEphemeralPost(
 			c.TeamId,
 			post.UserId,
