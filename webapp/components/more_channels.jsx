@@ -151,7 +151,7 @@ export default class MoreChannels extends React.Component {
         const isAdmin = TeamStore.isTeamAdminForCurrentTeam() || UserStore.isSystemAdminForCurrentUser();
         const isSystemAdmin = UserStore.isSystemAdminForCurrentUser();
 
-        if (global.window.mm_license.IsLicensed === 'true') {
+        if (true /* battlehouse.com global.window.mm_license.IsLicensed === 'true' */) {
             if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
                 createNewChannelButton = null;
                 createChannelHelpText = null;

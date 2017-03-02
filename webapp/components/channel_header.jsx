@@ -425,7 +425,8 @@ export default class ChannelHeader extends React.Component {
                 />
             );
 
-            if (!ChannelStore.isDefault(channel)) {
+            // battlehouse.com - don't let you remove others from a public channel!
+            if (!ChannelStore.isDefault(channel) && channel.type !== Constants.OPEN_CHANNEL) {
                 dropdownContents.push(
                     <li
                         key='add_members'
@@ -634,7 +635,9 @@ export default class ChannelHeader extends React.Component {
         );
 
         let channelMembersModal;
-        if (this.state.showMembersModal && channel.name !== Constants.DEFAULT_CHANNEL) {
+        if (this.state.showMembersModal &&
+            channel.type !== Constants.OPEN_CHANNEL && /* battlehouse.com - don't let you remove others from a public channel! */
+            channel.name !== Constants.DEFAULT_CHANNEL) {
             channelMembersModal = (
                 <ChannelMembersModal
                     onModalDismissed={() => this.setState({showMembersModal: false})}

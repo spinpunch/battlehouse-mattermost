@@ -122,7 +122,7 @@ export function createDefaultIntroMessage(channel, centeredIntro) {
     const isAdmin = TeamStore.isTeamAdminForCurrentTeam() || UserStore.isSystemAdminForCurrentUser();
     const isSystemAdmin = UserStore.isSystemAdminForCurrentUser();
 
-    if (global.window.mm_license.IsLicensed === 'true') {
+    if (true /* battlehouse.com global.window.mm_license.IsLicensed === 'true' */) {
         if (global.window.mm_config.RestrictTeamInvite === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
             inviteModalLink = null;
         } else if (global.window.mm_config.RestrictTeamInvite === Constants.PERMISSIONS_TEAM_ADMIN && !isAdmin) {

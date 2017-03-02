@@ -225,7 +225,7 @@ export default class SidebarHeaderDropdown extends React.Component {
                 );
             }
 
-            if (global.window.mm_license.IsLicensed === 'true') {
+            if (true /* battlehouse.com global.window.mm_license.IsLicensed === 'true' */) {
                 if (config.RestrictTeamInvite === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
                     teamLink = null;
                     inviteLink = null;

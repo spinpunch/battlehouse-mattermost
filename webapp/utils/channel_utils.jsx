@@ -94,7 +94,7 @@ export function sortChannelsByDisplayName(a, b) {
 }
 
 export function showCreateOption(channelType, isAdmin, isSystemAdmin) {
-    if (global.window.mm_license.IsLicensed !== 'true') {
+    if (false /* battlehouse.com global.window.mm_license.IsLicensed !== 'true' */) {
         return true;
     }
 
@@ -116,7 +116,7 @@ export function showCreateOption(channelType, isAdmin, isSystemAdmin) {
 }
 
 export function showManagementOptions(channel, isAdmin, isSystemAdmin) {
-    if (global.window.mm_license.IsLicensed !== 'true') {
+    if (false /* battlehouse.com global.window.mm_license.IsLicensed !== 'true' */) {
         return true;
     }
 
@@ -140,7 +140,7 @@ export function showManagementOptions(channel, isAdmin, isSystemAdmin) {
 }
 
 export function showDeleteOption(channel, isAdmin, isSystemAdmin) {
-    if (global.window.mm_license.IsLicensed !== 'true') {
+    if (false /* battlehouse.com global.window.mm_license.IsLicensed !== 'true' */) {
         return true;
     }
 
