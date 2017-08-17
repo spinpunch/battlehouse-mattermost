@@ -20,4 +20,4 @@ for DIST in dist/mattermost-*-bh*-linux-amd64.tar.gz; do
     echo "new full_url: https://s3.amazonaws.com/${BUCKET}/${UPLOADED_TAR_GZ}"
 done
 
-echo "Remember to update battlehouse-infra/puppet/bh_mattermost/manifests/init.pp with full_url!"
+echo "Remember to update battlehouse-puppet/bh_mattermost/manifests/init.pp with new full_url and version!"
