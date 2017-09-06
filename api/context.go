@@ -33,17 +33,18 @@ var allowedMethods []string = []string{
 }
 
 type Context struct {
-	Session      model.Session
-	RequestId    string
-	IpAddress    string
-	Path         string
-	Err          *model.AppError
-	teamURLValid bool
-	teamURL      string
-	siteURL      string
-	T            goi18n.TranslateFunc
-	Locale       string
-	TeamId       string
+	Session       model.Session
+	RequestId     string
+	IpAddress     string
+	Path          string
+	Err           *model.AppError
+	teamURLValid  bool
+	teamURL       string
+	siteURL       string
+	siteURLHeader string
+	T             goi18n.TranslateFunc
+	Locale        string
+	TeamId        string
 }
 
 func ApiAppHandler(h func(*Context, http.ResponseWriter, *http.Request)) http.Handler {
@@ -153,15 +154,11 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		isTokenFromQueryString = true
 	}
 
-	if *utils.Cfg.ServiceSettings.SiteURL != "" {
-		c.SetSiteURL(*utils.Cfg.ServiceSettings.SiteURL)
-	} else {
-		protocol := GetProtocol(r)
-		c.SetSiteURL(protocol + "://" + r.Host)
-	}
+	c.SetSiteURL(*utils.Cfg.ServiceSettings.SiteURL)
+	c.SetSiteURLHeader(GetProtocol(r) + "://" + r.Host)
 
 	w.Header().Set(model.HEADER_REQUEST_ID, c.RequestId)
-	w.Header().Set(model.HEADER_VERSION_ID, fmt.Sprintf("%v.%v.%v", model.CurrentVersion, model.BuildNumber, utils.CfgHash))
+	w.Header().Set(model.HEADER_VERSION_ID, fmt.Sprintf("%v.%v.%v.%v", model.CurrentVersion, model.BuildNumber, utils.ClientCfgHash, utils.IsLicensed))
 	if einterfaces.GetClusterInterface() != nil {
 		w.Header().Set(model.HEADER_CLUSTER_ID, einterfaces.GetClusterInterface().GetClusterId())
 	}
@@ -295,7 +292,7 @@ func (cw *CorsWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetProtocol(r *http.Request) string {
-	if r.Header.Get(model.HEADER_FORWARDED_PROTO) == "https" {
+	if r.Header.Get(model.HEADER_FORWARDED_PROTO) == "https" || r.TLS != nil {
 		return "https"
 	} else {
 		return "http"
@@ -477,6 +474,14 @@ func (c *Context) GetSiteURL() string {
 	return c.siteURL
 }
 
+func (c *Context) SetSiteURLHeader(url string) {
+	c.siteURLHeader = strings.TrimRight(url, "/")
+}
+
+func (c *Context) GetSiteURLHeader() string {
+	return c.siteURLHeader
+}
+
 func (c *Context) GetCurrentTeamMember() *model.TeamMember {
 	return c.Session.GetTeamByTeamId(c.TeamId)
 }
@@ -610,6 +615,7 @@ func InvalidateAllCaches() {
 	store.ClearUserCaches()
 	store.ClearPostCaches()
 	store.ClearWebhookCaches()
+	store.ClearFileCaches()
 }
 
 func (c *Context) CheckTeamId() {

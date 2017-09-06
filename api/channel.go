@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	l4g "github.com/alecthomas/log4go"
 	"github.com/gorilla/mux"
@@ -167,6 +168,8 @@ func CreateDirectChannel(userId string, otherUserId string) (*model.Channel, *mo
 	} else {
 		channel := result.Data.(*model.Channel)
 
+		WaitForChannelMembership(channel.Id, userId)
+
 		InvalidateCacheForUser(userId)
 		InvalidateCacheForUser(otherUserId)
 
@@ -175,6 +178,31 @@ func CreateDirectChannel(userId string, otherUserId string) (*model.Channel, *mo
 		go Publish(message)
 
 		return channel, nil
+	}
+}
+
+func WaitForChannelMembership(channelId string, userId string) {
+	if len(utils.Cfg.SqlSettings.DataSourceReplicas) > 0 {
+		now := model.GetMillis()
+
+		for model.GetMillis()-now < 12000 {
+
+			time.Sleep(100 * time.Millisecond)
+
+			result := <-Srv.Store.Channel().GetMember(channelId, userId)
+
+			// If the membership was found then return
+			if result.Err == nil {
+				return
+			}
+
+			// If we recieved a error but it wasn't a missing channel member then return
+			if result.Err.Id != store.MISSING_CHANNEL_MEMBER_ERROR {
+				return
+			}
+		}
+
+		l4g.Error("WaitForChannelMembership giving up channelId=%v userId=%v", channelId, userId)
 	}
 }
 
@@ -633,6 +661,8 @@ func AddUserToChannel(user *model.User, channel *model.Channel) (*model.ChannelM
 		l4g.Error("Failed to add member user_id=%v channel_id=%v err=%v", user.Id, channel.Id, result.Err)
 		return nil, model.NewLocAppError("AddUserToChannel", "api.channel.add_user.to.channel.failed.app_error", nil, "")
 	}
+
+	WaitForChannelMembership(channel.Id, user.Id)
 
 	InvalidateCacheForUser(user.Id)
 	InvalidateCacheForChannelMembers(channel.Id)
@@ -1260,20 +1290,24 @@ func viewChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(view.ChannelId) == 0 {
-		ReturnStatusOK(w)
-		return
-	}
+	channelIds := []string{}
 
-	channelIds := []string{view.ChannelId}
+	if len(view.ChannelId) > 0 {
+		channelIds = append(channelIds, view.ChannelId)
+	}
 
 	var pchan store.StoreChannel
 	if len(view.PrevChannelId) > 0 {
 		channelIds = append(channelIds, view.PrevChannelId)
 
-		if *utils.Cfg.EmailSettings.SendPushNotifications && !c.Session.IsMobileApp() {
+		if *utils.Cfg.EmailSettings.SendPushNotifications && !c.Session.IsMobileApp() && len(view.ChannelId) > 0 {
 			pchan = Srv.Store.User().GetUnreadCountForChannel(c.Session.UserId, view.ChannelId)
 		}
+	}
+
+	if len(channelIds) == 0 {
+		ReturnStatusOK(w)
+		return
 	}
 
 	uchan := Srv.Store.Channel().UpdateLastViewedAt(channelIds, c.Session.UserId)
@@ -1293,10 +1327,6 @@ func viewChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.Err = result.Err
 		return
 	}
-
-	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_CHANNEL_VIEWED, c.TeamId, "", c.Session.UserId, nil)
-	message.Add("channel_id", view.ChannelId)
-	go Publish(message)
 
 	ReturnStatusOK(w)
 }

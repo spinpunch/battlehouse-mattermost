@@ -14,6 +14,9 @@ import PreferenceStore from 'stores/preference_store.jsx';
 import ChannelStore from 'stores/channel_store.jsx';
 import * as GlobalActions from 'actions/global_actions.jsx';
 import {startPeriodicStatusUpdates, stopPeriodicStatusUpdates} from 'actions/status_actions.jsx';
+import {startPeriodicSync, stopPeriodicSync} from 'actions/websocket_actions.jsx';
+import {loadProfilesAndTeamMembersForDMSidebar} from 'actions/user_actions.jsx';
+
 import Constants from 'utils/constants.jsx';
 const TutorialSteps = Constants.TutorialSteps;
 const Preferences = Constants.Preferences;
@@ -42,12 +45,16 @@ import SelectTeamModal from 'components/admin_console/select_team_modal.jsx';
 import iNoBounce from 'inobounce';
 import * as UserAgent from 'utils/user_agent.jsx';
 
+const UNREAD_CHECK_TIME_MILLISECONDS = 10000;
+
 export default class NeedsTeam extends React.Component {
     constructor(params) {
         super(params);
 
         this.onTeamChanged = this.onTeamChanged.bind(this);
         this.onPreferencesChanged = this.onPreferencesChanged.bind(this);
+
+        this.blurTime = new Date().getTime();
 
         const team = TeamStore.getCurrent();
 
@@ -90,6 +97,7 @@ export default class NeedsTeam extends React.Component {
         GlobalActions.viewLoggedIn();
 
         startPeriodicStatusUpdates();
+        startPeriodicSync();
 
         // Set up tracking for whether the window is active
         window.isActive = true;
@@ -97,11 +105,16 @@ export default class NeedsTeam extends React.Component {
             AsyncClient.viewChannel();
             ChannelStore.resetCounts(ChannelStore.getCurrentId());
             ChannelStore.emitChange();
+
             window.isActive = true;
+            if (new Date().getTime() - this.blurTime > UNREAD_CHECK_TIME_MILLISECONDS) {
+                AsyncClient.getMyChannelMembers().then(loadProfilesAndTeamMembersForDMSidebar);
+            }
         });
 
         $(window).on('blur', () => {
             window.isActive = false;
+            this.blurTime = new Date().getTime();
             if (UserStore.getCurrentUser()) {
                 AsyncClient.viewChannel('');
             }
@@ -131,6 +144,7 @@ export default class NeedsTeam extends React.Component {
             iNoBounce.disable();
         }
         stopPeriodicStatusUpdates();
+        stopPeriodicSync();
     }
 
     render() {

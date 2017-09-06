@@ -297,7 +297,7 @@ type PasswordRecoveryStore interface {
 
 type EmojiStore interface {
 	Save(emoji *model.Emoji) StoreChannel
-	Get(id string) StoreChannel
+	Get(id string, allowFromCache bool) StoreChannel
 	GetByName(name string) StoreChannel
 	GetAll() StoreChannel
 	Delete(id string, time int64) StoreChannel
@@ -319,7 +319,8 @@ type FileInfoStore interface {
 	Save(info *model.FileInfo) StoreChannel
 	Get(id string) StoreChannel
 	GetByPath(path string) StoreChannel
-	GetForPost(postId string) StoreChannel
+	GetForPost(postId string, readFromMaster bool, allowFromCache bool) StoreChannel
+	InvalidateFileInfosForPostCache(postId string)
 	AttachToPost(fileId string, postId string) StoreChannel
 	DeleteForPost(postId string) StoreChannel
 }

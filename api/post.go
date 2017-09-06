@@ -196,6 +196,10 @@ func CreateWebhookPost(c *Context, channelId, text, overrideUsername, overrideIc
 	post := &model.Post{UserId: c.Session.UserId, ChannelId: channelId, Message: text, Type: postType}
 	post.AddProp("from_webhook", "true")
 
+	if metrics := einterfaces.GetMetricsInterface(); metrics != nil {
+		metrics.IncrementWebhookPost()
+	}
+
 	if utils.Cfg.ServiceSettings.EnablePostUsernameOverride {
 		if len(overrideUsername) != 0 {
 			post.AddProp("override_username", overrideUsername)
@@ -331,65 +335,6 @@ func handlePostEvents(c *Context, post *model.Post, triggerWebhooks bool) {
 
 	if triggerWebhooks {
 		go handleWebhookEvents(c, post, team, channel, user)
-	}
-
-	if channel.Type == model.CHANNEL_DIRECT {
-		go makeDirectChannelVisible(post.ChannelId)
-	}
-}
-
-func makeDirectChannelVisible(channelId string) {
-	var members []model.ChannelMember
-	if result := <-Srv.Store.Channel().GetMembers(channelId); result.Err != nil {
-		l4g.Error(utils.T("api.post.make_direct_channel_visible.get_members.error"), channelId, result.Err.Message)
-		return
-	} else {
-		members = result.Data.([]model.ChannelMember)
-	}
-
-	if len(members) != 2 {
-		l4g.Error(utils.T("api.post.make_direct_channel_visible.get_2_members.error"), channelId)
-		return
-	}
-
-	// make sure the channel is visible to both members
-	for i, member := range members {
-		otherUserId := members[1-i].UserId
-
-		if result := <-Srv.Store.Preference().Get(member.UserId, model.PREFERENCE_CATEGORY_DIRECT_CHANNEL_SHOW, otherUserId); result.Err != nil {
-			// create a new preference since one doesn't exist yet
-			preference := &model.Preference{
-				UserId:   member.UserId,
-				Category: model.PREFERENCE_CATEGORY_DIRECT_CHANNEL_SHOW,
-				Name:     otherUserId,
-				Value:    "true",
-			}
-
-			if saveResult := <-Srv.Store.Preference().Save(&model.Preferences{*preference}); saveResult.Err != nil {
-				l4g.Error(utils.T("api.post.make_direct_channel_visible.save_pref.error"), member.UserId, otherUserId, saveResult.Err.Message)
-			} else {
-				message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_PREFERENCE_CHANGED, "", "", member.UserId, nil)
-				message.Add("preference", preference.ToJson())
-
-				go Publish(message)
-			}
-		} else {
-			preference := result.Data.(model.Preference)
-
-			if preference.Value != "true" {
-				// update the existing preference to make the channel visible
-				preference.Value = "true"
-
-				if updateResult := <-Srv.Store.Preference().Save(&model.Preferences{preference}); updateResult.Err != nil {
-					l4g.Error(utils.T("api.post.make_direct_channel_visible.update_pref.error"), member.UserId, otherUserId, updateResult.Err.Message)
-				} else {
-					message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_PREFERENCE_CHANGED, "", "", member.UserId, nil)
-					message.Add("preference", preference.ToJson())
-
-					go Publish(message)
-				}
-			}
-		}
 	}
 }
 
@@ -635,7 +580,10 @@ func sendNotifications(c *Context, post *model.Post, team *model.Team, channel *
 		senderUsername = c.T("system.message.name")
 	} else {
 		pchan := Srv.Store.User().GetProfilesInChannel(channel.Id, -1, -1, true)
-		fchan = Srv.Store.FileInfo().GetForPost(post.Id)
+
+		if len(post.FileIds) != 0 {
+			fchan = Srv.Store.FileInfo().GetForPost(post.Id, true, true)
+		}
 
 		var profileMap map[string]*model.User
 		if result := <-pchan; result.Err != nil {
@@ -1023,7 +971,7 @@ func getMessageForNotification(post *model.Post, translateFunc i18n.TranslateFun
 
 	// extract the filenames from their paths and determine what type of files are attached
 	var infos []*model.FileInfo
-	if result := <-Srv.Store.FileInfo().GetForPost(post.Id); result.Err != nil {
+	if result := <-Srv.Store.FileInfo().GetForPost(post.Id, true, true); result.Err != nil {
 		l4g.Warn(utils.T("api.post.get_message_for_notification.get_files.error"), post.Id, result.Err)
 	} else {
 		infos = result.Data.([]*model.FileInfo)
@@ -1139,7 +1087,8 @@ func sendToPushProxy(msg model.PushNotification) {
 	msg.ServerId = utils.CfgDiagnosticId
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: *utils.Cfg.ServiceSettings.EnableInsecureOutgoingConnections},
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: *utils.Cfg.ServiceSettings.EnableInsecureOutgoingConnections},
+		DisableKeepAlives: true,
 	}
 	httpClient := &http.Client{Transport: tr}
 	request, _ := http.NewRequest("POST", *utils.Cfg.EmailSettings.PushNotificationServer+model.API_URL_SUFFIX_V1+"/send_push", strings.NewReader(msg.ToJson()))
@@ -1709,7 +1658,7 @@ func getFileInfosForPost(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	pchan := Srv.Store.Post().Get(postId)
-	fchan := Srv.Store.FileInfo().GetForPost(postId)
+	fchan := Srv.Store.FileInfo().GetForPost(postId, false, true)
 
 	if !HasPermissionToChannelContext(c, channelId, model.PERMISSION_READ_CHANNEL) {
 		return
@@ -1734,6 +1683,7 @@ func getFileInfosForPost(c *Context, w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(post.Filenames) > 0 {
+			Srv.Store.FileInfo().InvalidateFileInfosForPostCache(postId)
 			// The post has Filenames that need to be replaced with FileInfos
 			infos = migrateFilenamesToFileInfos(post)
 		}
@@ -1744,7 +1694,10 @@ func getFileInfosForPost(c *Context, w http.ResponseWriter, r *http.Request) {
 	if HandleEtag(etag, "Get File Infos For Post", w, r) {
 		return
 	} else {
-		w.Header().Set("Cache-Control", "max-age=2592000, public")
+		if len(infos) != 0 {
+			w.Header().Set("Cache-Control", "max-age=2592000, public")
+		}
+
 		w.Header().Set(model.HEADER_ETAG_SERVER, etag)
 		w.Write([]byte(model.FileInfosToJson(infos)))
 	}

@@ -1,6 +1,6 @@
 {
     "ServiceSettings": {
-        "SiteURL": "",
+        "SiteURL": "http://localhost:8065",
         "ListenAddress": ":8065",
         "ConnectionSecurity": "",
         "TLSCertFile": "",
@@ -37,7 +37,8 @@
         "EnableCustomEmoji": false,
         "RestrictCustomEmojiCreation": "all",
         "TimeBetweenUserTypingUpdatesMilliseconds": 5000,
-        "EnableUserTypingMessages": true
+        "EnableUserTypingMessages": true,
+        "ClusterLogTimeoutMilliseconds": 2000
     },
     "TeamSettings": {
         "SiteName": "Mattermost",

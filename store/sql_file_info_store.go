@@ -3,11 +3,24 @@
 package store
 
 import (
+	"github.com/mattermost/platform/einterfaces"
 	"github.com/mattermost/platform/model"
+	"github.com/mattermost/platform/utils"
 )
 
 type SqlFileInfoStore struct {
 	*SqlStore
+}
+
+const (
+	FILE_INFO_CACHE_SIZE = 25000
+	FILE_INFO_CACHE_SEC  = 1800 // 30 minutes
+)
+
+var fileInfoCache *utils.Cache = utils.NewLru(FILE_INFO_CACHE_SIZE)
+
+func ClearFileCaches() {
+	fileInfoCache.Purge()
 }
 
 func NewSqlFileInfoStore(sqlStore *SqlStore) FileInfoStore {
@@ -33,6 +46,7 @@ func (fs SqlFileInfoStore) CreateIndexesIfNotExists() {
 	fs.CreateIndexIfNotExists("idx_fileinfo_update_at", "FileInfo", "UpdateAt")
 	fs.CreateIndexIfNotExists("idx_fileinfo_create_at", "FileInfo", "CreateAt")
 	fs.CreateIndexIfNotExists("idx_fileinfo_delete_at", "FileInfo", "DeleteAt")
+	fs.CreateIndexIfNotExists("idx_fileinfo_postid_at", "FileInfo", "PostId")
 }
 
 func (fs SqlFileInfoStore) Save(info *model.FileInfo) StoreChannel {
@@ -118,15 +132,47 @@ func (fs SqlFileInfoStore) GetByPath(path string) StoreChannel {
 	return storeChannel
 }
 
-func (fs SqlFileInfoStore) GetForPost(postId string) StoreChannel {
+func (s SqlFileInfoStore) InvalidateFileInfosForPostCache(postId string) {
+	fileInfoCache.Remove(postId)
+}
+
+func (fs SqlFileInfoStore) GetForPost(postId string, readFromMaster bool, allowFromCache bool) StoreChannel {
 	storeChannel := make(StoreChannel, 1)
 
 	go func() {
 		result := StoreResult{}
+		metrics := einterfaces.GetMetricsInterface()
+
+		if allowFromCache {
+			if cacheItem, ok := fileInfoCache.Get(postId); ok {
+				if metrics != nil {
+					metrics.IncrementMemCacheHitCounter("File Info Cache")
+				}
+
+				result.Data = cacheItem.([]*model.FileInfo)
+				storeChannel <- result
+				close(storeChannel)
+				return
+			} else {
+				if metrics != nil {
+					metrics.IncrementMemCacheMissCounter("File Info Cache")
+				}
+			}
+		} else {
+			if metrics != nil {
+				metrics.IncrementMemCacheMissCounter("File Info Cache")
+			}
+		}
 
 		var infos []*model.FileInfo
 
-		if _, err := fs.GetReplica().Select(&infos,
+		dbmap := fs.GetReplica()
+
+		if readFromMaster {
+			dbmap = fs.GetMaster()
+		}
+
+		if _, err := dbmap.Select(&infos,
 			`SELECT
 				*
 			FROM
@@ -139,6 +185,10 @@ func (fs SqlFileInfoStore) GetForPost(postId string) StoreChannel {
 			result.Err = model.NewLocAppError("SqlFileInfoStore.GetForPost",
 				"store.sql_file_info.get_for_post.app_error", nil, "post_id="+postId+", "+err.Error())
 		} else {
+			if len(infos) > 0 {
+				fileInfoCache.AddWithExpiresInSecs(postId, infos, FILE_INFO_CACHE_SEC)
+			}
+
 			result.Data = infos
 		}
 

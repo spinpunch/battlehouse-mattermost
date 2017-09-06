@@ -7,6 +7,11 @@ import (
 	"fmt"
 	"hash/fnv"
 	"runtime"
+	"runtime/debug"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"time"
 
 	l4g "github.com/alecthomas/log4go"
 
@@ -15,16 +20,26 @@ import (
 	"github.com/mattermost/platform/utils"
 )
 
+const (
+	DEADLOCK_TICKER = 15 * time.Second // check every 15 seconds
+	DEADLOCK_WARN   = 4096             // number of buffered messages before printing stack trace
+)
+
 type Hub struct {
-	connections    []*WebConn
-	register       chan *WebConn
-	unregister     chan *WebConn
-	broadcast      chan *model.WebSocketEvent
-	stop           chan string
-	invalidateUser chan string
+	connections     []*WebConn
+	connectionCount int64
+	connectionIndex int
+	register        chan *WebConn
+	unregister      chan *WebConn
+	broadcast       chan *model.WebSocketEvent
+	stop            chan string
+	invalidateUser  chan string
+	ExplicitStop    bool
+	goroutineId     int
 }
 
 var hubs []*Hub = make([]*Hub, 0)
+var stopCheckingForDeadlock chan bool
 
 func NewWebHub() *Hub {
 	return &Hub{
@@ -34,18 +49,17 @@ func NewWebHub() *Hub {
 		broadcast:      make(chan *model.WebSocketEvent, 4096),
 		stop:           make(chan string),
 		invalidateUser: make(chan string),
+		ExplicitStop:   false,
 	}
 }
 
 func TotalWebsocketConnections() int {
-	// This is racy, but it's only used for reporting information
-	// so it's probably OK
-	count := 0
+	count := int64(0)
 	for _, hub := range hubs {
-		count = count + len(hub.connections)
+		count = count + atomic.LoadInt64(&hub.connectionCount)
 	}
 
-	return count
+	return int(count)
 }
 
 func HubStart() {
@@ -56,12 +70,49 @@ func HubStart() {
 
 	for i := 0; i < len(hubs); i++ {
 		hubs[i] = NewWebHub()
+		hubs[i].connectionIndex = i
 		hubs[i].Start()
 	}
+
+	go func() {
+		ticker := time.NewTicker(DEADLOCK_TICKER)
+
+		defer func() {
+			ticker.Stop()
+		}()
+
+		stopCheckingForDeadlock = make(chan bool)
+
+		for {
+			select {
+			case <-ticker.C:
+				for _, hub := range hubs {
+					if len(hub.broadcast) > DEADLOCK_WARN {
+						l4g.Error("Hub processing might be deadlock on hub %v goroutine %v with %v events in the buffer", hub.connectionIndex, hub.goroutineId, len(hub.broadcast))
+						buf := make([]byte, 1<<16)
+						runtime.Stack(buf, true)
+						output := fmt.Sprintf("%s", buf)
+						splits := strings.Split(output, "goroutine ")
+
+						for _, part := range splits {
+							if strings.Index(part, fmt.Sprintf("%v", hub.goroutineId)) > -1 {
+								l4g.Error("Trace for possible deadlock goroutine %v", part)
+							}
+						}
+					}
+				}
+
+			case <-stopCheckingForDeadlock:
+				return
+			}
+		}
+	}()
 }
 
 func HubStop() {
 	l4g.Info(utils.T("api.web_hub.start.stopping.debug"))
+
+	stopCheckingForDeadlock <- true
 
 	for _, hub := range hubs {
 		hub.Stop()
@@ -86,6 +137,11 @@ func HubUnregister(webConn *WebConn) {
 }
 
 func Publish(message *model.WebSocketEvent) {
+
+	if metrics := einterfaces.GetMetricsInterface(); metrics != nil {
+		metrics.IncrementWebsocketEvent(message.Event)
+	}
+
 	message.DoPreComputeJson()
 	for _, hub := range hubs {
 		hub.Broadcast(message)
@@ -204,16 +260,36 @@ func (h *Hub) InvalidateUser(userId string) {
 	h.invalidateUser <- userId
 }
 
+func getGoroutineId() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		id = -1
+	}
+	return id
+}
+
 func (h *Hub) Stop() {
 	h.stop <- "all"
 }
 
 func (h *Hub) Start() {
-	go func() {
+	var doStart func()
+	var doRecoverableStart func()
+	var doRecover func()
+
+	doStart = func() {
+
+		h.goroutineId = getGoroutineId()
+		l4g.Debug("Hub for index %v is starting with goroutine %v", h.connectionIndex, h.goroutineId)
+
 		for {
 			select {
 			case webCon := <-h.register:
 				h.connections = append(h.connections, webCon)
+				atomic.StoreInt64(&h.connectionCount, int64(len(h.connections)))
 
 			case webCon := <-h.unregister:
 				userId := webCon.UserId
@@ -277,9 +353,31 @@ func (h *Hub) Start() {
 				for _, webCon := range h.connections {
 					webCon.WebSocket.Close()
 				}
+				h.ExplicitStop = true
 
 				return
 			}
 		}
-	}()
+	}
+
+	doRecoverableStart = func() {
+		defer doRecover()
+		doStart()
+	}
+
+	doRecover = func() {
+		if !h.ExplicitStop {
+			if r := recover(); r != nil {
+				l4g.Error(fmt.Sprintf("Recovering from Hub panic. Panic was: %v", r))
+			} else {
+				l4g.Error("Webhub stopped unexpectedly. Recovering.")
+			}
+
+			l4g.Error(string(debug.Stack()))
+
+			go doRecoverableStart()
+		}
+	}
+
+	go doRecoverableStart()
 }
