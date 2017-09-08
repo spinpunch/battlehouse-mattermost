@@ -11,7 +11,9 @@ func SetDefaultRolesBasedOnConfig() {
 	// Reset the roles to default to make this logic easier
 	model.InitalizeRoles()
 
-	if IsLicensed {
+	bhIsLicensed := true // battlehouse.com
+
+	if bhIsLicensed {
 		switch *Cfg.TeamSettings.RestrictPublicChannelCreation {
 		case model.PERMISSIONS_ALL:
 			model.ROLE_TEAM_USER.Permissions = append(
@@ -33,7 +35,7 @@ func SetDefaultRolesBasedOnConfig() {
 		)
 	}
 
-	if IsLicensed {
+	if bhIsLicensed {
 		switch *Cfg.TeamSettings.RestrictPublicChannelManagement {
 		case model.PERMISSIONS_ALL:
 			model.ROLE_TEAM_USER.Permissions = append(
@@ -65,7 +67,7 @@ func SetDefaultRolesBasedOnConfig() {
 		)
 	}
 
-	if IsLicensed {
+	if bhIsLicensed {
 		switch *Cfg.TeamSettings.RestrictPublicChannelDeletion {
 		case model.PERMISSIONS_ALL:
 			model.ROLE_TEAM_USER.Permissions = append(
@@ -97,7 +99,7 @@ func SetDefaultRolesBasedOnConfig() {
 		)
 	}
 
-	if IsLicensed {
+	if bhIsLicensed {
 		switch *Cfg.TeamSettings.RestrictPrivateChannelCreation {
 		case model.PERMISSIONS_ALL:
 			model.ROLE_TEAM_USER.Permissions = append(
@@ -119,7 +121,7 @@ func SetDefaultRolesBasedOnConfig() {
 		)
 	}
 
-	if IsLicensed {
+	if bhIsLicensed {
 		switch *Cfg.TeamSettings.RestrictPrivateChannelManagement {
 		case model.PERMISSIONS_ALL:
 			model.ROLE_TEAM_USER.Permissions = append(
@@ -151,7 +153,7 @@ func SetDefaultRolesBasedOnConfig() {
 		)
 	}
 
-	if IsLicensed {
+	if bhIsLicensed {
 		switch *Cfg.TeamSettings.RestrictPrivateChannelDeletion {
 		case model.PERMISSIONS_ALL:
 			model.ROLE_TEAM_USER.Permissions = append(
@@ -209,7 +211,7 @@ func SetDefaultRolesBasedOnConfig() {
 		)
 	}
 
-	if IsLicensed {
+	if bhIsLicensed {
 		switch *Cfg.ServiceSettings.RestrictPostDelete {
 		case model.PERMISSIONS_DELETE_POST_ALL:
 			model.ROLE_CHANNEL_USER.Permissions = append(
