@@ -28,6 +28,7 @@ type Context struct {
 	Path          string
 	Err           *model.AppError
 	siteURL       string
+	siteURLHeader string
 	teamURLValid  bool
 	teamURL       string
 	T             goi18n.TranslateFunc
@@ -143,15 +144,11 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		isTokenFromQueryString = true
 	}
 
-	if utils.GetSiteURL() == "" {
-		protocol := app.GetProtocol(r)
-		c.SetSiteURL(protocol + "://" + r.Host)
-	} else {
-		c.SetSiteURL(utils.GetSiteURL())
-	}
+	c.SetSiteURL(utils.GetSiteURL())
+	c.SetSiteURLHeader(app.GetProtocol(r) + "://" + r.Host)
 
 	w.Header().Set(model.HEADER_REQUEST_ID, c.RequestId)
-	w.Header().Set(model.HEADER_VERSION_ID, fmt.Sprintf("%v.%v.%v", model.CurrentVersion, model.BuildNumber, utils.CfgHash))
+	w.Header().Set(model.HEADER_VERSION_ID, fmt.Sprintf("%v.%v.%v.%v", model.CurrentVersion, model.BuildNumber, utils.CfgHash, utils.IsLicensed))
 	if einterfaces.GetClusterInterface() != nil {
 		w.Header().Set(model.HEADER_CLUSTER_ID, einterfaces.GetClusterInterface().GetClusterId())
 	}
@@ -442,6 +439,14 @@ func (c *Context) GetTeamURL() string {
 
 func (c *Context) GetSiteURL() string {
 	return c.siteURL
+}
+
+func (c *Context) SetSiteURLHeader(url string) {
+	c.siteURLHeader = strings.TrimRight(url, "/")
+}
+
+func (c *Context) GetSiteURLHeader() string {
+	return c.siteURLHeader
 }
 
 func (c *Context) GetCurrentTeamMember() *model.TeamMember {

@@ -59,7 +59,7 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	var ruser *model.User
 	var err *model.AppError
 	if len(hash) > 0 {
-		ruser, err = app.CreateUserWithHash(user, hash, r.URL.Query().Get("d"))
+		ruser, err = app.CreateUserWithHash(user, hash, r.URL.Query().Get("d"), c.GetSiteURL())
 	} else if len(inviteId) > 0 {
 		ruser, err = app.CreateUserWithInviteId(user, inviteId, c.GetSiteURL())
 	} else {
@@ -663,8 +663,8 @@ func verify(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashed := model.HashPassword(hashedId)
-	if model.ComparePassword(hashed, userId+utils.Cfg.EmailSettings.InviteSalt) {
+	hashed := model.HashSha256(hashedId)
+	if hashed == model.HashSha256(userId+utils.Cfg.EmailSettings.InviteSalt) {
 		if c.Err = app.VerifyUserEmail(userId); c.Err != nil {
 			return
 		} else {

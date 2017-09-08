@@ -4,6 +4,7 @@
 package model
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,7 +37,7 @@ const (
 	USER_LAST_NAME_MAX_RUNES  = 64
 	USER_AUTH_DATA_MAX_LENGTH = 128
 	USER_NAME_MAX_LENGTH      = 64
-	USER_NAME_MIN_LENGTH      = 3
+	USER_NAME_MIN_LENGTH      = 1
 )
 
 type User struct {
@@ -538,6 +539,13 @@ func UserListFromJson(data io.Reader) []*User {
 	} else {
 		return nil
 	}
+}
+
+func HashSha256(text string) string {
+	hash := sha256.New()
+	hash.Write([]byte(text))
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
 // HashPassword generates a hash using the bcrypt.GenerateFromPassword

@@ -130,7 +130,7 @@ func DoLogin(cookieDomain string, w http.ResponseWriter, r *http.Request, user *
 }
 
 func GetProtocol(r *http.Request) string {
-	if r.Header.Get(model.HEADER_FORWARDED_PROTO) == "https" {
+	if r.Header.Get(model.HEADER_FORWARDED_PROTO) == "https" || r.TLS != nil {
 		return "https"
 	} else {
 		return "http"

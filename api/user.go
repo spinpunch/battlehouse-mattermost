@@ -99,7 +99,7 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	var ruser *model.User
 	var err *model.AppError
 	if len(hash) > 0 {
-		ruser, err = app.CreateUserWithHash(user, hash, r.URL.Query().Get("d"))
+		ruser, err = app.CreateUserWithHash(user, hash, r.URL.Query().Get("d"), c.GetSiteURL())
 	} else if len(inviteId) > 0 {
 		ruser, err = app.CreateUserWithInviteId(user, inviteId, c.GetSiteURL())
 	} else if skipTutorial { // battlehouse.com - also respects emailVerified
@@ -176,7 +176,7 @@ func LoginByOAuth(c *Context, w http.ResponseWriter, r *http.Request, service st
 	var err *model.AppError
 	if user, err = app.GetUserByAuth(&authData, service); err != nil {
 		if err.Id == store.MISSING_AUTH_ACCOUNT_ERROR {
-			if user, err = app.CreateOAuthUser(service, bytes.NewReader(buf.Bytes()), ""); err != nil {
+			if user, err = app.CreateOAuthUser(service, bytes.NewReader(buf.Bytes()), "", c.GetSiteURL()); err != nil {
 				c.Err = err
 				return nil
 			}
@@ -1038,7 +1038,7 @@ func emailToOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 	if service == model.USER_AUTH_SERVICE_SAML {
 		m["follow_link"] = c.GetSiteURL() + "/login/sso/saml?action=" + model.OAUTH_ACTION_EMAIL_TO_SSO + "&email=" + email
 	} else {
-		if authUrl, err := GetAuthorizationCode(c, service, stateProps, ""); err != nil {
+		if authUrl, err := GetAuthorizationCode(c, w, r, service, stateProps, ""); err != nil {
 			c.LogAuditWithUserId(user.Id, "fail - oauth issue")
 			c.Err = err
 			return
@@ -1297,7 +1297,7 @@ func verifyEmail(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if model.ComparePassword(hashedId, userId+utils.Cfg.EmailSettings.InviteSalt) {
+	if hashedId == model.HashSha256(userId+utils.Cfg.EmailSettings.InviteSalt) {
 		if c.Err = app.VerifyUserEmail(userId); c.Err != nil {
 			return
 		} else {
@@ -1509,7 +1509,7 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 		relayProps = model.MapFromJson(strings.NewReader(stateStr))
 	}
 
-	if user, err := samlInterface.DoLogin(encodedXML, relayProps); err != nil {
+	if user, err := samlInterface.DoLogin(encodedXML, relayProps, c.GetSiteURL()); err != nil {
 		c.Err = err
 		c.Err.StatusCode = http.StatusFound
 		return
