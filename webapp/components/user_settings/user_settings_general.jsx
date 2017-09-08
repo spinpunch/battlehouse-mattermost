@@ -1108,6 +1108,47 @@ class UserSettingsGeneralTab extends React.Component {
             );
         }
 
+        // battlehouse.com
+        let mainSections;
+        if(global.window.mm_config.BHLoginEnabled === 'true') {
+            let settings_url = BHSDK.bh_account_settings_url();
+            mainSections = (
+                    <a
+                href={settings_url}
+                target='blank_'>
+                    <FormattedMessage
+                id='setting_item_min.edit'
+                defaultMessage='Edit'
+                    /> <FormattedMessage
+                        id='user.settings.general.username'
+                        defaultMessage='Username'
+                    />/<FormattedMessage
+                        id='user.settings.general.email'
+                        defaultMessage='Email'
+                    />/<FormattedMessage
+                        id='user.settings.general.profilePicture'
+                        defaultMessage='Profile Picture'
+                    />
+                    </a>
+            );
+        } else {
+            mainSections = (
+                <div>
+                    <div className='divider-dark first'/>
+                    {nameSection}
+                    <div className='divider-light'/>
+                    {usernameSection}
+                    <div className='divider-light'/>
+                    {nicknameSection}
+                    <div className='divider-light'/>
+                    {emailSection}
+                    <div className='divider-light'/>
+                    {pictureSection}
+                    <div className='divider-dark'/>
+                </div>
+            );
+        }
+
         return (
             <div>
                 <div className='modal-header'>
@@ -1143,19 +1184,7 @@ class UserSettingsGeneralTab extends React.Component {
                             defaultMessage='General Settings'
                         />
                     </h3>
-                    <div className='divider-dark first'/>
-                    {nameSection}
-                    <div className='divider-light'/>
-                    {usernameSection}
-                    <div className='divider-light'/>
-                    {nicknameSection}
-                    <div className='divider-light'/>
-                    {positionSection}
-                    <div className='divider-light'/>
-                    {emailSection}
-                    <div className='divider-light'/>
-                    {pictureSection}
-                    <div className='divider-dark'/>
+                    {mainSections}
                 </div>
             </div>
         );

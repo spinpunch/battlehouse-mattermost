@@ -90,6 +90,9 @@ type ServiceSettings struct {
 	WebsocketSecurePort               *int
 	WebsocketPort                     *int
 	WebserverMode                     *string
+ 	WebserverRoot                     *string // battlehouse.com
+ 	BHApiSecret                       *string // battlehouse.com
+ 	BHLoginEnabled                    bool    // battlehouse.com
 	EnableCustomEmoji                 *bool
 	RestrictCustomEmojiCreation       *string
 }
@@ -224,6 +227,8 @@ type TeamSettings struct {
 	EnableUserCreation               bool
 	EnableOpenServer                 *bool
 	RestrictCreationToDomains        string
+	AutoJoinAllChannels              *bool   // battlehouse.com
+	DefaultNameDisplayFormat         *string // battlehouse.com
 	EnableCustomBrand                *bool
 	CustomBrandText                  *string
 	CustomDescriptionText            *string
@@ -484,6 +489,16 @@ func (o *Config) SetDefaults() {
 	if o.PasswordSettings.Symbol == nil {
 		o.PasswordSettings.Symbol = new(bool)
 		*o.PasswordSettings.Symbol = false
+	}
+
+	if o.TeamSettings.AutoJoinAllChannels == nil { // battlehouse.com
+		o.TeamSettings.AutoJoinAllChannels = new(bool)
+		*o.TeamSettings.AutoJoinAllChannels = false
+	}
+
+	if o.TeamSettings.DefaultNameDisplayFormat == nil { // battlehouse.com
+		o.TeamSettings.DefaultNameDisplayFormat = new(string)
+		*o.TeamSettings.DefaultNameDisplayFormat = PREFERENCE_DEFAULT_DISPLAY_NAME_FORMAT
 	}
 
 	if o.TeamSettings.EnableCustomBrand == nil {
@@ -815,6 +830,15 @@ func (o *Config) SetDefaults() {
 		*o.ServiceSettings.WebserverMode = "gzip"
 	} else if *o.ServiceSettings.WebserverMode == "regular" {
 		*o.ServiceSettings.WebserverMode = "gzip"
+	}
+
+	if o.ServiceSettings.WebserverRoot == nil { // battlehouse.com
+		o.ServiceSettings.WebserverRoot = new(string)
+		*o.ServiceSettings.WebserverRoot = "root.html"
+	}
+	if o.ServiceSettings.BHApiSecret == nil { // battlehouse.com
+		o.ServiceSettings.BHApiSecret = new(string)
+		*o.ServiceSettings.BHApiSecret = ""
 	}
 
 	if o.ServiceSettings.EnableCustomEmoji == nil {

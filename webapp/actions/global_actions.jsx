@@ -490,6 +490,13 @@ export function clientLogout(redirectTo = '/') {
     newLocalizationSelected(global.window.mm_config.DefaultClientLocale);
     stopPeriodicStatusUpdates();
     WebsocketActions.close();
+
+    // battlehouse.com
+    if (global.window.mm_config.BHLoginEnabled === 'true') {
+        BHSDK.bh_logout();
+        return; // (should redirect immediately though)
+    }
+
     browserHistory.push(redirectTo);
 }
 

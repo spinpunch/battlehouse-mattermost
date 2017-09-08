@@ -390,13 +390,41 @@ func (c *Context) SystemAdminRequired() {
 	}
 }
 
+// battlehouse: cookies should be available to all subdomains of the host's toplevel domain
+func (c *Context) cookieDomain() string {
+	siteUrl, _ := url.Parse(c.GetSiteURL())
+	host := siteUrl.Host
+	if strings.Contains(siteUrl.Host, ":") {
+		host, _, _ = net.SplitHostPort(host)
+	}
+
+	ret := host
+
+	// strip all subdomains, leaving only only toplevel domain:
+	// "foo.bar" -> "foo.bar"
+	// "asdf.foo.bar" -> "foo.bar"
+	fields := strings.Split(host, ".")
+	if len(fields) >= 2 {
+		ret = strings.Join(fields[len(fields)-2:], ".")
+	}
+
+	return ret
+}
+
 func (c *Context) RemoveSessionCookie(w http.ResponseWriter, r *http.Request) {
+	secure := false
+	if GetProtocol(r) == "https" {
+		secure = true
+	}
+
 	cookie := &http.Cookie{
 		Name:     model.SESSION_COOKIE_TOKEN,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
-		HttpOnly: true,
+		HttpOnly: false, // battlehouse: JavaScript needs access to the token
+		Domain:   c.cookieDomain(),
+		Secure:   secure,
 	}
 
 	http.SetCookie(w, cookie)

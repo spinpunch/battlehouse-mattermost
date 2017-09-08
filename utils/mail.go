@@ -13,6 +13,7 @@ import (
 	"net/mail"
 	"net/smtp"
 	"time"
+	"strings"
 )
 
 func encodeRFC2047Word(s string) string {
@@ -99,6 +100,11 @@ func SendMail(to, subject, body string) *model.AppError {
 
 func SendMailUsingConfig(to, subject, body string, config *model.Config) *model.AppError {
 	if !config.EmailSettings.SendEmailNotifications || len(config.EmailSettings.SMTPServer) == 0 {
+		return nil
+	}
+
+	// battlehouse.com - don't attempt to send messages to "tombstone" email addresses
+	if strings.HasSuffix(to, ".OLD") || strings.HasSuffix(to, ".merged") {
 		return nil
 	}
 

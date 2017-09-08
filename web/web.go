@@ -11,7 +11,6 @@ import (
 
 	l4g "github.com/alecthomas/log4go"
 	"github.com/mattermost/platform/api"
-	"github.com/mattermost/platform/model"
 	"github.com/mattermost/platform/utils"
 	"github.com/mssola/user_agent"
 )
@@ -22,7 +21,8 @@ func InitWeb() {
 	mainrouter := api.Srv.Router
 
 	if *utils.Cfg.ServiceSettings.WebserverMode != "disabled" {
-		staticDir := utils.FindDir(model.CLIENT_DIR)
+		// battlehouse.com
+		staticDir := utils.FindDir(utils.CLIENT_DIR) 
 		l4g.Debug("Using client directory at %v", staticDir)
 		if *utils.Cfg.ServiceSettings.WebserverMode == "gzip" {
 			mainrouter.PathPrefix("/static/").Handler(gziphandler.GzipHandler(staticHandler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))))
@@ -78,5 +78,6 @@ func root(c *api.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "no-cache, max-age=31556926, public")
-	http.ServeFile(w, r, utils.FindDir(model.CLIENT_DIR)+"root.html")
+	// battlehouse.com
+	http.ServeFile(w, r, utils.GetWebserverRoot(utils.Cfg))
 }

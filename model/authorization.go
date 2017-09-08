@@ -250,6 +250,11 @@ func InitalizeRoles() {
 		"authentication.roles.channel_user.description",
 		[]string{
 			PERMISSION_READ_CHANNEL.Id,
+
+			// battlehouse.com - I think we need to move these permissions
+			// up to a higher role, but I'm afraid we might break the ability
+			// to adjust your OWN channel membership, or those of the sys admin.
+			// So, for now, just disable the GUI without actually removing permissions.
 			PERMISSION_MANAGE_PUBLIC_CHANNEL_MEMBERS.Id,
 			PERMISSION_MANAGE_PRIVATE_CHANNEL_MEMBERS.Id,
 			PERMISSION_UPLOAD_FILE.Id,

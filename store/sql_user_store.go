@@ -202,6 +202,55 @@ func (us SqlUserStore) Update(user *model.User, trustedUpdateData bool) StoreCha
 	return storeChannel
 }
 
+// battlehouse.com
+func (us SqlUserStore) UpdateBH(userId string, new_username *string, new_email *string, new_nickname *string) StoreChannel {
+
+	storeChannel := make(StoreChannel, 1)
+
+	go func() {
+		result := StoreResult{}
+
+		if oldUserResult, err := us.GetMaster().Get(model.User{}, userId); err != nil {
+			result.Err = model.NewLocAppError("SqlUserStore.Update", "store.sql_user.update.finding.app_error", nil, "user_id="+userId+", "+err.Error())
+		} else if oldUserResult == nil {
+			result.Err = model.NewLocAppError("SqlUserStore.Update", "store.sql_user.update.find.app_error", nil, "user_id="+userId)
+		} else {
+			oldUser := oldUserResult.(*model.User)
+			user := oldUser
+			if new_username != nil {
+				user.Username = strings.ToLower(*new_username)
+				user.UpdateMentionKeysFromUsername(oldUser.Username)
+			}
+			if new_email != nil {
+				user.Email = strings.ToLower(*new_email)
+				user.EmailVerified = true
+			}
+			if new_nickname != nil {
+				user.Nickname = *new_nickname
+			}
+
+			if count, err := us.GetMaster().Update(user); err != nil {
+				if IsUniqueConstraintError(err.Error(), []string{"Email", "users_email_key", "idx_users_email_unique"}) {
+					result.Err = model.NewLocAppError("SqlUserStore.Update", "store.sql_user.update.email_taken.app_error", nil, "user_id="+user.Id+", "+err.Error())
+				} else if IsUniqueConstraintError(err.Error(), []string{"Username", "users_username_key", "idx_users_username_unique"}) {
+					result.Err = model.NewLocAppError("SqlUserStore.Update", "store.sql_user.update.username_taken.app_error", nil, "user_id="+user.Id+", "+err.Error())
+				} else {
+					result.Err = model.NewLocAppError("SqlUserStore.Update", "store.sql_user.update.updating.app_error", nil, "user_id="+user.Id+", "+err.Error())
+				}
+			} else if count != 1 {
+				result.Err = model.NewLocAppError("SqlUserStore.Update", "store.sql_user.update.app_error", nil, fmt.Sprintf("user_id=%v, count=%v", user.Id, count))
+			} else {
+				result.Data = [2]*model.User{user, oldUser}
+			}
+		}
+
+		storeChannel <- result
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
 func (us SqlUserStore) UpdateLastPictureUpdate(userId string) StoreChannel {
 	storeChannel := make(StoreChannel, 1)
 

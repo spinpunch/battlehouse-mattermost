@@ -435,7 +435,7 @@ func authorizeOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	w.Header().Set("Cache-Control", "no-cache, max-age=31556926, public")
-	http.ServeFile(w, r, utils.FindDir(model.CLIENT_DIR)+"root.html")
+	http.ServeFile(w, r, utils.GetWebserverRoot(utils.Cfg)) // battlehouse.com
 }
 
 func getAccessToken(c *Context, w http.ResponseWriter, r *http.Request) {

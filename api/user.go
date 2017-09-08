@@ -6,6 +6,7 @@ package api
 import (
 	"bytes"
 	b64 "encoding/base64"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"html/template"
@@ -39,6 +40,10 @@ func InitUser() {
 
 	BaseRoutes.Users.Handle("/create", ApiAppHandler(createUser)).Methods("POST")
 	BaseRoutes.Users.Handle("/update", ApiUserRequired(updateUser)).Methods("POST")
+	// battlehouse.com - special API to silently force-push new username/email
+	BaseRoutes.NeedUser.Handle("/update_bh", ApiAdminSystemRequired(updateUserBH)).Methods("POST")
+	// battlehouse.com - remotely revoke all sessions for a user, for kicking/banning
+	BaseRoutes.NeedUser.Handle("/revoke_bh", ApiAdminSystemRequired(revokeUserBH)).Methods("POST")
 	BaseRoutes.Users.Handle("/update_active", ApiUserRequired(updateActive)).Methods("POST")
 	BaseRoutes.Users.Handle("/update_notify", ApiUserRequired(updateUserNotify)).Methods("POST")
 	BaseRoutes.Users.Handle("/newpassword", ApiUserRequired(updatePassword)).Methods("POST")
@@ -51,6 +56,8 @@ func InitUser() {
 	BaseRoutes.Users.Handle("/verify_email", ApiAppHandler(verifyEmail)).Methods("POST")
 	BaseRoutes.Users.Handle("/resend_verification", ApiAppHandler(resendVerification)).Methods("POST")
 	BaseRoutes.Users.Handle("/newimage", ApiUserRequired(uploadProfileImage)).Methods("POST")
+	// battlehouse.com - update another user's portrait
+	BaseRoutes.NeedUser.Handle("/newimage", ApiUserRequired(uploadProfileImageForUser)).Methods("POST")
 	BaseRoutes.Users.Handle("/me", ApiUserRequired(getMe)).Methods("GET")
 	BaseRoutes.Users.Handle("/initial_load", ApiAppHandler(getInitialLoad)).Methods("GET")
 	BaseRoutes.Users.Handle("/{offset:[0-9]+}/{limit:[0-9]+}", ApiUserRequired(getProfiles)).Methods("GET")
@@ -105,7 +112,15 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	teamId := ""
 	var team *model.Team
 	shouldSendWelcomeEmail := true
-	user.EmailVerified = false
+
+	// battlehouse.com - allow API caller to say the email is already verified
+
+	// user.EmailVerified = false
+	if user.EmailVerified {
+		// if API caller says email is already verified, cancel welcome email
+		shouldSendWelcomeEmail = false
+
+	}
 
 	if len(hash) > 0 {
 		data := r.URL.Query().Get("d")
@@ -171,7 +186,10 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ruser, err := CreateUser(user)
+	// battlehouse.com
+	skipTutorial := r.URL.Query().Get("skipTutorial") == "1"
+
+	ruser, err := CreateUser(user, skipTutorial)
 	if err != nil {
 		c.Err = err
 		return
@@ -238,7 +256,7 @@ func IsVerifyHashRequired(user *model.User, team *model.Team, hash string) bool 
 	return shouldVerifyHash
 }
 
-func CreateUser(user *model.User) (*model.User, *model.AppError) {
+func CreateUser(user *model.User, skipTutorial bool) (*model.User, *model.AppError) { // battlehouse.com
 
 	user.Roles = model.ROLE_SYSTEM_USER.Id
 
@@ -272,9 +290,21 @@ func CreateUser(user *model.User) (*model.User, *model.AppError) {
 			}
 		}
 
-		pref := model.Preference{UserId: ruser.Id, Category: model.PREFERENCE_CATEGORY_TUTORIAL_STEPS, Name: ruser.Id, Value: "0"}
+		// battlehouse.com
+		tutorialStep := "0"
+		if skipTutorial {
+			tutorialStep = "999"
+		}
+		pref := model.Preference{UserId: ruser.Id, Category: model.PREFERENCE_CATEGORY_TUTORIAL_STEPS, Name: ruser.Id, Value: tutorialStep}
 		if presult := <-Srv.Store.Preference().Save(&model.Preferences{pref}); presult.Err != nil {
 			l4g.Error(utils.T("api.user.create_user.tutorial.error"), presult.Err.Message)
+		}
+
+		if *utils.Cfg.TeamSettings.DefaultNameDisplayFormat != model.PREFERENCE_DEFAULT_DISPLAY_NAME_FORMAT {
+			pref := model.Preference{UserId: ruser.Id, Category: model.PREFERENCE_CATEGORY_DISPLAY_SETTINGS, Name: model.PREFERENCE_NAME_DISPLAY_NAME_FORMAT, Value: *utils.Cfg.TeamSettings.DefaultNameDisplayFormat}
+			if presult := <-Srv.Store.Preference().Save(&model.Preferences{pref}); presult.Err != nil {
+				l4g.Error(utils.T("api.user.create_user.set_default_name_display_format.error"), presult.Err.Message)
+			}
 		}
 
 		ruser.Sanitize(map[string]bool{})
@@ -335,7 +365,7 @@ func CreateOAuthUser(c *Context, w http.ResponseWriter, r *http.Request, service
 
 	user.EmailVerified = true
 
-	ruser, err := CreateUser(user)
+	ruser, err := CreateUser(user, false) // battlehouse.com
 	if err != nil {
 		c.Err = err
 		return nil
@@ -455,7 +485,14 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 	deviceId := props["device_id"]
 	ldapOnly := props["ldap_only"] == "true"
 
-	if len(password) == 0 {
+	// battlehouse.com Login additions
+	// BHLogin needs to be able to create sessions for legacy accounts, using only the raw bcrypt hash
+	// this is insecure, so require bh_api_secret to be provided (proving that the call comes from the BHLogin server)
+	BHApiSecret := props["bh_api_secret"]
+	rawBcrypt := props["bcrypt"]
+
+	if (len(password) == 0 && len(rawBcrypt) == 0) ||
+		(len(rawBcrypt) != 0 && (len(BHApiSecret) == 0 || BHApiSecret != *utils.Cfg.ServiceSettings.BHApiSecret)) {
 		c.Err = model.NewLocAppError("login", "api.user.login.blank_pwd.app_error", nil, "")
 		c.Err.StatusCode = http.StatusBadRequest
 		return
@@ -494,7 +531,7 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// and then authenticate them
-	if user, err = authenticateUser(user, password, mfaToken); err != nil {
+	if user, err = authenticateUser(user, password, mfaToken, rawBcrypt); err != nil {
 		c.LogAuditWithUserId(user.Id, "failure")
 		c.Err = err
 		if einterfaces.GetMetricsInterface() != nil {
@@ -667,7 +704,8 @@ func doLogin(c *Context, w http.ResponseWriter, r *http.Request, user *model.Use
 		Path:     "/",
 		MaxAge:   maxAge,
 		Expires:  expiresAt,
-		HttpOnly: true,
+		HttpOnly: false, // battlehouse: JavaScript needs access to the token
+		Domain:   c.cookieDomain(),
 		Secure:   secure,
 	}
 
@@ -733,7 +771,8 @@ func attachDeviceId(c *Context, w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   maxAge,
 		Expires:  expiresAt,
-		HttpOnly: true,
+		HttpOnly: false, // battlehouse: JavaScript needs access to the token
+		Domain:   c.cookieDomain(),
 		Secure:   secure,
 	}
 
@@ -1325,7 +1364,27 @@ func getProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// battlehouse.com - alternate way to update portrait of an arbitrary user, not just the one from the context
+
+// standard version - for "me"
 func uploadProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
+	do_uploadProfileImage(c.Session.UserId, c, w, r)
+}
+
+// can update other users
+func uploadProfileImageForUser(c *Context, w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := params["user_id"]
+
+	if !HasPermissionToUser(c, userId) {
+		c.Err = model.NewLocAppError("update_bh", "api.user.newimage.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
+	}
+	do_uploadProfileImage(userId, c, w, r)
+}
+
+func do_uploadProfileImage(userId string, c *Context, w http.ResponseWriter, r *http.Request) {
 	if len(utils.Cfg.FileSettings.DriverName) == 0 {
 		c.Err = model.NewLocAppError("uploadProfileImage", "api.user.upload_profile_user.storage.app_error", nil, "")
 		c.Err.StatusCode = http.StatusNotImplemented
@@ -1396,17 +1455,17 @@ func uploadProfileImage(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := "users/" + c.Session.UserId + "/profile.png"
+	path := "users/" + userId + "/profile.png"
 
 	if err := WriteFile(buf.Bytes(), path); err != nil {
 		c.Err = model.NewLocAppError("uploadProfileImage", "api.user.upload_profile_user.upload_profile.app_error", nil, "")
 		return
 	}
 
-	Srv.Store.User().UpdateLastPictureUpdate(c.Session.UserId)
+	Srv.Store.User().UpdateLastPictureUpdate(userId)
 
-	if result := <-Srv.Store.User().Get(c.Session.UserId); result.Err != nil {
-		l4g.Error(utils.T("api.user.get_me.getting.error"), c.Session.UserId)
+	if result := <-Srv.Store.User().Get(userId); result.Err != nil {
+		l4g.Error(utils.T("api.user.get_me.getting.error"), userId)
 	} else {
 		user := result.Data.(*model.User)
 		user = sanitizeProfile(c, user)
@@ -1468,6 +1527,79 @@ func updateUser(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		omitUsers := make(map[string]bool, 1)
 		omitUsers[user.Id] = true
+		message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_UPDATED, "", "", "", omitUsers)
+		message.Add("user", updatedUser)
+		go Publish(message)
+
+		rusers[0].Password = ""
+		rusers[0].AuthData = new(string)
+		*rusers[0].AuthData = ""
+		w.Write([]byte(rusers[0].ToJson()))
+	}
+}
+
+// battlehouse.com
+func revokeUserBH(c *Context, w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := params["user_id"]
+
+	if !HasPermissionToUser(c, userId) {
+		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
+	}
+
+	RevokeAllSession(c, userId)
+
+	rdata := map[string]string{}
+	rdata["status"] = "ok"
+	w.Write([]byte(model.MapToJson(rdata)))
+}
+
+func updateUserBH(c *Context, w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := params["user_id"]
+
+	if !HasPermissionToUser(c, userId) {
+		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
+	}
+
+	// don't use model.MapFromJson() because it cannot differentiate empty strings from null/missing
+	var props map[string]*string
+	if err := json.NewDecoder(r.Body).Decode(&props); err != nil {
+		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusBadRequest
+		return
+	}
+
+	BHApiSecret := ""
+	if props["bh_api_secret"] != nil {
+		BHApiSecret = *props["bh_api_secret"]
+	}
+
+	if len(BHApiSecret) == 0 || BHApiSecret != *utils.Cfg.ServiceSettings.BHApiSecret {
+		c.Err = model.NewLocAppError("update_bh", "api.user.update_bh.context.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
+	}
+
+	if result := <-Srv.Store.User().UpdateBH(userId, props["new_username"], props["new_email"], props["new_nickname"]); result.Err != nil {
+		c.Err = result.Err
+		return
+	} else {
+		c.LogAudit("")
+
+		rusers := result.Data.([2]*model.User)
+
+		InvalidateCacheForUser(userId)
+
+		updatedUser := rusers[0]
+		updatedUser = sanitizeProfile(c, updatedUser)
+
+		omitUsers := make(map[string]bool, 1)
+		omitUsers[userId] = true
 		message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_UPDATED, "", "", "", omitUsers)
 		message.Add("user", updatedUser)
 		go Publish(message)
@@ -2095,7 +2227,7 @@ func emailToOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 		user = result.Data.(*model.User)
 	}
 
-	if err := checkPasswordAndAllCriteria(user, password, mfaToken); err != nil {
+	if err := checkPasswordAndAllCriteria(user, password, mfaToken, ""); err != nil {
 		c.LogAuditWithUserId(user.Id, "failed - bad authentication")
 		c.Err = err
 		return
@@ -2216,7 +2348,7 @@ func emailToLdap(c *Context, w http.ResponseWriter, r *http.Request) {
 		user = result.Data.(*model.User)
 	}
 
-	if err := checkPasswordAndAllCriteria(user, emailPassword, token); err != nil {
+	if err := checkPasswordAndAllCriteria(user, emailPassword, token, ""); err != nil {
 		c.LogAuditWithUserId(user.Id, "failed - bad authentication")
 		c.Err = err
 		return
@@ -2688,6 +2820,8 @@ func sanitizeProfile(c *Context, user *model.User) *model.User {
 		options["email"] = true
 		options["fullname"] = true
 		options["authservice"] = true
+		// battlehouse.com
+		options["pictureupdate"] = true
 	}
 	c.Err = nil
 
@@ -2765,7 +2899,11 @@ func getProfilesByIds(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if result := <-Srv.Store.User().GetProfileByIds(userIds, true); result.Err != nil {
+	// battlehouse.com: disallow caching for admin queries,
+	// because it seems to return pre-sanitized profiles (?)
+	allow_cache := !HasPermissionToContext(c, model.PERMISSION_MANAGE_SYSTEM)
+
+	if result := <-Srv.Store.User().GetProfileByIds(userIds, allow_cache); result.Err != nil {
 		c.Err = result.Err
 		return
 	} else {

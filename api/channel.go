@@ -658,54 +658,54 @@ func JoinDefaultChannels(teamId string, user *model.User, channelRole string) *m
 		T:      utils.TfuncWithFallback(user.Locale),
 	}
 
-	if result := <-Srv.Store.Channel().GetByName(teamId, "town-square"); result.Err != nil {
-		err = result.Err
-	} else {
-		cm := &model.ChannelMember{ChannelId: result.Data.(*model.Channel).Id, UserId: user.Id,
-			Roles: channelRole, NotifyProps: model.GetDefaultChannelNotifyProps()}
-
-		if cmResult := <-Srv.Store.Channel().SaveMember(cm); cmResult.Err != nil {
-			err = cmResult.Err
-		}
-
-		post := &model.Post{
-			ChannelId: result.Data.(*model.Channel).Id,
-			Message:   fmt.Sprintf(utils.T("api.channel.join_channel.post_and_forget"), user.Username),
-			Type:      model.POST_JOIN_LEAVE,
-			UserId:    user.Id,
-		}
-
-		InvalidateCacheForChannel(result.Data.(*model.Channel).Id)
-
-		if _, err := CreatePost(fakeContext, post, false); err != nil {
-			l4g.Error(utils.T("api.channel.post_user_add_remove_message_and_forget.error"), err)
+ 	// battlehouse.com - cleaned this up!
+ 	channelsToJoin := make([]*model.Channel, 0)
+  
+ 	if *utils.Cfg.TeamSettings.AutoJoinAllChannels {
+ 		// get list of all open channels
+ 		if result := <-Srv.Store.Channel().GetAll(teamId); result.Err != nil {
+ 			return result.Err
+ 		} else {
+ 			for _, channel := range result.Data.([]*model.Channel) {
+ 				if channel.Type == model.CHANNEL_OPEN {
+ 					channelsToJoin = append(channelsToJoin, channel)
+ 				}
+ 			}
+  		}
+ 	} else {
+ 		for _, channelName := range []string{"town-square", "off-topic"} {
+ 			if result := <-Srv.Store.Channel().GetByName(teamId, channelName); result.Err != nil {
+ 				err = result.Err
+ 				// ignore this channel, but continue with the rest
+ 			} else {
+ 				channelsToJoin = append(channelsToJoin, result.Data.(*model.Channel))
+ 			}
+  		}
+  	}
+  
+ 	for _, channel := range channelsToJoin {
+ 		cm := &model.ChannelMember{ChannelId: channel.Id, UserId: user.Id,
+  			Roles: channelRole, NotifyProps: model.GetDefaultChannelNotifyProps()}
+  
+  		if cmResult := <-Srv.Store.Channel().SaveMember(cm); cmResult.Err != nil {
+  			err = cmResult.Err
+ 			continue // ignore this channel, but continue with the rest
+  		}
+  
+  		post := &model.Post{
+ 			ChannelId: channel.Id,
+  			Message:   fmt.Sprintf(utils.T("api.channel.join_channel.post_and_forget"), user.Username),
+  			Type:      model.POST_JOIN_LEAVE,
+  			UserId:    user.Id,
+  		}
+  
+ 		// if auto-join is happening, do not post noisy join announcement
+ 		if !*utils.Cfg.TeamSettings.AutoJoinAllChannels {
+ 			if _, err := CreatePost(fakeContext, post, false); err != nil {
+ 				l4g.Error(utils.T("api.channel.post_user_add_remove_message_and_forget.error"), err)
+ 			}
 		}
 	}
-
-	if result := <-Srv.Store.Channel().GetByName(teamId, "off-topic"); result.Err != nil {
-		err = result.Err
-	} else {
-		cm := &model.ChannelMember{ChannelId: result.Data.(*model.Channel).Id, UserId: user.Id,
-			Roles: channelRole, NotifyProps: model.GetDefaultChannelNotifyProps()}
-
-		if cmResult := <-Srv.Store.Channel().SaveMember(cm); cmResult.Err != nil {
-			err = cmResult.Err
-		}
-
-		post := &model.Post{
-			ChannelId: result.Data.(*model.Channel).Id,
-			Message:   fmt.Sprintf(utils.T("api.channel.join_channel.post_and_forget"), user.Username),
-			Type:      model.POST_JOIN_LEAVE,
-			UserId:    user.Id,
-		}
-
-		InvalidateCacheForChannel(result.Data.(*model.Channel).Id)
-
-		if _, err := CreatePost(fakeContext, post, false); err != nil {
-			l4g.Error(utils.T("api.channel.post_user_add_remove_message_and_forget.error"), err)
-		}
-	}
-
 	return err
 }
 

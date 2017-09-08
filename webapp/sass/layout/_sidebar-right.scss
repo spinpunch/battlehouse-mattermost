@@ -9,6 +9,7 @@
     right: 0;
     width: 400px;
     z-index: 6;
+    top: 40px; bottom: 0; height: auto; // for battlehouse.com header
 
     &.webrtc {
         z-index: 5;

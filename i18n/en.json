@@ -1,5 +1,9 @@
 [
   {
+    "id": "battlehouse.api.post.create_post.no_invite_links.error",
+    "translation": "Battlehouse invite links may not be posted in public channels in Clan HQ. Most people here already play the games, so you will get more responses elsewhere :D.\n\nPlease post invite links on other sites, or use a private message if you want to invite a specific person."
+  },
+  {
     "id": "April",
     "translation": "April"
   },

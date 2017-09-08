@@ -188,7 +188,7 @@ export default class SidebarRightMenu extends React.Component {
                 );
             }
 
-            if (global.window.mm_license.IsLicensed === 'true') {
+            if (true /* battlehouse.com global.window.mm_license.IsLicensed === 'true' */) {
                 if (global.window.mm_config.RestrictTeamInvite === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
                     teamLink = null;
                     inviteLink = null;

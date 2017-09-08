@@ -6,6 +6,7 @@ export GO15VENDOREXPERIMENT=1
 # Build Flags
 BUILD_NUMBER ?= $(BUILD_NUMBER:)
 BUILD_DATE = $(shell date -u)
+BH_BUILD_DATECODE = $(shell date -u +%Y%m%d)
 BUILD_HASH = $(shell git rev-parse HEAD)
 # If we don't set the build number it defaults to dev
 ifeq ($(BUILD_NUMBER),)
@@ -19,15 +20,15 @@ BUILD_HASH_ENTERPRISE = none
 ifneq ($(wildcard $(BUILD_ENTERPRISE_DIR)/.),)
 	ifeq ($(BUILD_ENTERPRISE),true)
 		BUILD_ENTERPRISE_READY = true
-		BUILD_TYPE_NAME = enterprise
+		BUILD_TYPE_NAME = $(BH_BUILD_DATECODE)-bh-enterprise
 		BUILD_HASH_ENTERPRISE = $(shell cd $(BUILD_ENTERPRISE_DIR) && git rev-parse HEAD)
 	else
 		BUILD_ENTERPRISE_READY = false
-		BUILD_TYPE_NAME = team
+		BUILD_TYPE_NAME = $(BH_BUILD_DATECODE)-bh
 	endif
 else
 	BUILD_ENTERPRISE_READY = false
-	BUILD_TYPE_NAME = team
+	BUILD_TYPE_NAME = $(BH_BUILD_DATECODE)-bh
 endif
 BUILD_WEBAPP_DIR = ./webapp
 

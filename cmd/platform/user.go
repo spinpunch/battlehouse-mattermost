@@ -220,7 +220,7 @@ func userCreateCmdF(cmd *cobra.Command, args []string) error {
 		Locale:    locale,
 	}
 
-	ruser, err := api.CreateUser(user)
+	ruser, err := api.CreateUser(user, false) // battlehouse.com
 	if err != nil {
 		return errors.New("Unable to create user. Error: " + err.Error())
 	}
