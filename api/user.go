@@ -1036,7 +1036,7 @@ func emailToOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 	if service == model.USER_AUTH_SERVICE_SAML {
 		m["follow_link"] = c.GetSiteURLHeader() + "/login/sso/saml?action=" + model.OAUTH_ACTION_EMAIL_TO_SSO + "&email=" + email
 	} else {
-		if authUrl, err := GetAuthorizationCode(c, service, stateProps, ""); err != nil {
+		if authUrl, err := GetAuthorizationCode(c, w, r, service, stateProps, ""); err != nil {
 			c.LogAuditWithUserId(user.Id, "fail - oauth issue")
 			c.Err = err
 			return
@@ -1295,7 +1295,7 @@ func verifyEmail(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if model.ComparePassword(hashedId, userId+utils.Cfg.EmailSettings.InviteSalt) {
+	if hashedId == model.HashSha256(userId+utils.Cfg.EmailSettings.InviteSalt) {
 		if c.Err = app.VerifyUserEmail(userId); c.Err != nil {
 			return
 		} else {

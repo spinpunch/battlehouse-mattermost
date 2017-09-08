@@ -37,7 +37,7 @@ func CreateUserWithHash(user *model.User, hash string, data string) (*model.User
 
 	props := model.MapFromJson(strings.NewReader(data))
 
-	if !model.ComparePassword(hash, fmt.Sprintf("%v:%v", data, utils.Cfg.EmailSettings.InviteSalt)) {
+	if hash != model.HashSha256(fmt.Sprintf("%v:%v", data, utils.Cfg.EmailSettings.InviteSalt)) {
 		return nil, model.NewLocAppError("CreateUserWithHash", "api.user.create_user.signup_link_invalid.app_error", nil, "")
 	}
 
@@ -966,9 +966,7 @@ func UpdateUserAsUser(user *model.User, asAdmin bool) (*model.User, *model.AppEr
 		return nil, err
 	}
 
-	SanitizeProfile(updatedUser, asAdmin)
-
-	sendUpdatedUserEvent(updatedUser)
+	sendUpdatedUserEvent(*updatedUser, asAdmin)
 
 	return updatedUser, nil
 }
@@ -1003,14 +1001,14 @@ func PatchUser(userId string, patch *model.UserPatch, asAdmin bool) (*model.User
 		return nil, err
 	}
 
-	SanitizeProfile(updatedUser, asAdmin)
-
-	sendUpdatedUserEvent(updatedUser)
+	sendUpdatedUserEvent(*updatedUser, asAdmin)
 
 	return updatedUser, nil
 }
 
-func sendUpdatedUserEvent(user *model.User) {
+func sendUpdatedUserEvent(user model.User, asAdmin bool) {
+	SanitizeProfile(&user, asAdmin)
+
 	omitUsers := make(map[string]bool, 1)
 	omitUsers[user.Id] = true
 	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_UPDATED, "", "", "", omitUsers)
@@ -1188,7 +1186,7 @@ func SendPasswordReset(email string, siteURL string) (bool, *model.AppError) {
 		return false, err
 	}
 
-	if _, err := SendPasswordResetEmail(email, recovery, user.Locale, siteURL); err != nil {
+	if _, err := SendPasswordResetEmail(user.Email, recovery, user.Locale, siteURL); err != nil {
 		return false, model.NewLocAppError("SendPasswordReset", "api.user.send_password_reset.send.app_error", nil, "err="+err.Message)
 	}
 

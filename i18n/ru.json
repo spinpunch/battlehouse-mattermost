@@ -185,11 +185,11 @@
   },
   {
     "id": "api.channel.can_manage_channel.private_restricted_system_admin.app_error",
-    "translation": "Создание и управление Публичными Каналами возможно только Системными Администраторами."
+    "translation": "Создание и управление Приватными Каналами доступно только Системным Администраторам."
   },
   {
     "id": "api.channel.can_manage_channel.private_restricted_team_admin.app_error",
-    "translation": "Создание и управление Публичными Каналами возможно Командой и Системными Администраторами."
+    "translation": "Создание и управление Приватными Каналами доступно Команде и Системным Администраторам."
   },
   {
     "id": "api.channel.can_manage_channel.public_restricted_system_admin.app_error",
@@ -309,7 +309,7 @@
   },
   {
     "id": "api.channel.leave.last_member.app_error",
-    "translation": "Вы единственный оставшийся участник, попробуйте удалить Приватную Группу вместо того, чтобы покинуть."
+    "translation": "Вы единственный оставшийся участник, попробуйте удалить Приватный Канал вместо того, чтобы выйти."
   },
   {
     "id": "api.channel.leave.left",
@@ -817,7 +817,7 @@
   },
   {
     "id": "api.config.client.old_format.app_error",
-    "translation": "New format for the client configuration is not supported yet. Please specify format=old in the query string."
+    "translation": "Новый формат конфигурации клиента пока не поддерживается. Пожалуйста, укажите format=old в строке запроса."
   },
   {
     "id": "api.context.404.app_error",
@@ -925,7 +925,7 @@
   },
   {
     "id": "api.email_batching.render_batched_post.group_message",
-    "translation": "Group Message"
+    "translation": "Групповые Сообщения"
   },
   {
     "id": "api.email_batching.render_batched_post.sender.app_error",
@@ -1295,7 +1295,7 @@
   },
   {
     "id": "api.license.client.old_format.app_error",
-    "translation": "New format for the client license is not supported yet. Please specify format=old in the query string."
+    "translation": "Новый формат пользовательской лицензии пока не поддерживается. Пожалуйста, укажите format=old в строке запроса. "
   },
   {
     "id": "api.license.init.debug",
@@ -1533,7 +1533,7 @@
   },
   {
     "id": "api.post.handle_post_events_and_forget.members.error",
-    "translation": "Не удалось получить членов канала channel_id=%v, err=%v"
+    "translation": "Не удалось получить участников канала channel_id=%v, err=%v"
   },
   {
     "id": "api.post.handle_webhook_events_and_forget.create_post.error",
@@ -1853,11 +1853,11 @@
   },
   {
     "id": "api.slackimport.slack_add_users.missing_email_address",
-    "translation": "User {{.Username}} does not have an email address in the Slack export. Using {{.Email}} as a placeholder. The user should update their email address once logged in to the system.\r\n"
+    "translation": "Пользователь {{.Username}} не имеет адреса электронной почты в экспорте из Slack. Используется {{.Email}} как заглушка. Пользователь должен обновить адрес электронной почты при входе в систему.\r\n"
   },
   {
     "id": "api.slackimport.slack_add_users.missing_email_address.warn",
-    "translation": "User {{.Username}} does not have an email address in the Slack export. Using {{.Email}} as a placeholder. The user should update their email address once logged in to the system."
+    "translation": "Пользователь {{.Username}} не имеет адреса электронной почты в экспорте из Slack. Используется {{.Email}} как заглушка. Пользователь должен обновить адрес электронной почты при входе в систему."
   },
   {
     "id": "api.slackimport.slack_add_users.unable_import",
@@ -1957,15 +1957,15 @@
   },
   {
     "id": "api.team.add_user_to_team.invalid_data.app_error",
-    "translation": "Invalid data."
+    "translation": "Неверные данные."
   },
   {
     "id": "api.team.add_user_to_team.invalid_invite_id.app_error",
-    "translation": "Invalid invite id. No team matches with this invite id."
+    "translation": "Неверный идентификатор приглашения. Не найдено команд с таким идентификатором."
   },
   {
     "id": "api.team.add_user_to_team.missing_parameter.app_error",
-    "translation": "Parameter required to add user to team."
+    "translation": "Для добавления пользователя в команду требуется указать параметр."
   },
   {
     "id": "api.team.create_team.email_disabled.app_error",
@@ -2037,7 +2037,7 @@
   },
   {
     "id": "api.team.invite_members.member",
-    "translation": "член"
+    "translation": "участник"
   },
   {
     "id": "api.team.invite_members.no_one.app_error",
@@ -2085,7 +2085,7 @@
   },
   {
     "id": "api.team.update_member_roles.not_a_member",
-    "translation": "Указанный пользователь не является членом указанной группы."
+    "translation": "Указанный пользователь не является участником указанной группы."
   },
   {
     "id": "api.team.update_team.permissions.app_error",
@@ -2093,7 +2093,7 @@
   },
   {
     "id": "api.templates.channel_name.group",
-    "translation": "Group Message"
+    "translation": "Групповые сообщения"
   },
   {
     "id": "api.templates.email_change_body.info",
@@ -2225,7 +2225,7 @@
   },
   {
     "id": "api.templates.post_subject_in_direct_message",
-    "translation": "{{.SubjectText}} в {{.TeamDisplayName}} от {{.SenderDisplayName}} в {{.Month}} {{.Day}}, {{.Year}}"
+    "translation": "{{.SubjectText}} от {{.SenderDisplayName}} в {{.Month}} {{.Day}}, {{.Year}}"
   },
   {
     "id": "api.templates.post_subject_in_group_message",
@@ -2245,11 +2245,11 @@
   },
   {
     "id": "api.templates.reset_subject",
-    "translation": "[{{ .SiteName }}] Reset your password"
+    "translation": "[{{ .SiteName }}] Сбросить пароль"
   },
   {
     "id": "api.templates.signin_change_email.body.info",
-    "translation": "Вы обновили свой метод входа для {{ .SiteName }} на {{.Method}}.<br>Если это изменение не было сделано Вами, пожалуйста, обратитесь к системному администратору."
+    "translation": "Вы обновили свой метод входа для {{ .SiteName }} на {{.Method}}.<br>Если это изменение было сделано не Вами, пожалуйста, обратитесь к системному администратору."
   },
   {
     "id": "api.templates.signin_change_email.body.method_email",
@@ -2261,7 +2261,7 @@
   },
   {
     "id": "api.templates.signin_change_email.subject",
-    "translation": "[{{ .SiteName }}] You updated your sign-in method on {{ .SiteName }}"
+    "translation": "[{{ .SiteName }}] Вы обновили свой метод входа на {{ .SiteName }}"
   },
   {
     "id": "api.templates.signup_team_body.button",
@@ -2297,7 +2297,7 @@
   },
   {
     "id": "api.templates.username_change_subject",
-    "translation": "[{{ .SiteName }}] Ваш email был изменён"
+    "translation": "[{{ .SiteName }}] Ваш имя пользователя было изменено"
   },
   {
     "id": "api.templates.verify_body.button",
@@ -2341,7 +2341,7 @@
   },
   {
     "id": "api.templates.welcome_subject",
-    "translation": "[{{ .SiteName }}] You joined {{ .ServerURL }}"
+    "translation": "[{{ .SiteName }}] Вы присоединились к {{ .ServerURL }}"
   },
   {
     "id": "api.user.activate_mfa.email_and_ldap_only.app_error",
@@ -2445,7 +2445,7 @@
   },
   {
     "id": "api.user.create_user.disabled.app_error",
-    "translation": "User creation is disabled."
+    "translation": "Создание аккаунтов отключено."
   },
   {
     "id": "api.user.create_user.joining.error",
@@ -2857,11 +2857,11 @@
   },
   {
     "id": "api.webhook.update_outgoing.permissions.app_error",
-    "translation": "Несоответствующие права для создания исходящего вебхука."
+    "translation": "Отсутствуют права на создания исходящего вебхука."
   },
   {
     "id": "api.webhook.update_outgoing.triggers.app_error",
-    "translation": "Должны быть заданы trigger_words или channel_id"
+    "translation": "Должны быть заданы слова-триггеры или идентификатор канала"
   },
   {
     "id": "api.webrtc.disabled.app_error",
@@ -2941,15 +2941,15 @@
   },
   {
     "id": "app.import.import_post.channel_not_found.error",
-    "translation": "Ошибка импорта канала. Команда с именем \"{{.TeamName}}\" не найдена."
+    "translation": "Ошибка импорта сообщения. Канал с именем \"{{.ChannelName}}\" не найден."
   },
   {
     "id": "app.import.import_post.team_not_found.error",
-    "translation": "Ошибка импорта канала. Команда с именем \"{{.TeamName}}\" не найдена."
+    "translation": "Ошибка импорта сообщения. Команда с именем \"{{.TeamName}}\" не найдена."
   },
   {
     "id": "app.import.import_post.user_not_found.error",
-    "translation": "Ошибка импорта канала. Команда с именем \"{{.TeamName}}\" не найдена."
+    "translation": "Ошибка импорта сообщения. Пользователя с именем \"{{.Username}}\" не найден."
   },
   {
     "id": "app.import.validate_channel_import_data.create_at_zero.error",
@@ -2997,31 +2997,31 @@
   },
   {
     "id": "app.import.validate_post_import_data.channel_missing.error",
-    "translation": "Пропущено необходимое свойство team: name."
+    "translation": "Отсутствует необходимое поле для Post: Channel."
   },
   {
     "id": "app.import.validate_post_import_data.create_at_missing.error",
-    "translation": "Пропущено необходимое свойство team: name."
+    "translation": "Отсутствует необходимое поле для Post: create_at."
   },
   {
     "id": "app.import.validate_post_import_data.create_at_zero.error",
-    "translation": "Post CreateAt must not be zero if it is provided."
+    "translation": "Post CreateAt не может быть нулевым, если задан."
   },
   {
     "id": "app.import.validate_post_import_data.message_length.error",
-    "translation": "Post Message property is longer than the maximum permitted length."
+    "translation": "Post Message длиннее, чем максимально разрешённая длина."
   },
   {
     "id": "app.import.validate_post_import_data.message_missing.error",
-    "translation": "Пропущено необходимое свойство team: name."
+    "translation": "Отсутствует необходимое поле для Post: Message."
   },
   {
     "id": "app.import.validate_post_import_data.team_missing.error",
-    "translation": "Пропущено необходимое свойство team: name."
+    "translation": "Отсутствует необходимое поле для Post: Team."
   },
   {
     "id": "app.import.validate_post_import_data.user_missing.error",
-    "translation": "Пропущено необходимое свойство team: name."
+    "translation": "Отсутствует необходимое поле для Post: User."
   },
   {
     "id": "app.import.validate_team_import_data.allowed_domains_length.error",
@@ -3709,7 +3709,7 @@
   },
   {
     "id": "model.client.read_file.app_error",
-    "translation": "Возникла ошибка при поиске пользовательских профилей"
+    "translation": "Возникла ошибка при попытке прочесть файл"
   },
   {
     "id": "model.client.set_profile_user.no_file.app_error",
@@ -4729,7 +4729,7 @@
   },
   {
     "id": "store.sql_channel.get_channels_by_ids.not_found.app_error",
-    "translation": "No channel found"
+    "translation": "Каналы не найдены"
   },
   {
     "id": "store.sql_channel.get_deleted_by_name.existing.app_error",
@@ -4777,11 +4777,11 @@
   },
   {
     "id": "store.sql_channel.get_public_channels.get.app_error",
-    "translation": "Не удалось получить каналы"
+    "translation": "Не удалось получить список публичных каналов"
   },
   {
     "id": "store.sql_channel.get_unread.app_error",
-    "translation": "Не удалось получить список непрочтённых сообщений для команды"
+    "translation": "Не удалось получить список непрочитанных сообщений в канале"
   },
   {
     "id": "store.sql_channel.increment_mention_count.app_error",
@@ -4801,7 +4801,7 @@
   },
   {
     "id": "store.sql_channel.pinned_posts.app_error",
-    "translation": "We couldn't find the pinned posts"
+    "translation": "Не удалось найти прикреплённые сообщения"
   },
   {
     "id": "store.sql_channel.remove_member.app_error",
@@ -5145,7 +5145,7 @@
   },
   {
     "id": "store.sql_post.get_posts_created_att.app_error",
-    "translation": "Не удалось получить посты для канала"
+    "translation": "Не удалось получить сообщения из канала"
   },
   {
     "id": "store.sql_post.get_posts_since.app_error",
@@ -5157,7 +5157,7 @@
   },
   {
     "id": "store.sql_post.overwrite.app_error",
-    "translation": "Неудачная попытка удалить пост"
+    "translation": "Не удалось перезаписать сообщение"
   },
   {
     "id": "store.sql_post.permanent_delete.app_error",
@@ -5189,7 +5189,7 @@
   },
   {
     "id": "store.sql_post.search.warn",
-    "translation": "Query error searching posts: %v"
+    "translation": "Ошибка запроса поиска сообщений: %v"
   },
   {
     "id": "store.sql_post.update.app_error",
@@ -5473,7 +5473,7 @@
   },
   {
     "id": "store.sql_team.remove_member.app_error",
-    "translation": "Мы не можем удалить члена команды"
+    "translation": "Мы не можем удалить участника команды"
   },
   {
     "id": "store.sql_team.save.app_error",
@@ -5497,11 +5497,11 @@
   },
   {
     "id": "store.sql_team.search_all_team.app_error",
-    "translation": "Возникла проблема при поиске канала"
+    "translation": "Возникла проблема при поиске команд"
   },
   {
     "id": "store.sql_team.search_open_team.app_error",
-    "translation": "Возникла проблема при поиске канала"
+    "translation": "Возникла проблема при поиске открытых команд"
   },
   {
     "id": "store.sql_team.update.app_error",
@@ -5525,7 +5525,7 @@
   },
   {
     "id": "store.sql_user.analytics_get_inactive_users_count.app_error",
-    "translation": "Не удалось подсчитать активных пользователей"
+    "translation": "Не удалось подсчитать количество неактивных пользователей"
   },
   {
     "id": "store.sql_user.analytics_get_system_admin_count.app_error",

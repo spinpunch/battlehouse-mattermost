@@ -4,13 +4,13 @@
 package model
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
@@ -144,7 +144,7 @@ func (u *User) PreSave() {
 	}
 
 	if u.Username == "" {
-		u.Username = "n" + NewId()
+		u.Username = NewId()
 	}
 
 	if u.AuthData != nil && *u.AuthData == "" {
@@ -541,6 +541,13 @@ func UserListFromJson(data io.Reader) []*User {
 	}
 }
 
+func HashSha256(text string) string {
+	hash := sha256.New()
+	hash.Write([]byte(text))
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
 // HashPassword generates a hash using the bcrypt.GenerateFromPassword
 func HashPassword(password string) string {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
@@ -576,10 +583,6 @@ func IsValidUsername(s string) bool {
 	}
 
 	if !validUsernameChars.MatchString(s) {
-		return false
-	}
-
-	if !unicode.IsLetter(rune(s[0])) {
 		return false
 	}
 

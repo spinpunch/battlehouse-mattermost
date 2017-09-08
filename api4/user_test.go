@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mattermost/platform/app"
 	"github.com/mattermost/platform/model"
@@ -58,12 +59,6 @@ func TestCreateUser(t *testing.T) {
 	ruser.Email = ""
 	_, resp = Client.CreateUser(ruser)
 	CheckErrorMessage(t, resp, "model.user.is_valid.email.app_error")
-	CheckBadRequestStatus(t, resp)
-
-	ruser.Email = GenerateTestEmail()
-	ruser.Username = "1" + user.Username
-	_, resp = Client.CreateUser(ruser)
-	CheckErrorMessage(t, resp, "model.user.is_valid.username.app_error")
 	CheckBadRequestStatus(t, resp)
 
 	openServer := *utils.Cfg.TeamSettings.EnableOpenServer
@@ -1345,6 +1340,8 @@ func TestResetPassword(t *testing.T) {
 	} else {
 		recovery = result.Data.(*model.PasswordRecovery)
 	}
+
+	time.Sleep(2 * time.Second)
 
 	// Check if the email was send to the right email address and the recovery key match
 	var resultsMailbox utils.JSONMessageHeaderInbucket
