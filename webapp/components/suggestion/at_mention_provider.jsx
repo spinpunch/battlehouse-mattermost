@@ -6,6 +6,7 @@ import Provider from './provider.jsx';
 
 import ChannelStore from 'stores/channel_store.jsx';
 import UserStore from 'stores/user_store.jsx';
+import SuggestionStore from 'stores/suggestion_store.jsx';
 
 import {autocompleteUsersInChannel} from 'actions/user_actions.jsx';
 
@@ -70,7 +71,7 @@ class AtMentionSuggestion extends Suggestion {
             icon = (
                 <img
                     className='mention__image'
-                    src={Client.getUsersRoute() + '/' + user.id + '/image?time=' + user.update_at}
+                    src={Client.getUsersRoute() + '/' + user.id + '/image?time=' + user.last_picture_update}
                 />
             );
         }
@@ -161,6 +162,8 @@ export default class AtMentionProvider extends Provider {
                     });
                 }
             );
+        } else {
+            SuggestionStore.clearSuggestions(suggestionId);
         }
     }
 }

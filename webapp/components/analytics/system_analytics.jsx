@@ -1,7 +1,6 @@
 // Copyright (c) 2016 Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
 
-import Banner from 'components/admin_console/banner.jsx';
 import LineChart from './line_chart.jsx';
 import DoughnutChart from './doughnut_chart.jsx';
 import StatisticCount from './statistic_count.jsx';
@@ -9,7 +8,6 @@ import StatisticCount from './statistic_count.jsx';
 import AnalyticsStore from 'stores/analytics_store.jsx';
 
 import * as Utils from 'utils/utils.jsx';
-import {isLicenseExpired, isLicenseExpiring, displayExpiryDate} from 'utils/license_utils.jsx';
 import * as AsyncClient from 'utils/async_client.jsx';
 import Constants from 'utils/constants.jsx';
 const StatTypes = Constants.StatTypes;
@@ -80,72 +78,144 @@ class SystemAnalytics extends React.Component {
 
     render() {
         const stats = this.state.stats;
+        const isLicensed = global.window.mm_license.IsLicensed === 'true';
+        const skippedIntensiveQueries = stats[StatTypes.TOTAL_POSTS] === -1;
+        const postCountsDay = formatPostsPerDayData(stats[StatTypes.POST_PER_DAY]);
+        const userCountsWithPostsDay = formatUsersWithPostsPerDayData(stats[StatTypes.USERS_WITH_POSTS_PER_DAY]);
 
         let banner;
-        if (stats[StatTypes.TOTAL_POSTS] === -1) {
+        let postCount;
+        let postTotalGraph;
+        let activeUserGraph;
+        if (skippedIntensiveQueries) {
             banner = (
-                <Banner
-                    description={
+                <div className='banner'>
+                    <div className='banner__content'>
                         <FormattedHTMLMessage
                             id='analytics.system.skippedIntensiveQueries'
-                            defaultMessage="Some statistics have been omitted because they put too much load on the system to calculate. See <a href='https://docs.mattermost.com/administration/statistics.html' target='_blank'>https://docs.mattermost.com/administration/statistics.html</a> for more details."
+                            defaultMessage="To maximize performance, some statistics are disabled. You can re-enable them in config.json. See: <a href='https://docs.mattermost.com/administration/statistics.html' target='_blank'>https://docs.mattermost.com/administration/statistics.html</a>"
+                        />
+                    </div>
+                </div>
+            );
+        } else {
+            postCount = (
+                <StatisticCount
+                    title={
+                        <FormattedMessage
+                            id='analytics.system.totalPosts'
+                            defaultMessage='Total Posts'
                         />
                     }
+                    icon='fa-comment'
+                    count={stats[StatTypes.TOTAL_POSTS]}
                 />
             );
-        }
 
-        let advancedCounts;
-        let advancedStats;
-        let advancedGraphs;
-        if (global.window.mm_license.IsLicensed === 'true') {
-            advancedCounts = (
+            postTotalGraph = (
                 <div className='row'>
-                    <StatisticCount
+                    <LineChart
                         title={
                             <FormattedMessage
-                                id='analytics.system.totalSessions'
-                                defaultMessage='Total Sessions'
+                                id='analytics.system.totalPosts'
+                                defaultMessage='Total Posts'
                             />
                         }
-                        icon='fa-signal'
-                        count={stats[StatTypes.TOTAL_SESSIONS]}
-                    />
-                    <StatisticCount
-                        title={
-                            <FormattedMessage
-                                id='analytics.system.totalCommands'
-                                defaultMessage='Total Commands'
-                            />
-                        }
-                        icon='fa-terminal'
-                        count={stats[StatTypes.TOTAL_COMMANDS]}
-                    />
-                    <StatisticCount
-                        title={
-                            <FormattedMessage
-                                id='analytics.system.totalIncomingWebhooks'
-                                defaultMessage='Incoming Webhooks'
-                            />
-                        }
-                        icon='fa-arrow-down'
-                        count={stats[StatTypes.TOTAL_IHOOKS]}
-                    />
-                    <StatisticCount
-                        title={
-                            <FormattedMessage
-                                id='analytics.system.totalOutgoingWebhooks'
-                                defaultMessage='Outgoing Webhooks'
-                            />
-                        }
-                        icon='fa-arrow-up'
-                        count={stats[StatTypes.TOTAL_OHOOKS]}
+                        data={postCountsDay}
+                        options={{
+                            legend: {
+                                display: false
+                            }
+                        }}
+                        width='740'
+                        height='225'
                     />
                 </div>
             );
 
-            advancedStats = (
+            activeUserGraph = (
                 <div className='row'>
+                    <LineChart
+                        title={
+                            <FormattedMessage
+                                id='analytics.system.activeUsers'
+                                defaultMessage='Active Users With Posts'
+                            />
+                        }
+                        data={userCountsWithPostsDay}
+                        options={{
+                            legend: {
+                                display: false
+                            }
+                        }}
+                        width='740'
+                        height='225'
+                    />
+                </div>
+            );
+        }
+
+        let advancedStats;
+        let advancedGraphs;
+        let sessionCount;
+        let commandCount;
+        let incomingCount;
+        let outgoingCount;
+        if (global.window.mm_license.IsLicensed === 'true') {
+            sessionCount = (
+                <StatisticCount
+                    title={
+                        <FormattedMessage
+                            id='analytics.system.totalSessions'
+                            defaultMessage='Total Sessions'
+                        />
+                    }
+                    icon='fa-signal'
+                    count={stats[StatTypes.TOTAL_SESSIONS]}
+                />
+            );
+
+            commandCount = (
+                <StatisticCount
+                    title={
+                        <FormattedMessage
+                            id='analytics.system.totalCommands'
+                            defaultMessage='Total Commands'
+                        />
+                    }
+                    icon='fa-terminal'
+                    count={stats[StatTypes.TOTAL_COMMANDS]}
+                />
+            );
+
+            incomingCount = (
+                <StatisticCount
+                    title={
+                        <FormattedMessage
+                            id='analytics.system.totalIncomingWebhooks'
+                            defaultMessage='Incoming Webhooks'
+                        />
+                    }
+                    icon='fa-arrow-down'
+                    count={stats[StatTypes.TOTAL_IHOOKS]}
+                />
+            );
+
+            outgoingCount = (
+                <StatisticCount
+                    title={
+                        <FormattedMessage
+                            id='analytics.system.totalOutgoingWebhooks'
+                            defaultMessage='Outgoing Webhooks'
+                        />
+                    }
+                    icon='fa-arrow-up'
+                    count={stats[StatTypes.TOTAL_OHOOKS]}
+                />
+            );
+
+            advancedStats = (
+                <div>
                     <StatisticCount
                         title={
                             <FormattedMessage
@@ -215,100 +285,127 @@ class SystemAnalytics extends React.Component {
                     {postTypeGraph}
                 </div>
             );
-
-            if (isLicenseExpired()) {
-                banner = (
-                    <Banner
-                        description={
-                            <FormattedHTMLMessage
-                                id='analytics.system.expiredBanner'
-                                defaultMessage='The Enterprise license expired on {date}. You have 15 days from this date to renew the license, please contact <a href="mailto:commercial@mattermost.com">commercial@mattermost.com</a>.'
-                                values={{
-                                    date: displayExpiryDate()
-                                }}
-                            />
-                        }
-                    />
-                );
-            } else if (isLicenseExpiring()) {
-                banner = (
-                    <Banner
-                        description={
-                            <FormattedHTMLMessage
-                                id='analytics.system.expiringBanner'
-                                defaultMessage='The Enterprise license is expiring on {date}. To renew your license, please contact <a href="mailto:commercial@mattermost.com">commercial@mattermost.com</a>.'
-                                values={{
-                                    date: displayExpiryDate()
-                                }}
-                            />
-                        }
-                    />
-                );
-            }
         }
 
-        const postCountsDay = formatPostsPerDayData(stats[StatTypes.POST_PER_DAY]);
-        const userCountsWithPostsDay = formatUsersWithPostsPerDayData(stats[StatTypes.USERS_WITH_POSTS_PER_DAY]);
-
-        let totalPostsCount;
-        let postTotalGraph;
-        let activeUserGraph;
-        if (stats[StatTypes.TOTAL_POSTS] !== -1) {
-            totalPostsCount = (
-                <StatisticCount
-                    title={
-                        <FormattedMessage
-                            id='analytics.system.totalPosts'
-                            defaultMessage='Total Posts'
-                        />
-                    }
-                    icon='fa-comment'
-                    count={stats[StatTypes.TOTAL_POSTS]}
-                />
-            );
-
-            postTotalGraph = (
-                <div className='row'>
-                    <LineChart
-                        title={
-                            <FormattedMessage
-                                id='analytics.system.totalPosts'
-                                defaultMessage='Total Posts'
-                            />
-                        }
-                        data={postCountsDay}
-                        options={{
-                            legend: {
-                                display: false
-                            }
-                        }}
-                        width='740'
-                        height='225'
+        const userCount = (
+            <StatisticCount
+                title={
+                    <FormattedMessage
+                        id='analytics.system.totalUsers'
+                        defaultMessage='Total Users'
                     />
+                }
+                icon='fa-user'
+                count={stats[StatTypes.TOTAL_USERS]}
+            />
+        );
+
+        const teamCount = (
+            <StatisticCount
+                title={
+                    <FormattedMessage
+                        id='analytics.system.totalTeams'
+                        defaultMessage='Total Teams'
+                    />
+                }
+                icon='fa-users'
+                count={stats[StatTypes.TOTAL_TEAMS]}
+            />
+        );
+
+        const channelCount = (
+            <StatisticCount
+                title={
+                    <FormattedMessage
+                        id='analytics.system.totalChannels'
+                        defaultMessage='Total Channels'
+                    />
+                }
+                icon='fa-globe'
+                count={stats[StatTypes.TOTAL_PUBLIC_CHANNELS] + stats[StatTypes.TOTAL_PRIVATE_GROUPS]}
+            />
+        );
+
+        const dailyActiveUsers = (
+            <StatisticCount
+                title={
+                    <FormattedMessage
+                        id='analytics.system.dailyActiveUsers'
+                        defaultMessage='Daily Active Users'
+                    />
+                }
+                icon='fa-users'
+                count={stats[StatTypes.DAILY_ACTIVE_USERS]}
+            />
+        );
+
+        const monthlyActiveUsers = (
+            <StatisticCount
+                title={
+                    <FormattedMessage
+                        id='analytics.system.monthlyActiveUsers'
+                        defaultMessage='Monthly Active Users'
+                    />
+                }
+                icon='fa-users'
+                count={stats[StatTypes.MONTHLY_ACTIVE_USERS]}
+            />
+        );
+
+        let firstRow;
+        let secondRow;
+        if (isLicensed && skippedIntensiveQueries) {
+            firstRow = (
+                <div>
+                    {userCount}
+                    {teamCount}
+                    {channelCount}
+                    {sessionCount}
                 </div>
             );
 
-            activeUserGraph = (
-                <div className='row'>
-                    <LineChart
-                        title={
-                            <FormattedMessage
-                                id='analytics.system.activeUsers'
-                                defaultMessage='Active Users With Posts'
-                            />
-                        }
-                        data={userCountsWithPostsDay}
-                        options={{
-                            legend: {
-                                display: false
-                            }
-                        }}
-                        width='740'
-                        height='225'
-                    />
+            secondRow = (
+                <div>
+                    {commandCount}
+                    {incomingCount}
+                    {outgoingCount}
+                </div>
+            );
+        } else if (isLicensed && !skippedIntensiveQueries) {
+            firstRow = (
+                <div>
+                    {userCount}
+                    {teamCount}
+                    {channelCount}
+                    {postCount}
+                </div>
+            );
+
+            secondRow = (
+                <div>
+                    {sessionCount}
+                    {commandCount}
+                    {incomingCount}
+                    {outgoingCount}
+                </div>
+            );
+        } else if (!isLicensed) {
+            firstRow = (
+                <div>
+                    {userCount}
+                    {teamCount}
+                    {channelCount}
+                    {postCount}
                 </div>
             );
         }
+
+        const thirdRow = (
+            <div>
+                {dailyActiveUsers}
+                {monthlyActiveUsers}
+            </div>
+        );
 
         return (
             <div className='wrapper--fixed team_statistics'>
@@ -320,40 +417,11 @@ class SystemAnalytics extends React.Component {
                 </h3>
                 {banner}
                 <div className='row'>
-                    <StatisticCount
-                        title={
-                            <FormattedMessage
-                                id='analytics.system.totalUsers'
-                                defaultMessage='Total Users'
-                            />
-                        }
-                        icon='fa-user'
-                        count={stats[StatTypes.TOTAL_USERS]}
-                    />
-                    <StatisticCount
-                        title={
-                            <FormattedMessage
-                                id='analytics.system.totalTeams'
-                                defaultMessage='Total Teams'
-                            />
-                        }
-                        icon='fa-users'
-                        count={stats[StatTypes.TOTAL_TEAMS]}
-                    />
-                    {totalPostsCount}
-                    <StatisticCount
-                        title={
-                            <FormattedMessage
-                                id='analytics.system.totalChannels'
-                                defaultMessage='Total Channels'
-                            />
-                        }
-                        icon='fa-globe'
-                        count={stats[StatTypes.TOTAL_PUBLIC_CHANNELS] + stats[StatTypes.TOTAL_PRIVATE_GROUPS]}
-                    />
+                    {firstRow}
+                    {secondRow}
+                    {thirdRow}
+                    {advancedStats}
                 </div>
-                {advancedCounts}
-                {advancedStats}
                 {advancedGraphs}
                 {postTotalGraph}
                 {activeUserGraph}

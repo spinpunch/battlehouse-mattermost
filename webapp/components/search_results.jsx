@@ -124,6 +124,12 @@ export default class SearchResults extends React.Component {
         window.removeEventListener('resize', this.handleResize);
     }
 
+    componentDidUpdate(prevProps, prevState) {
+        if (this.state.searchTerm !== prevState.searchTerm) {
+            this.resize();
+        }
+    }
+
     handleResize() {
         this.setState({
             windowWidth: Utils.windowWidth(),
@@ -165,7 +171,7 @@ export default class SearchResults extends React.Component {
         var currentId = UserStore.getCurrentId();
         var searchForm = null;
         if (currentId) {
-            searchForm = <SearchBox/>;
+            searchForm = <SearchBox isFocus={Utils.isMobile()}/>;
         }
         var noResults = (!results || !results.order || !results.order.length);
         const searchTerm = this.state.searchTerm;

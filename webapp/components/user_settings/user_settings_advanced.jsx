@@ -53,14 +53,19 @@ export default class AdvancedSettingsDisplay extends React.Component {
             )
         };
 
+        const webrtcEnabled = global.mm_config.EnableWebrtc === 'true';
+        const linkPreviewsEnabled = global.mm_config.EnableLinkPreviews === 'true';
+
+        if (!webrtcEnabled) {
+            preReleaseFeaturesKeys = preReleaseFeaturesKeys.filter((f) => f !== 'WEBRTC_PREVIEW');
+        }
+
+        if (!linkPreviewsEnabled) {
+            preReleaseFeaturesKeys = preReleaseFeaturesKeys.filter((f) => f !== 'EMBED_PREVIEW');
+        }
+
         let enabledFeatures = 0;
         for (const [name, value] of advancedSettings) {
-            const webrtcEnabled = global.mm_config.EnableWebrtc === 'true';
-
-            if (!webrtcEnabled) {
-                preReleaseFeaturesKeys = preReleaseFeaturesKeys.filter((f) => f !== 'WEBRTC_PREVIEW');
-            }
-
             for (const key of preReleaseFeaturesKeys) {
                 const feature = PreReleaseFeatures[key];
 
@@ -332,7 +337,7 @@ export default class AdvancedSettingsDisplay extends React.Component {
             return (
                 <FormattedMessage
                     id='user.settings.advance.embed_preview'
-                    defaultMessage='Show experimental previews of link content, when available'
+                    defaultMessage='For the first web link in a message, display a preview of website content below the message, if available'
                 />
             );
         case 'WEBRTC_PREVIEW':
@@ -393,7 +398,7 @@ export default class AdvancedSettingsDisplay extends React.Component {
                         <br/>
                         <FormattedMessage
                             id='user.settings.advance.sendDesc'
-                            defaultMessage="If enabled 'Enter' inserts a new line and 'Ctrl + Enter' submits the message."
+                            defaultMessage='If enabled ENTER inserts a new line and CTRL+ENTER submits the message.'
                         />
                     </div>
                 </div>
@@ -403,7 +408,7 @@ export default class AdvancedSettingsDisplay extends React.Component {
                     title={
                         <FormattedMessage
                             id='user.settings.advance.sendTitle'
-                            defaultMessage='Send messages on Ctrl + Enter'
+                            defaultMessage='Send messages on CTRL+ENTER'
                         />
                     }
                     inputs={inputs}
@@ -421,7 +426,7 @@ export default class AdvancedSettingsDisplay extends React.Component {
                     title={
                         <FormattedMessage
                             id='user.settings.advance.sendTitle'
-                            defaultMessage='Send messages on Ctrl + Enter'
+                            defaultMessage='Send messages on CTRL+ENTER'
                         />
                     }
                     describe={this.renderOnOffLabel(this.state.settings.send_on_ctrl_enter)}

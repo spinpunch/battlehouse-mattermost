@@ -414,13 +414,18 @@ class UserStoreClass extends EventEmitter {
         userIds.splice(index, 1);
     }
 
-    getProfileListInChannel(channelId = ChannelStore.getCurrentId()) {
+    getProfileListInChannel(channelId = ChannelStore.getCurrentId(), skipCurrent = false) {
         const userIds = this.profiles_in_channel[channelId] || [];
+        const currentId = this.getCurrentId();
         const profiles = [];
 
         for (let i = 0; i < userIds.length; i++) {
             const profile = this.getProfile(userIds[i]);
             if (profile) {
+                if (skipCurrent && profile.id === currentId) {
+                    continue;
+                }
+
                 profiles.push(profile);
             }
         }
@@ -540,6 +545,11 @@ class UserStoreClass extends EventEmitter {
             keys.push('@all');
         }
 
+        const usernameKey = '@' + user.username;
+        if (keys.indexOf(usernameKey) === -1) {
+            keys.push(usernameKey);
+        }
+
         return keys;
     }
 
@@ -576,7 +586,7 @@ class UserStoreClass extends EventEmitter {
         var current = this.getCurrentUser();
 
         if (current) {
-            return Utils.isAdmin(current.roles);
+            return Utils.isSystemAdmin(current.roles);
         }
 
         return false;

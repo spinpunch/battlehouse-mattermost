@@ -56,7 +56,7 @@ export default class UserProfile extends React.Component {
         let profileImg = '';
         if (this.props.user) {
             name = Utils.displayUsername(this.props.user.id);
-            profileImg = Client.getUsersRoute() + '/' + this.props.user.id + '/image?time=' + this.props.user.update_at;
+            profileImg = Client.getUsersRoute() + '/' + this.props.user.id + '/image?time=' + this.props.user.last_picture_update;
         }
 
         if (this.props.overwriteName) {
@@ -102,7 +102,7 @@ UserProfile.defaultProps = {
 };
 UserProfile.propTypes = {
     user: React.PropTypes.object,
-    overwriteName: React.PropTypes.string,
+    overwriteName: React.PropTypes.node,
     overwriteImage: React.PropTypes.string,
     disablePopover: React.PropTypes.bool,
     displayNameType: React.PropTypes.string,

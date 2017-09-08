@@ -13,6 +13,7 @@ import SearchBox from '../search_bar.jsx';
 import WebrtcHeader from './components/webrtc_header.jsx';
 import ConnectingScreen from 'components/loading_screen.jsx';
 
+import {trackEvent} from 'actions/diagnostics_actions.jsx';
 import * as WebrtcActions from 'actions/webrtc_actions.jsx';
 
 import * as Utils from 'utils/utils.jsx';
@@ -81,14 +82,14 @@ export default class WebrtcController extends React.Component {
 
         const currentUser = UserStore.getCurrentUser();
         const remoteUser = UserStore.getProfile(props.userId);
-        const remoteUserImage = Client.getUsersRoute() + '/' + remoteUser.id + '/image?time=' + remoteUser.update_at;
+        const remoteUserImage = Client.getUsersRoute() + '/' + remoteUser.id + '/image?time=' + remoteUser.last_picture_update;
 
         this.state = {
             windowWidth: Utils.windowWidth(),
             windowHeight: Utils.windowHeight(),
             channelId: ChannelStore.getCurrentId(),
             currentUser,
-            currentUserImage: Client.getUsersRoute() + '/' + currentUser.id + '/image?time=' + currentUser.update_at,
+            currentUserImage: Client.getUsersRoute() + '/' + currentUser.id + '/image?time=' + currentUser.last_picture_update,
             remoteUserImage,
             localMediaLoaded: false,
             isPaused: false,
@@ -130,7 +131,7 @@ export default class WebrtcController extends React.Component {
             (nextProps.userId !== this.props.userId) ||
             (nextProps.isCaller !== this.props.isCaller)) {
             const remoteUser = UserStore.getProfile(nextProps.userId);
-            const remoteUserImage = Client.getUsersRoute() + '/' + remoteUser.id + '/image?time=' + remoteUser.update_at;
+            const remoteUserImage = Client.getUsersRoute() + '/' + remoteUser.id + '/image?time=' + remoteUser.last_picture_update;
             this.setState({
                 error: null,
                 remoteUserImage
@@ -600,6 +601,8 @@ export default class WebrtcController extends React.Component {
     }
 
     onFailed() {
+        trackEvent('api', 'api_users_webrtc_failed');
+
         this.setState({
             isCalling: false,
             isAnswering: false,
@@ -644,7 +647,7 @@ export default class WebrtcController extends React.Component {
     }
 
     onConnectCall() {
-        Client.webrtcToken(
+        WebrtcActions.webrtcToken(
             (info) => {
                 const connectingMsg = (
                     <FormattedMessage
@@ -733,6 +736,7 @@ export default class WebrtcController extends React.Component {
     }
 
     doAnswer(jsep) {
+        trackEvent('api', 'api_users_webrtc_start');
         this.videocall.createAnswer({
             jsep,
             stream: this.localMedia,
@@ -747,6 +751,7 @@ export default class WebrtcController extends React.Component {
     }
 
     doHangup(error, manual) {
+        trackEvent('api', 'api_users_webrtc_end');
         if (this.videocall && this.state.callInProgress) {
             this.videocall.send({message: {request: 'hangup'}});
             this.videocall.hangup();

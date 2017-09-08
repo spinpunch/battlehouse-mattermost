@@ -9,10 +9,11 @@ import ToggleModalButton from '../toggle_modal_button.jsx';
 
 import PreferenceStore from 'stores/preference_store.jsx';
 
-import Client from 'client/web_client.jsx';
 import * as AsyncClient from 'utils/async_client.jsx';
 import * as Utils from 'utils/utils.jsx';
 import Constants from 'utils/constants.jsx';
+
+import {updatePassword, getAuthorizedApps, deactivateMfa, deauthorizeOAuthApp} from 'actions/user_actions.jsx';
 
 import $ from 'jquery';
 import React from 'react';
@@ -27,7 +28,7 @@ export default class SecurityTab extends React.Component {
 
         this.submitPassword = this.submitPassword.bind(this);
         this.setupMfa = this.setupMfa.bind(this);
-        this.deactivateMfa = this.deactivateMfa.bind(this);
+        this.removeMfa = this.removeMfa.bind(this);
         this.updateCurrentPassword = this.updateCurrentPassword.bind(this);
         this.updateNewPassword = this.updateNewPassword.bind(this);
         this.updateConfirmPassword = this.updateConfirmPassword.bind(this);
@@ -53,7 +54,7 @@ export default class SecurityTab extends React.Component {
 
     componentDidMount() {
         if (global.mm_config.EnableOAuthServiceProvider === 'true') {
-            Client.getAuthorizedApps(
+            getAuthorizedApps(
                 (authorizedApps) => {
                     this.setState({authorizedApps, serverError: null}); //eslint-disable-line react/no-did-mount-set-state
                 },
@@ -91,7 +92,7 @@ export default class SecurityTab extends React.Component {
             return;
         }
 
-        Client.updatePassword(
+        updatePassword(
             user.id,
             currentPassword,
             newPassword,
@@ -118,10 +119,8 @@ export default class SecurityTab extends React.Component {
         browserHistory.push('/mfa/setup');
     }
 
-    deactivateMfa() {
-        Client.updateMfa(
-            '',
-            false,
+    removeMfa() {
+        deactivateMfa(
             () => {
                 if (global.window.mm_license.MFA === 'true' &&
                         global.window.mm_config.EnableMultifactorAuthentication === 'true' &&
@@ -131,7 +130,6 @@ export default class SecurityTab extends React.Component {
                 }
 
                 this.props.updateSection('');
-                AsyncClient.getMe();
                 this.setState(this.getDefaultState());
             },
             (err) => {
@@ -161,7 +159,7 @@ export default class SecurityTab extends React.Component {
     deauthorizeApp(e) {
         e.preventDefault();
         const appId = e.currentTarget.getAttribute('data-app');
-        Client.deauthorizeOAuthApp(
+        deauthorizeOAuthApp(
             appId,
             () => {
                 const authorizedApps = this.state.authorizedApps.filter((app) => {
@@ -221,7 +219,7 @@ export default class SecurityTab extends React.Component {
                         <a
                             className='btn btn-primary'
                             href='#'
-                            onClick={this.deactivateMfa}
+                            onClick={this.removeMfa}
                         >
                             {mfaButtonText}
                         </a>
@@ -389,7 +387,7 @@ export default class SecurityTab extends React.Component {
                         key='oauthEmailInfo'
                         className='form-group'
                     >
-                        <div className='setting-list__hint'>
+                        <div className='setting-list__hint col-sm-12'>
                             <FormattedMessage
                                 id='user.settings.security.passwordGitlabCantUpdate'
                                 defaultMessage='Login occurs through GitLab. Password cannot be updated.'
@@ -403,7 +401,7 @@ export default class SecurityTab extends React.Component {
                         key='oauthEmailInfo'
                         className='form-group'
                     >
-                        <div className='setting-list__hint'>
+                        <div className='setting-list__hint col-sm-12'>
                             <FormattedMessage
                                 id='user.settings.security.passwordLdapCantUpdate'
                                 defaultMessage='Login occurs through AD/LDAP. Password cannot be updated.'
@@ -417,10 +415,38 @@ export default class SecurityTab extends React.Component {
                         key='oauthEmailInfo'
                         className='form-group'
                     >
-                        <div className='setting-list__hint'>
+                        <div className='setting-list__hint col-sm-12'>
                             <FormattedMessage
                                 id='user.settings.security.passwordSamlCantUpdate'
                                 defaultMessage='This field is handled through your login provider. If you want to change it, you need to do so through your login provider.'
+                            />
+                        </div>
+                    </div>
+                );
+            } else if (this.props.user.auth_service === Constants.GOOGLE_SERVICE) {
+                inputs.push(
+                    <div
+                        key='oauthEmailInfo'
+                        className='form-group'
+                    >
+                        <div className='setting-list__hint col-sm-12'>
+                            <FormattedMessage
+                                id='user.settings.security.passwordGoogleCantUpdate'
+                                defaultMessage='Login occurs through Google Apps. Password cannot be updated.'
+                            />
+                        </div>
+                    </div>
+                );
+            } else if (this.props.user.auth_service === Constants.OFFICE365_SERVICE) {
+                inputs.push(
+                    <div
+                        key='oauthEmailInfo'
+                        className='form-group'
+                    >
+                        <div className='setting-list__hint col-sm-12'>
+                            <FormattedMessage
+                                id='user.settings.security.passwordOffice365CantUpdate'
+                                defaultMessage='Login occurs through Office 365. Password cannot be updated.'
                             />
                         </div>
                     </div>
@@ -500,6 +526,20 @@ export default class SecurityTab extends React.Component {
                 <FormattedMessage
                     id='user.settings.security.loginSaml'
                     defaultMessage='Login done through SAML'
+                />
+            );
+        } else if (this.props.user.auth_service === Constants.GOOGLE_SERVICE) {
+            describe = (
+                <FormattedMessage
+                    id='user.settings.security.loginGoogle'
+                    defaultMessage='Login done through Google Apps'
+                />
+            );
+        } else if (this.props.user.auth_service === Constants.OFFICE365_SERVICE) {
+            describe = (
+                <FormattedMessage
+                    id='user.settings.security.loginOffice365'
+                    defaultMessage='Login done through Office 365'
                 />
             );
         }
@@ -811,13 +851,11 @@ export default class SecurityTab extends React.Component {
             } else {
                 apps = (
                     <div className='padding-bottom x2 authorized-app'>
-                        <div className='col-sm-12'>
-                            <div className='setting-list__hint'>
-                                <FormattedMessage
-                                    id='user.settings.security.noApps'
-                                    defaultMessage='No OAuth 2.0 Applications are authorized.'
-                                />
-                            </div>
+                        <div className='setting-list__hint'>
+                            <FormattedMessage
+                                id='user.settings.security.noApps'
+                                defaultMessage='No OAuth 2.0 Applications are authorized.'
+                            />
                         </div>
                     </div>
                 );
