@@ -56,45 +56,48 @@ const (
 )
 
 type ServiceSettings struct {
-	SiteURL                           *string
-	ListenAddress                     string
-	ConnectionSecurity                *string
-	TLSCertFile                       *string
-	TLSKeyFile                        *string
-	UseLetsEncrypt                    *bool
-	LetsEncryptCertificateCacheFile   *string
-	Forward80To443                    *bool
-	ReadTimeout                       *int
-	WriteTimeout                      *int
-	MaximumLoginAttempts              int
-	SegmentDeveloperKey               string
-	GoogleDeveloperKey                string
-	EnableOAuthServiceProvider        bool
-	EnableIncomingWebhooks            bool
-	EnableOutgoingWebhooks            bool
-	EnableCommands                    *bool
-	EnableOnlyAdminIntegrations       *bool
-	EnablePostUsernameOverride        bool
-	EnablePostIconOverride            bool
-	EnableTesting                     bool
-	EnableDeveloper                   *bool
-	EnableSecurityFixAlert            *bool
-	EnableInsecureOutgoingConnections *bool
-	EnableMultifactorAuthentication   *bool
-	EnforceMultifactorAuthentication  *bool
-	AllowCorsFrom                     *string
-	SessionLengthWebInDays            *int
-	SessionLengthMobileInDays         *int
-	SessionLengthSSOInDays            *int
-	SessionCacheInMinutes             *int
-	WebsocketSecurePort               *int
-	WebsocketPort                     *int
-	WebserverMode                     *string
- 	WebserverRoot                     *string // battlehouse.com
- 	BHApiSecret                       *string // battlehouse.com
- 	BHLoginEnabled                    bool    // battlehouse.com
-	EnableCustomEmoji                 *bool
-	RestrictCustomEmojiCreation       *string
+	SiteURL                                  *string
+	ListenAddress                            string
+	ConnectionSecurity                       *string
+	TLSCertFile                              *string
+	TLSKeyFile                               *string
+	UseLetsEncrypt                           *bool
+	LetsEncryptCertificateCacheFile          *string
+	Forward80To443                           *bool
+	ReadTimeout                              *int
+	WriteTimeout                             *int
+	MaximumLoginAttempts                     int
+	SegmentDeveloperKey                      string
+	GoogleDeveloperKey                       string
+	EnableOAuthServiceProvider               bool
+	EnableIncomingWebhooks                   bool
+	EnableOutgoingWebhooks                   bool
+	EnableCommands                           *bool
+	EnableOnlyAdminIntegrations              *bool
+	EnablePostUsernameOverride               bool
+	EnablePostIconOverride                   bool
+	EnableTesting                            bool
+	EnableDeveloper                          *bool
+	EnableSecurityFixAlert                   *bool
+	EnableInsecureOutgoingConnections        *bool
+	EnableMultifactorAuthentication          *bool
+	EnforceMultifactorAuthentication         *bool
+	AllowCorsFrom                            *string
+	SessionLengthWebInDays                   *int
+	SessionLengthMobileInDays                *int
+	SessionLengthSSOInDays                   *int
+	SessionCacheInMinutes                    *int
+	WebsocketSecurePort                      *int
+	WebsocketPort                            *int
+	WebserverMode                            *string
+ 	WebserverRoot                            *string // battlehouse.com
+ 	BHApiSecret                              *string // battlehouse.com
+ 	BHLoginEnabled                           bool    // battlehouse.com
+	EnableCustomEmoji                        *bool
+	RestrictCustomEmojiCreation              *string
+	TimeBetweenUserTypingUpdatesMilliseconds *int64
+	EnableUserTypingMessages                 *bool
+	ClusterLogTimeoutMilliseconds            *int
 }
 
 type ClusterSettings struct {
@@ -1070,6 +1073,21 @@ func (o *Config) SetDefaults() {
 		*o.MetricsSettings.BlockProfileRate = 0
 	}
 
+	if o.ServiceSettings.TimeBetweenUserTypingUpdatesMilliseconds == nil {
+		o.ServiceSettings.TimeBetweenUserTypingUpdatesMilliseconds = new(int64)
+		*o.ServiceSettings.TimeBetweenUserTypingUpdatesMilliseconds = 5000
+	}
+
+	if o.ServiceSettings.EnableUserTypingMessages == nil {
+		o.ServiceSettings.EnableUserTypingMessages = new(bool)
+		*o.ServiceSettings.EnableUserTypingMessages = true
+	}
+
+	if o.ServiceSettings.ClusterLogTimeoutMilliseconds == nil {
+		o.ServiceSettings.ClusterLogTimeoutMilliseconds = new(int)
+		*o.ServiceSettings.ClusterLogTimeoutMilliseconds = 2000
+	}
+
 	o.defaultWebrtcSettings()
 }
 
@@ -1299,6 +1317,10 @@ func (o *Config) IsValid() *AppError {
 
 	if *o.ServiceSettings.WriteTimeout <= 0 {
 		return NewLocAppError("Config.IsValid", "model.config.is_valid.write_timeout.app_error", nil, "")
+	}
+
+	if *o.ServiceSettings.TimeBetweenUserTypingUpdatesMilliseconds < 1000 {
+		return NewLocAppError("Config.IsValid", "model.config.is_valid.time_between_user_typing.app_error", nil, "")
 	}
 
 	return nil

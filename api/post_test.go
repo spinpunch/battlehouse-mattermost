@@ -130,7 +130,7 @@ func TestCreatePost(t *testing.T) {
 	} else if rpost9 := resp.Data.(*model.Post); len(rpost9.FileIds) != 3 {
 		t.Fatal("post should have 3 files")
 	} else {
-		infos := store.Must(Srv.Store.FileInfo().GetForPost(rpost9.Id)).([]*model.FileInfo)
+		infos := store.Must(Srv.Store.FileInfo().GetForPost(rpost9.Id, true, true)).([]*model.FileInfo)
 
 		if len(infos) != 3 {
 			t.Fatal("should've attached all 3 files to post")
@@ -868,40 +868,6 @@ func TestFuzzyPosts(t *testing.T) {
 	}
 }
 
-func TestMakeDirectChannelVisible(t *testing.T) {
-	th := Setup().InitBasic()
-	Client := th.BasicClient
-	team := th.BasicTeam
-	user1 := th.BasicUser
-	user2 := th.BasicUser2
-
-	th.LoginBasic2()
-
-	preferences := &model.Preferences{
-		{
-			UserId:   user2.Id,
-			Category: model.PREFERENCE_CATEGORY_DIRECT_CHANNEL_SHOW,
-			Name:     user1.Id,
-			Value:    "false",
-		},
-	}
-	Client.Must(Client.SetPreferences(preferences))
-
-	Client.Must(Client.Logout())
-	th.LoginBasic()
-	th.BasicClient.SetTeamId(team.Id)
-
-	channel := Client.Must(Client.CreateDirectChannel(user2.Id)).Data.(*model.Channel)
-
-	makeDirectChannelVisible(channel.Id)
-
-	if result, err := Client.GetPreference(model.PREFERENCE_CATEGORY_DIRECT_CHANNEL_SHOW, user2.Id); err != nil {
-		t.Fatal("Errored trying to set direct channel to be visible for user1")
-	} else if pref := result.Data.(*model.Preference); pref.Value != "true" {
-		t.Fatal("Failed to set direct channel to be visible for user1")
-	}
-}
-
 func TestGetMentionKeywords(t *testing.T) {
 	// user with username or custom mentions enabled
 	user1 := &model.User{
@@ -1267,6 +1233,7 @@ func TestGetMessageForNotification(t *testing.T) {
 
 	post.FileIds = model.StringArray{testPng.Id, testJpg1.Id}
 	store.Must(Srv.Store.FileInfo().AttachToPost(testJpg1.Id, post.Id))
+	Srv.Store.FileInfo().InvalidateFileInfosForPostCache(post.Id)
 	if message := getMessageForNotification(post, translateFunc); message != "2 images sent: test1.png, test2.jpg" && message != "2 images sent: test2.jpg, test1.png" {
 		t.Fatal("should've returned number of images:", message)
 	}
@@ -1280,6 +1247,7 @@ func TestGetMessageForNotification(t *testing.T) {
 
 	store.Must(Srv.Store.FileInfo().AttachToPost(testJpg2.Id, post.Id))
 	post.FileIds = model.StringArray{testFile.Id, testJpg2.Id}
+	Srv.Store.FileInfo().InvalidateFileInfosForPostCache(post.Id)
 	if message := getMessageForNotification(post, translateFunc); message != "2 files sent: test1.go, test3.jpg" && message != "2 files sent: test3.jpg, test1.go" {
 		t.Fatal("should've returned number of mixed files:", message)
 	}
@@ -1350,7 +1318,7 @@ func TestSendNotifications(t *testing.T) {
 		Message:   "@" + th.BasicUser2.Username,
 	})).Data.(*model.Post)
 
-	mentions := sendNotifications(newContext, post1, th.BasicTeam, th.BasicChannel)
+	mentions := sendNotifications(newContext, post1, th.BasicTeam, th.BasicChannel, th.BasicUser)
 	if mentions == nil {
 		t.Log(mentions)
 		t.Fatal("user should have been mentioned")

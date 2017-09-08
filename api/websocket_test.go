@@ -6,11 +6,13 @@ package api
 import (
 	//"encoding/json"
 	//"net/http"
+	"net/http"
 	"testing"
 	"time"
 
-	//"github.com/gorilla/websocket"
+	"github.com/gorilla/websocket"
 	"github.com/mattermost/platform/model"
+	"github.com/mattermost/platform/utils"
 )
 
 /*func TestWebSocketAuthentication(t *testing.T) {
@@ -248,11 +250,32 @@ func TestWebSocketEvent(t *testing.T) {
 	}
 }
 
+func TestWebsocketOriginSecurity(t *testing.T) {
+	Setup().InitBasic()
+	url := "ws://localhost" + utils.Cfg.ServiceSettings.ListenAddress
+
+	// Should fail because origin doesn't match
+	_, _, err := websocket.DefaultDialer.Dial(url+model.API_URL_SUFFIX_V3+"/users/websocket", http.Header{
+		"Origin": []string{"http://www.evil.com"},
+	})
+	if err == nil {
+		t.Fatal("Should have errored because Origin does not match host! SECURITY ISSUE!")
+	}
+
+	// We are not a browser so we can spoof this just fine
+	_, _, err = websocket.DefaultDialer.Dial(url+model.API_URL_SUFFIX_V3+"/users/websocket", http.Header{
+		"Origin": []string{"http://localhost" + utils.Cfg.ServiceSettings.ListenAddress},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestZZWebSocketTearDown(t *testing.T) {
 	// *IMPORTANT* - Kind of hacky
 	// This should be the last function in any test file
 	// that calls Setup()
 	// Should be in the last file too sorted by name
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 	TearDown()
 }

@@ -24,11 +24,10 @@ const (
 	ALL_CHANNEL_MEMBERS_FOR_USER_CACHE_SIZE = model.SESSION_CACHE_SIZE
 	ALL_CHANNEL_MEMBERS_FOR_USER_CACHE_SEC  = 900 // 15 mins
 
-	CHANNEL_MEMBERS_COUNTS_CACHE_SIZE = 20000
-	CHANNEL_MEMBERS_COUNTS_CACHE_SEC  = 900 // 15 mins
+	CHANNEL_MEMBERS_COUNTS_CACHE_SIZE = model.CHANNEL_CACHE_SIZE
+	CHANNEL_MEMBERS_COUNTS_CACHE_SEC  = 1800 // 30 mins
 
-	CHANNEL_CACHE_SIZE = 5000
-	CHANNEL_CACHE_SEC  = 900 // 15 mins
+	CHANNEL_CACHE_SEC = 900 // 15 mins
 )
 
 type SqlChannelStore struct {
@@ -37,12 +36,14 @@ type SqlChannelStore struct {
 
 var channelMemberCountsCache = utils.NewLru(CHANNEL_MEMBERS_COUNTS_CACHE_SIZE)
 var allChannelMembersForUserCache = utils.NewLru(ALL_CHANNEL_MEMBERS_FOR_USER_CACHE_SIZE)
-var channelCache = utils.NewLru(CHANNEL_CACHE_SIZE)
+var channelCache = utils.NewLru(model.CHANNEL_CACHE_SIZE)
+var channelByNameCache = utils.NewLru(model.CHANNEL_CACHE_SIZE)
 
 func ClearChannelCaches() {
 	channelMemberCountsCache.Purge()
 	allChannelMembersForUserCache.Purge()
 	channelCache.Purge()
+	channelByNameCache.Purge()
 }
 
 func NewSqlChannelStore(sqlStore *SqlStore) ChannelStore {
@@ -306,6 +307,10 @@ func (us SqlChannelStore) InvalidateChannel(id string) {
 	channelCache.Remove(id)
 }
 
+func (us SqlChannelStore) InvalidateChannelByName(teamId, name string) {
+	channelCache.Remove(teamId + name)
+}
+
 func (s SqlChannelStore) Get(id string, allowFromCache bool) StoreChannel {
 	return s.get(id, false, allowFromCache)
 }
@@ -354,7 +359,7 @@ func (s SqlChannelStore) get(id string, master bool, allowFromCache bool) StoreC
 			result.Err = model.NewLocAppError("SqlChannelStore.Get", "store.sql_channel.get.existing.app_error", nil, "id="+id)
 		} else {
 			result.Data = obj.(*model.Channel)
-			channelCache.AddWithExpiresInSecs(id, obj.(*model.Channel), CHANNEL_MEMBERS_COUNTS_CACHE_SEC)
+			channelCache.AddWithExpiresInSecs(id, obj.(*model.Channel), CHANNEL_CACHE_SEC)
 		}
 
 		storeChannel <- result
@@ -539,15 +544,15 @@ func (s SqlChannelStore) GetTeamChannels(teamId string) StoreChannel {
 	return storeChannel
 }
 
-func (s SqlChannelStore) GetByName(teamId string, name string) StoreChannel {
-	return s.getByName(teamId, name, false)
+func (s SqlChannelStore) GetByName(teamId string, name string, allowFromCache bool) StoreChannel {
+	return s.getByName(teamId, name, false, allowFromCache)
 }
 
-func (s SqlChannelStore) GetByNameIncludeDeleted(teamId string, name string) StoreChannel {
-	return s.getByName(teamId, name, true)
+func (s SqlChannelStore) GetByNameIncludeDeleted(teamId string, name string, allowFromCache bool) StoreChannel {
+	return s.getByName(teamId, name, true, allowFromCache)
 }
 
-func (s SqlChannelStore) getByName(teamId string, name string, includeDeleted bool) StoreChannel {
+func (s SqlChannelStore) getByName(teamId string, name string, includeDeleted bool, allowFromCache bool) StoreChannel {
 	storeChannel := make(StoreChannel, 1)
 
 	var query string
@@ -562,6 +567,23 @@ func (s SqlChannelStore) getByName(teamId string, name string, includeDeleted bo
 
 		channel := model.Channel{}
 
+		if allowFromCache {
+			metrics := einterfaces.GetMetricsInterface()
+			if cacheItem, ok := channelByNameCache.Get(teamId + name); ok {
+				if metrics != nil {
+					metrics.IncrementMemCacheHitCounter("Channel By Name")
+				}
+				result.Data = cacheItem.(*model.Channel)
+				storeChannel <- result
+				close(storeChannel)
+				return
+			} else {
+				if metrics != nil {
+					metrics.IncrementMemCacheMissCounter("Channel By Name")
+				}
+			}
+		}
+
 		if err := s.GetReplica().SelectOne(&channel, query, map[string]interface{}{"TeamId": teamId, "Name": name}); err != nil {
 			if err == sql.ErrNoRows {
 				result.Err = model.NewLocAppError("SqlChannelStore.GetByName", MISSING_CHANNEL_ERROR, nil, "teamId="+teamId+", "+"name="+name+", "+err.Error())
@@ -570,6 +592,7 @@ func (s SqlChannelStore) getByName(teamId string, name string, includeDeleted bo
 			}
 		} else {
 			result.Data = &channel
+			channelByNameCache.AddWithExpiresInSecs(teamId+name, &channel, CHANNEL_CACHE_SEC)
 		}
 
 		storeChannel <- result

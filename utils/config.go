@@ -30,6 +30,7 @@ const (
 var Cfg *model.Config = &model.Config{}
 var CfgDiagnosticId = ""
 var CfgHash = ""
+var ClientCfgHash = ""
 var CfgFileName string = ""
 var ClientCfg map[string]string = map[string]string{}
 var originalDisableDebugLvl l4g.Level = l4g.DEBUG
@@ -214,6 +215,8 @@ func LoadConfig(fileName string) {
 	Cfg = &config
 	CfgHash = fmt.Sprintf("%x", md5.Sum([]byte(Cfg.ToJson())))
 	ClientCfg = getClientConfig(Cfg)
+	clientCfgJson, _ := json.Marshal(ClientCfg)
+	ClientCfgHash = fmt.Sprintf("%x", md5.Sum(clientCfgJson))
 
 	// Actions that need to run every time the config is loaded
 	if ldapI := einterfaces.GetLdapInterface(); ldapI != nil {
@@ -309,6 +312,10 @@ func getClientConfig(c *model.Config) map[string]string {
 	props["IosAppDownloadLink"] = *c.NativeAppSettings.IosAppDownloadLink
 
 	props["EnableWebrtc"] = strconv.FormatBool(*c.WebrtcSettings.Enable)
+
+	props["MaxNotificationsPerChannel"] = strconv.FormatInt(*c.TeamSettings.MaxNotificationsPerChannel, 10)
+	props["TimeBetweenUserTypingUpdatesMilliseconds"] = strconv.FormatInt(*c.ServiceSettings.TimeBetweenUserTypingUpdatesMilliseconds, 10)
+	props["EnableUserTypingMessages"] = strconv.FormatBool(*c.ServiceSettings.EnableUserTypingMessages)
 
 	if IsLicensed {
 		if *License.Features.CustomBrand {

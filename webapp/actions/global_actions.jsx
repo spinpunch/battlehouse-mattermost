@@ -47,15 +47,22 @@ export function emitChannelClickEvent(channel) {
     function switchToChannel(chan) {
         const channelMember = ChannelStore.getMyMember(chan.id);
         const getMyChannelMembersPromise = AsyncClient.getChannelMember(chan.id, UserStore.getCurrentId());
+        const oldChannelId = ChannelStore.getCurrentId();
 
         getMyChannelMembersPromise.then(() => {
             AsyncClient.getChannelStats(chan.id, true);
-            AsyncClient.viewChannel(chan.id, ChannelStore.getCurrentId());
+            AsyncClient.viewChannel(chan.id, oldChannelId);
             loadPosts(chan.id);
             trackPage();
         });
 
+        // Mark previous and next channel as read
+        ChannelStore.resetCounts(oldChannelId);
+        ChannelStore.resetCounts(chan.id);
+
         BrowserStore.setGlobalItem(chan.team_id, chan.id);
+
+        loadProfilesAndTeamMembersForDMSidebar();
 
         AppDispatcher.handleViewAction({
             type: ActionTypes.CLICK_CHANNEL,
@@ -64,7 +71,7 @@ export function emitChannelClickEvent(channel) {
             team_id: chan.team_id,
             total_msg_count: chan.total_msg_count,
             channelMember,
-            prev: ChannelStore.getCurrentId()
+            prev: oldChannelId
         });
     }
 
@@ -450,7 +457,9 @@ export function viewLoggedIn() {
 let lastTimeTypingSent = 0;
 export function emitLocalUserTypingEvent(channelId, parentId) {
     const t = Date.now();
-    if ((t - lastTimeTypingSent) > Constants.UPDATE_TYPING_MS) {
+    const membersInChannel = ChannelStore.getStats(channelId).member_count;
+
+    if (((t - lastTimeTypingSent) > global.window.mm_config.TimeBetweenUserTypingUpdatesMilliseconds) && membersInChannel < global.window.mm_config.MaxNotificationsPerChannel && global.window.mm_config.EnableUserTypingMessages === 'true') {
         WebSocketClient.userTyping(channelId, parentId);
         lastTimeTypingSent = t;
     }
@@ -487,7 +496,6 @@ export function clientLogout(redirectTo = '/') {
     UserStore.clear();
     TeamStore.clear();
     ChannelStore.clear();
-    newLocalizationSelected(global.window.mm_config.DefaultClientLocale);
     stopPeriodicStatusUpdates();
     WebsocketActions.close();
 
@@ -497,7 +505,7 @@ export function clientLogout(redirectTo = '/') {
         return; // (should redirect immediately though)
     }
 
-    browserHistory.push(redirectTo);
+    window.location.href = redirectTo;
 }
 
 export function emitSearchMentionsEvent(user) {

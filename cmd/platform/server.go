@@ -37,6 +37,12 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// Backwards compatibility with -config flag
+	if flagConfigFile != "" {
+		config = flagConfigFile
+	}
+
 	runServer(config)
 	return nil
 }
@@ -81,6 +87,8 @@ func runServer(configFileLocation string) {
 	if !utils.IsLicensed {
 		utils.Cfg.TeamSettings.MaxNotificationsPerChannel = &MaxNotificationsPerChannelDefault
 	}
+
+	utils.SetDefaultRolesBasedOnConfig()
 
 	resetStatuses()
 

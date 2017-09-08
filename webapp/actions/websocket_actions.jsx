@@ -67,9 +67,15 @@ export function close() {
     WebSocketClient.close();
 }
 
-export function reconnect() {
+function reconnectWebSocket() {
     close();
     initialize();
+}
+
+export function reconnect(includeWebSocket = true) {
+    if (includeWebSocket) {
+        reconnectWebSocket();
+    }
 
     if (Client.teamId) {
         loadChannelsForCurrentUser();
@@ -79,6 +85,26 @@ export function reconnect() {
 
     ErrorStore.clearLastError();
     ErrorStore.emitChange();
+}
+
+let intervalId = '';
+const SYNC_INTERVAL_MILLISECONDS = 1000 * 60 * 15; // 15 minutes
+
+export function startPeriodicSync() {
+    clearInterval(intervalId);
+
+    intervalId = setInterval(
+        () => {
+            if (UserStore.getCurrentUser() != null) {
+                reconnect(false);
+            }
+        },
+        SYNC_INTERVAL_MILLISECONDS
+    );
+}
+
+export function stopPeriodicSync() {
+    clearInterval(intervalId);
 }
 
 function handleFirstConnect() {
@@ -128,10 +154,6 @@ function handleEvent(msg) {
 
     case SocketEvents.USER_UPDATED:
         handleUserUpdatedEvent(msg);
-        break;
-
-    case SocketEvents.CHANNEL_VIEWED:
-        handleChannelViewedEvent(msg);
         break;
 
     case SocketEvents.CHANNEL_DELETED:
@@ -272,15 +294,6 @@ function handleUserUpdatedEvent(msg) {
     if (UserStore.getCurrentId() !== user.id) {
         UserStore.saveProfile(user);
         UserStore.emitChange(user.id);
-    }
-}
-
-function handleChannelViewedEvent(msg) {
-    // Useful for when multiple devices have the app open to different channels
-    if (TeamStore.getCurrentId() === msg.broadcast.team_id &&
-            ChannelStore.getCurrentId() !== msg.data.channel_id &&
-            UserStore.getCurrentId() === msg.broadcast.user_id) {
-        AsyncClient.getChannel(msg.data.channel_id);
     }
 }
 

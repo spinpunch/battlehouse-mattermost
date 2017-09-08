@@ -63,7 +63,7 @@ func (me *msgProvider) DoCommand(c *Context, args *model.CommandArgs, message st
 	channelName := model.GetDMNameFromIds(c.Session.UserId, userProfile.Id)
 
 	targetChannelId := ""
-	if channel := <-Srv.Store.Channel().GetByName(c.TeamId, channelName); channel.Err != nil {
+	if channel := <-Srv.Store.Channel().GetByName(c.TeamId, channelName, true); channel.Err != nil {
 		if channel.Err.Id == "store.sql_channel.get_by_name.missing.app_error" {
 			if directChannel, err := CreateDirectChannel(c.Session.UserId, userProfile.Id); err != nil {
 				c.Err = err
@@ -79,7 +79,6 @@ func (me *msgProvider) DoCommand(c *Context, args *model.CommandArgs, message st
 		targetChannelId = channel.Data.(*model.Channel).Id
 	}
 
-	makeDirectChannelVisible(targetChannelId)
 	if len(parsedMessage) > 0 {
 		post := &model.Post{}
 		post.Message = parsedMessage
