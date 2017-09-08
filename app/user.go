@@ -982,7 +982,7 @@ func UpdateUserAsUserBH(userId string, asAdmin bool, new_username, new_email, ne
 
 		SanitizeProfile(updatedUser, asAdmin)
 
-		sendUpdatedUserEvent(updatedUser)
+		sendUpdatedUserEvent(*updatedUser, asAdmin)
 
 		return updatedUser, nil
 	}
