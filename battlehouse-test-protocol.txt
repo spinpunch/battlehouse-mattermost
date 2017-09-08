@@ -1,0 +1,24 @@
+- make sure BH header looks nice, on all browser widths
+
+- on bhlogin server, run ./export.py and see if it messes anything up
+   - change username and avatar, see if ./export.py works
+
+- make sure pasting an invite link in a public channel triggers the filter
+  - https://www.battlehouse.com/play/firestrike?bh_invite=134234
+
+- make sure ordinary user cannot:
+  - kick others from public channel
+  - create public channel
+  - delete public channel
+
+- log out, log in, check that MMAUTHTOKEN cookie goes on the toplevel
+  domain, has httpOnly = NO and secure = YES
+
+---
+
+- create new account and make sure
+   - tutorial is skipped
+   - channels are auto-joined
+   - name display format is "nickname if one exists, otherwise first and last"
+
+- ban user and make sure they are kicked
