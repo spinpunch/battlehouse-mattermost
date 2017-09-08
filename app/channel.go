@@ -32,8 +32,17 @@ func CreateDefaultChannels(teamId string) ([]*model.Channel, *model.AppError) {
 	return channels, nil
 }
 
-func JoinDefaultChannels(teamId string, user *model.User, channelRole string) *model.AppError {
+func JoinDefaultChannels(teamId string, user *model.User, channelRole string, userRequestorId string) *model.AppError {
 	var err *model.AppError = nil
+
+	var requestor *model.User
+	if userRequestorId != "" {
+		if u := <-Srv.Store.User().Get(userRequestorId); u.Err != nil {
+			return u.Err
+		} else {
+			requestor = u.Data.(*model.User)
+		}
+	}
 
 	// battlehouse.com - cleaned this up!
 	channelsToJoin := make([]*model.Channel, 0)
@@ -71,8 +80,14 @@ func JoinDefaultChannels(teamId string, user *model.User, channelRole string) *m
 
 		// if auto-join is happening, do not post noisy join announcement
 		if !*utils.Cfg.TeamSettings.AutoJoinAllChannels {
-			if err := postJoinChannelMessage(user, channel); err != nil {
-				l4g.Error(utils.T("api.channel.post_user_add_remove_message_and_forget.error"), err)
+			if requestor == nil {
+				if err := postJoinChannelMessage(user, channel); err != nil {
+					l4g.Error(utils.T("api.channel.post_user_add_remove_message_and_forget.error"), err)
+				}
+			} else {
+				if err := PostAddToChannelMessage(requestor, user, channel); err != nil {
+					l4g.Error(utils.T("api.channel.post_user_add_remove_message_and_forget.error"), err)
+				}
 			}
 		}
 
@@ -265,6 +280,11 @@ func UpdateChannel(channel *model.Channel) (*model.Channel, *model.AppError) {
 	}
 }
 
+func PatchChannel(channel *model.Channel, patch *model.ChannelPatch) (*model.Channel, *model.AppError) {
+	channel.Patch(patch)
+	return UpdateChannel(channel)
+}
+
 func UpdateChannelMemberRoles(channelId string, userId string, newRoles string) (*model.ChannelMember, *model.AppError) {
 	var member *model.ChannelMember
 	var err *model.AppError
@@ -318,7 +338,7 @@ func UpdateChannelMemberNotifyProps(data map[string]string, channelId string, us
 func DeleteChannel(channel *model.Channel, userId string) *model.AppError {
 	uc := Srv.Store.User().Get(userId)
 	ihc := Srv.Store.Webhook().GetIncomingByChannel(channel.Id)
-	ohc := Srv.Store.Webhook().GetOutgoingByChannel(channel.Id)
+	ohc := Srv.Store.Webhook().GetOutgoingByChannel(channel.Id, -1, -1)
 
 	if uresult := <-uc; uresult.Err != nil {
 		return uresult.Err
@@ -449,6 +469,31 @@ func AddUserToChannel(user *model.User, channel *model.Channel) (*model.ChannelM
 	Publish(message)
 
 	return newMember, nil
+}
+
+func AddChannelMember(userId string, channel *model.Channel, userRequestorId string) (*model.ChannelMember, *model.AppError) {
+	var user *model.User
+	var err *model.AppError
+
+	if user, err = GetUser(userId); err != nil {
+		return nil, err
+	}
+
+	var userRequestor *model.User
+	if userRequestor, err = GetUser(userRequestorId); err != nil {
+		return nil, err
+	}
+
+	cm, err := AddUserToChannel(user, channel)
+	if err != nil {
+		return nil, err
+	}
+
+	go PostAddToChannelMessage(userRequestor, user, channel)
+
+	UpdateChannelLastViewedAt([]string{channel.Id}, userRequestor.Id)
+
+	return cm, nil
 }
 
 func AddDirectChannels(teamId string, user *model.User) *model.AppError {
@@ -651,6 +696,22 @@ func GetChannelsUserNotIn(teamId string, userId string, offset int, limit int) (
 	}
 }
 
+func GetPublicChannelsByIdsForTeam(teamId string, channelIds []string) (*model.ChannelList, *model.AppError) {
+	if result := <-Srv.Store.Channel().GetPublicChannelsByIdsForTeam(teamId, channelIds); result.Err != nil {
+		return nil, result.Err
+	} else {
+		return result.Data.(*model.ChannelList), nil
+	}
+}
+
+func GetPublicChannelsForTeam(teamId string, offset int, limit int) (*model.ChannelList, *model.AppError) {
+	if result := <-Srv.Store.Channel().GetPublicChannelsForTeam(teamId, offset, limit); result.Err != nil {
+		return nil, result.Err
+	} else {
+		return result.Data.(*model.ChannelList), nil
+	}
+}
+
 func GetChannelMember(channelId string, userId string) (*model.ChannelMember, *model.AppError) {
 	if result := <-Srv.Store.Channel().GetMember(channelId, userId); result.Err != nil {
 		return nil, result.Err
@@ -699,7 +760,25 @@ func GetChannelCounts(teamId string, userId string) (*model.ChannelCounts, *mode
 	}
 }
 
+func GetChannelUnread(channelId, userId string) (*model.ChannelUnread, *model.AppError) {
+	result := <-Srv.Store.Channel().GetChannelUnread(channelId, userId)
+	if result.Err != nil {
+		return nil, result.Err
+	}
+	channelUnread := result.Data.(*model.ChannelUnread)
+
+	if channelUnread.NotifyProps[model.MARK_UNREAD_NOTIFY_PROP] == model.CHANNEL_MARK_UNREAD_MENTION {
+		channelUnread.MsgCount = 0
+	}
+
+	return channelUnread, nil
+}
+
 func JoinChannel(channel *model.Channel, userId string) *model.AppError {
+	if channel.DeleteAt > 0 {
+		return model.NewLocAppError("JoinChannel", "api.channel.join_channel.already_deleted.app_error", nil, "")
+	}
+
 	userChan := Srv.Store.User().Get(userId)
 	memberChan := Srv.Store.Channel().GetMember(channel.Id, userId)
 
@@ -993,4 +1072,12 @@ func PermanentDeleteChannel(channel *model.Channel) *model.AppError {
 	}
 
 	return nil
+}
+
+func GetPinnedPosts(channelId string) (*model.PostList, *model.AppError) {
+	if result := <-Srv.Store.Channel().GetPinnedPosts(channelId); result.Err != nil {
+		return nil, result.Err
+	} else {
+		return result.Data.(*model.PostList), nil
+	}
 }

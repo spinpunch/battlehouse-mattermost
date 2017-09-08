@@ -26,7 +26,7 @@ func connectToSMTPServer(config *model.Config) (net.Conn, *model.AppError) {
 
 	if config.EmailSettings.ConnectionSecurity == model.CONN_SECURITY_TLS {
 		tlsconfig := &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: *config.EmailSettings.SkipServerCertificateVerification,
 			ServerName:         config.EmailSettings.SMTPServer,
 		}
 
@@ -57,7 +57,7 @@ func newSMTPClient(conn net.Conn, config *model.Config) (*smtp.Client, *model.Ap
 		}
 	} else if config.EmailSettings.ConnectionSecurity == model.CONN_SECURITY_STARTTLS {
 		tlsconfig := &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: *config.EmailSettings.SkipServerCertificateVerification,
 			ServerName:         config.EmailSettings.SMTPServer,
 		}
 		c.StartTLS(tlsconfig)

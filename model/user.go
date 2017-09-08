@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	ME                      = "me"
 	USER_NOTIFY_ALL         = "all"
 	USER_NOTIFY_MENTION     = "mention"
 	USER_NOTIFY_NONE        = "none"
@@ -36,7 +37,7 @@ const (
 	USER_LAST_NAME_MAX_RUNES  = 64
 	USER_AUTH_DATA_MAX_LENGTH = 128
 	USER_NAME_MAX_LENGTH      = 64
-	USER_NAME_MIN_LENGTH      = 3
+	USER_NAME_MIN_LENGTH      = 1
 )
 
 type User struct {

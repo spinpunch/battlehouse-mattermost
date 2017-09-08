@@ -286,7 +286,7 @@ func SendNotifications(post *model.Post, team *model.Team, channel *model.Channe
 	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_POSTED, "", post.ChannelId, "", nil)
 	message.Add("post", post.ToJson())
 	message.Add("channel_type", channel.Type)
-	message.Add("channel_display_name", channel.DisplayName)
+	message.Add("channel_display_name", channelName)
 	message.Add("channel_name", channel.Name)
 	message.Add("sender_name", senderUsername)
 	message.Add("team_id", team.Id)
@@ -318,8 +318,7 @@ func SendNotifications(post *model.Post, team *model.Team, channel *model.Channe
 }
 
 func sendNotificationEmail(post *model.Post, user *model.User, channel *model.Channel, team *model.Team, senderName string, sender *model.User) *model.AppError {
-	if channel.IsGroupOrDirect() && channel.TeamId != team.Id {
-		// this message is a cross-team DM/GM so we need to find a team that the recipient is on to use in the link
+	if channel.IsGroupOrDirect() {
 		if result := <-Srv.Store.Team().GetTeamsByUserId(user.Id); result.Err != nil {
 			return result.Err
 		} else {

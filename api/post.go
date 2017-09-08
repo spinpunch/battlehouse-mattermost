@@ -39,6 +39,8 @@ func InitPost() {
 	BaseRoutes.NeedPost.Handle("/before/{offset:[0-9]+}/{num_posts:[0-9]+}", ApiUserRequired(getPostsBefore)).Methods("GET")
 	BaseRoutes.NeedPost.Handle("/after/{offset:[0-9]+}/{num_posts:[0-9]+}", ApiUserRequired(getPostsAfter)).Methods("GET")
 	BaseRoutes.NeedPost.Handle("/get_file_infos", ApiUserRequired(getFileInfosForPost)).Methods("GET")
+	BaseRoutes.NeedPost.Handle("/pin", ApiUserRequired(pinPost)).Methods("POST")
+	BaseRoutes.NeedPost.Handle("/unpin", ApiUserRequired(unpinPost)).Methods("POST")
 }
 
 // battlehouse.com filtering
@@ -109,13 +111,66 @@ func updatePost(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	post.UserId = c.Session.UserId
 
-	rpost, err := app.UpdatePost(post)
+	rpost, err := app.UpdatePost(post, true)
 	if err != nil {
 		c.Err = err
 		return
 	}
 
 	w.Write([]byte(rpost.ToJson()))
+}
+
+func saveIsPinnedPost(c *Context, w http.ResponseWriter, r *http.Request, isPinned bool) {
+	params := mux.Vars(r)
+
+	channelId := params["channel_id"]
+	if len(channelId) != 26 {
+		c.SetInvalidParam("savedIsPinnedPost", "channelId")
+		return
+	}
+
+	postId := params["post_id"]
+	if len(postId) != 26 {
+		c.SetInvalidParam("savedIsPinnedPost", "postId")
+		return
+	}
+
+	pchan := app.Srv.Store.Post().Get(postId)
+
+	var oldPost *model.Post
+	if result := <-pchan; result.Err != nil {
+		c.Err = result.Err
+		return
+	} else {
+		oldPost = result.Data.(*model.PostList).Posts[postId]
+		newPost := &model.Post{}
+		*newPost = *oldPost
+		newPost.IsPinned = isPinned
+
+		if result := <-app.Srv.Store.Post().Update(newPost, oldPost); result.Err != nil {
+			c.Err = result.Err
+			return
+		} else {
+			rpost := result.Data.(*model.Post)
+
+			message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_POST_EDITED, "", rpost.ChannelId, "", nil)
+			message.Add("post", rpost.ToJson())
+
+			go app.Publish(message)
+
+			app.InvalidateCacheForChannelPosts(rpost.ChannelId)
+
+			w.Write([]byte(rpost.ToJson()))
+		}
+	}
+}
+
+func pinPost(c *Context, w http.ResponseWriter, r *http.Request) {
+	saveIsPinnedPost(c, w, r, true)
+}
+
+func unpinPost(c *Context, w http.ResponseWriter, r *http.Request) {
+	saveIsPinnedPost(c, w, r, false)
 }
 
 func getFlaggedPosts(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -133,7 +188,12 @@ func getFlaggedPosts(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if posts, err := app.GetFlaggedPosts(c.Session.UserId, offset, limit); err != nil {
+	if !app.SessionHasPermissionToTeam(c.Session, c.TeamId, model.PERMISSION_VIEW_TEAM) {
+		c.SetPermissionError(model.PERMISSION_VIEW_TEAM)
+		return
+	}
+
+	if posts, err := app.GetFlaggedPostsForTeam(c.Session.UserId, c.TeamId, offset, limit); err != nil {
 		c.Err = err
 		return
 	} else {
@@ -502,11 +562,11 @@ func getOpenGraphMetadata(c *Context, w http.ResponseWriter, r *http.Request) {
 	og := app.GetOpenGraphMetadata(url)
 
 	ogJSON, err := og.ToJSON()
+	openGraphDataCache.AddWithExpiresInSecs(props["url"], ogJSON, 3600) // Cache would expire after 1 hour
 	if err != nil {
 		w.Write([]byte(`{"url": ""}`))
 		return
 	}
 
-	openGraphDataCache.AddWithExpiresInSecs(props["url"], ogJSON, 3600) // Cache would expire after 1 houre
 	w.Write(ogJSON)
 }

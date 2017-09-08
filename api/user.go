@@ -78,8 +78,6 @@ func InitUser() {
 
 	BaseRoutes.Root.Handle("/login/sso/saml", AppHandlerIndependent(loginWithSaml)).Methods("GET")
 	BaseRoutes.Root.Handle("/login/sso/saml", AppHandlerIndependent(completeSaml)).Methods("POST")
-
-	app.Srv.WebSocketRouter.Handle("user_typing", ApiWebSocketHandler(userTyping))
 }
 
 func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -101,11 +99,11 @@ func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	if len(hash) > 0 {
 		ruser, err = app.CreateUserWithHash(user, hash, r.URL.Query().Get("d"))
 	} else if len(inviteId) > 0 {
-		ruser, err = app.CreateUserWithInviteId(user, inviteId, c.GetSiteURL())
+		ruser, err = app.CreateUserWithInviteId(user, inviteId)
 	} else if skipTutorial { // battlehouse.com - also respects emailVerified
-		ruser, err = app.CreateUserBH(user, c.GetSiteURL(), skipTutorial)
+		ruser, err = app.CreateUserBH(user, skipTutorial)
 	} else {
-		ruser, err = app.CreateUserFromSignup(user, c.GetSiteURL())
+		ruser, err = app.CreateUserFromSignup(user)
 	}
 
 	if err != nil {
@@ -185,7 +183,7 @@ func LoginByOAuth(c *Context, w http.ResponseWriter, r *http.Request, service st
 		return nil
 	}
 
-	if err = app.UpdateOAuthUserAttrs(bytes.NewReader(buf.Bytes()), user, provider, service, c.siteURL); err != nil {
+	if err = app.UpdateOAuthUserAttrs(bytes.NewReader(buf.Bytes()), user, provider, service); err != nil {
 		c.Err = err
 		return nil
 	}
@@ -786,7 +784,7 @@ func updateUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ruser, err := app.UpdateUserAsUser(user, c.GetSiteURL(), c.IsSystemAdmin()); err != nil {
+	if ruser, err := app.UpdateUserAsUser(user, c.IsSystemAdmin()); err != nil {
 		c.Err = err
 		return
 	} else {
@@ -819,7 +817,7 @@ func updatePassword(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.UpdatePasswordAsUser(userId, currentPassword, newPassword, c.GetSiteURL()); err != nil {
+	if err := app.UpdatePasswordAsUser(userId, currentPassword, newPassword); err != nil {
 		c.LogAudit("failed")
 		c.Err = err
 		return
@@ -901,7 +899,7 @@ func sendPasswordReset(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if sent, err := app.SendPasswordReset(email, c.GetSiteURL()); err != nil {
+	if sent, err := app.SendPasswordReset(email, utils.GetSiteURL()); err != nil {
 		c.Err = err
 		return
 	} else if sent {
@@ -924,7 +922,7 @@ func resetPassword(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	c.LogAudit("attempt - code=" + code)
 
-	if err := app.ResetPasswordFromCode(code, newPassword, c.GetSiteURL()); err != nil {
+	if err := app.ResetPasswordFromCode(code, newPassword); err != nil {
 		c.LogAudit("fail - code=" + code)
 		c.Err = err
 		return
@@ -977,7 +975,7 @@ func updateUserNotify(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ruser, err := app.UpdateUserNotifyProps(userId, props, c.GetSiteURL())
+	ruser, err := app.UpdateUserNotifyProps(userId, props)
 	if err != nil {
 		c.Err = err
 		return
@@ -1036,7 +1034,7 @@ func emailToOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	m := map[string]string{}
 	if service == model.USER_AUTH_SERVICE_SAML {
-		m["follow_link"] = c.GetSiteURL() + "/login/sso/saml?action=" + model.OAUTH_ACTION_EMAIL_TO_SSO + "&email=" + email
+		m["follow_link"] = c.GetSiteURLHeader() + "/login/sso/saml?action=" + model.OAUTH_ACTION_EMAIL_TO_SSO + "&email=" + email
 	} else {
 		if authUrl, err := GetAuthorizationCode(c, service, stateProps, ""); err != nil {
 			c.LogAuditWithUserId(user.Id, "fail - oauth issue")
@@ -1090,7 +1088,7 @@ func oauthToEmail(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		if err := app.SendSignInChangeEmail(user.Email, c.T("api.templates.signin_change_email.body.method_email"), user.Locale, c.GetSiteURL()); err != nil {
+		if err := app.SendSignInChangeEmail(user.Email, c.T("api.templates.signin_change_email.body.method_email"), user.Locale, utils.GetSiteURL()); err != nil {
 			l4g.Error(err.Error())
 		}
 	}()
@@ -1183,7 +1181,7 @@ func emailToLdap(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		if err := app.SendSignInChangeEmail(user.Email, "AD/LDAP", user.Locale, c.GetSiteURL()); err != nil {
+		if err := app.SendSignInChangeEmail(user.Email, "AD/LDAP", user.Locale, utils.GetSiteURL()); err != nil {
 			l4g.Error(err.Error())
 		}
 	}()
@@ -1270,7 +1268,7 @@ func ldapToEmail(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		if err := app.SendSignInChangeEmail(user.Email, c.T("api.templates.signin_change_email.body.method_email"), user.Locale, c.GetSiteURL()); err != nil {
+		if err := app.SendSignInChangeEmail(user.Email, c.T("api.templates.signin_change_email.body.method_email"), user.Locale, utils.GetSiteURL()); err != nil {
 			l4g.Error(err.Error())
 		}
 	}()
@@ -1324,42 +1322,24 @@ func resendVerification(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		if _, err := app.GetStatus(user.Id); err != nil {
-			go app.SendVerifyEmail(user.Id, user.Email, user.Locale, c.GetSiteURL())
+			go app.SendVerifyEmail(user.Id, user.Email, user.Locale, utils.GetSiteURL())
 		} else {
-			go app.SendEmailChangeVerifyEmail(user.Id, user.Email, user.Locale, c.GetSiteURL())
+			go app.SendEmailChangeVerifyEmail(user.Id, user.Email, user.Locale, utils.GetSiteURL())
 		}
 	}
 }
 
 func generateMfaSecret(c *Context, w http.ResponseWriter, r *http.Request) {
-	var user *model.User
-	var err *model.AppError
-	if user, err = app.GetUser(c.Session.UserId); err != nil {
-		c.Err = err
-		return
-	}
-
-	mfaInterface := einterfaces.GetMfaInterface()
-	if mfaInterface == nil {
-		c.Err = model.NewLocAppError("generateMfaSecret", "api.user.generate_mfa_qr.not_available.app_error", nil, "")
-		c.Err.StatusCode = http.StatusNotImplemented
-		return
-	}
-
-	secret, img, err := mfaInterface.GenerateSecret(user)
+	secret, err := app.GenerateMfaSecret(c.Session.UserId)
 	if err != nil {
 		c.Err = err
 		return
 	}
 
-	resp := map[string]string{}
-	resp["qr_code"] = b64.StdEncoding.EncodeToString(img)
-	resp["secret"] = secret
-
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
-	w.Write([]byte(model.MapToJson(resp)))
+	w.Write([]byte(secret.ToJson()))
 }
 
 func updateMfa(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -1404,7 +1384,7 @@ func updateMfa(c *Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := app.SendMfaChangeEmail(user.Email, activate, user.Locale, c.GetSiteURL()); err != nil {
+		if err := app.SendMfaChangeEmail(user.Email, activate, user.Locale, utils.GetSiteURL()); err != nil {
 			l4g.Error(err.Error())
 		}
 	}()
@@ -1534,7 +1514,7 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 			}
 			c.LogAuditWithUserId(user.Id, "Revoked all sessions for user")
 			go func() {
-				if err := app.SendSignInChangeEmail(user.Email, strings.Title(model.USER_AUTH_SERVICE_SAML)+" SSO", user.Locale, c.GetSiteURL()); err != nil {
+				if err := app.SendSignInChangeEmail(user.Email, strings.Title(model.USER_AUTH_SERVICE_SAML)+" SSO", user.Locale, utils.GetSiteURL()); err != nil {
 					l4g.Error(err.Error())
 				}
 			}()
@@ -1546,7 +1526,7 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 		}
 
 		if val, ok := relayProps["redirect_to"]; ok {
-			http.Redirect(w, r, c.GetSiteURL()+val, http.StatusFound)
+			http.Redirect(w, r, c.GetSiteURLHeader()+val, http.StatusFound)
 			return
 		}
 
@@ -1556,29 +1536,6 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, app.GetProtocol(r)+"://"+r.Host, http.StatusFound)
 		}
 	}
-}
-
-func userTyping(req *model.WebSocketRequest) (map[string]interface{}, *model.AppError) {
-	var ok bool
-	var channelId string
-	if channelId, ok = req.Data["channel_id"].(string); !ok || len(channelId) != 26 {
-		return nil, NewInvalidWebSocketParamError(req.Action, "channel_id")
-	}
-
-	var parentId string
-	if parentId, ok = req.Data["parent_id"].(string); !ok {
-		parentId = ""
-	}
-
-	omitUsers := make(map[string]bool, 1)
-	omitUsers[req.Session.UserId] = true
-
-	event := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_TYPING, "", channelId, "", omitUsers)
-	event.Add("parent_id", parentId)
-	event.Add("user_id", req.Session.UserId)
-	go app.Publish(event)
-
-	return nil, nil
 }
 
 func sanitizeProfile(c *Context, user *model.User) *model.User {
@@ -1635,26 +1592,12 @@ func searchUsers(c *Context, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var profiles []*model.User
-	var err *model.AppError
-	if props.InChannelId != "" {
-		profiles, err = app.SearchUsersInChannel(props.InChannelId, props.Term, searchOptions)
-	} else if props.NotInChannelId != "" {
-		profiles, err = app.SearchUsersNotInChannel(props.TeamId, props.NotInChannelId, props.Term, searchOptions)
-	} else {
-		profiles, err = app.SearchUsersInTeam(props.TeamId, props.Term, searchOptions)
-	}
-
-	if err != nil {
+	if profiles, err := app.SearchUsers(props, searchOptions, c.IsSystemAdmin()); err != nil {
 		c.Err = err
 		return
+	} else {
+		w.Write([]byte(model.UserListToJson(profiles)))
 	}
-
-	for _, p := range profiles {
-		sanitizeProfile(c, p)
-	}
-
-	w.Write([]byte(model.UserListToJson(profiles)))
 }
 
 func getProfilesByIds(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -1709,18 +1652,10 @@ func autocompleteUsersInChannel(c *Context, w http.ResponseWriter, r *http.Reque
 		searchOptions[store.USER_SEARCH_OPTION_NAMES_ONLY] = true
 	}
 
-	autocomplete, err := app.AutocompleteUsersInChannel(teamId, channelId, term, searchOptions)
+	autocomplete, err := app.AutocompleteUsersInChannel(teamId, channelId, term, searchOptions, c.IsSystemAdmin())
 	if err != nil {
 		c.Err = err
 		return
-	}
-
-	for _, p := range autocomplete.InChannel {
-		sanitizeProfile(c, p)
-	}
-
-	for _, p := range autocomplete.OutOfChannel {
-		sanitizeProfile(c, p)
 	}
 
 	w.Write([]byte(autocomplete.ToJson()))
@@ -1747,14 +1682,10 @@ func autocompleteUsersInTeam(c *Context, w http.ResponseWriter, r *http.Request)
 		searchOptions[store.USER_SEARCH_OPTION_NAMES_ONLY] = true
 	}
 
-	autocomplete, err := app.AutocompleteUsersInTeam(teamId, term, searchOptions)
+	autocomplete, err := app.AutocompleteUsersInTeam(teamId, term, searchOptions, c.IsSystemAdmin())
 	if err != nil {
 		c.Err = err
 		return
-	}
-
-	for _, p := range autocomplete.InTeam {
-		sanitizeProfile(c, p)
 	}
 
 	w.Write([]byte(autocomplete.ToJson()))
@@ -1775,13 +1706,9 @@ func autocompleteUsers(c *Context, w http.ResponseWriter, r *http.Request) {
 	var profiles []*model.User
 	var err *model.AppError
 
-	if profiles, err = app.SearchUsersInTeam("", term, searchOptions); err != nil {
+	if profiles, err = app.SearchUsersInTeam("", term, searchOptions, c.IsSystemAdmin()); err != nil {
 		c.Err = err
 		return
-	}
-
-	for _, p := range profiles {
-		sanitizeProfile(c, p)
 	}
 
 	w.Write([]byte(model.UserListToJson(profiles)))

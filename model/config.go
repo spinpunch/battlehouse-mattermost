@@ -111,6 +111,7 @@ const (
 
 type ServiceSettings struct {
 	SiteURL                                  *string
+	LicenseFileLocation                      *string
 	ListenAddress                            string
 	ConnectionSecurity                       *string
 	TLSCertFile                              *string
@@ -234,27 +235,28 @@ type FileSettings struct {
 }
 
 type EmailSettings struct {
-	EnableSignUpWithEmail    bool
-	EnableSignInWithEmail    *bool
-	EnableSignInWithUsername *bool
-	SendEmailNotifications   bool
-	RequireEmailVerification bool
-	FeedbackName             string
-	FeedbackEmail            string
-	FeedbackOrganization     *string
-	SMTPUsername             string
-	SMTPPassword             string
-	SMTPServer               string
-	SMTPPort                 string
-	ConnectionSecurity       string
-	InviteSalt               string
-	PasswordResetSalt        string
-	SendPushNotifications    *bool
-	PushNotificationServer   *string
-	PushNotificationContents *string
-	EnableEmailBatching      *bool
-	EmailBatchingBufferSize  *int
-	EmailBatchingInterval    *int
+	EnableSignUpWithEmail             bool
+	EnableSignInWithEmail             *bool
+	EnableSignInWithUsername          *bool
+	SendEmailNotifications            bool
+	RequireEmailVerification          bool
+	FeedbackName                      string
+	FeedbackEmail                     string
+	FeedbackOrganization              *string
+	SMTPUsername                      string
+	SMTPPassword                      string
+	SMTPServer                        string
+	SMTPPort                          string
+	ConnectionSecurity                string
+	InviteSalt                        string
+	PasswordResetSalt                 string
+	SendPushNotifications             *bool
+	PushNotificationServer            *string
+	PushNotificationContents          *string
+	EnableEmailBatching               *bool
+	EmailBatchingBufferSize           *int
+	EmailBatchingInterval             *int
+	SkipServerCertificateVerification *bool
 }
 
 type RateLimitSettings struct {
@@ -281,28 +283,29 @@ type SupportSettings struct {
 }
 
 type TeamSettings struct {
-	SiteName                         string
-	MaxUsersPerTeam                  int
-	EnableTeamCreation               bool
-	EnableUserCreation               bool
-	EnableOpenServer                 *bool
-	RestrictCreationToDomains        string
-	AutoJoinAllChannels              *bool   // battlehouse.com
-	DefaultNameDisplayFormat         *string // battlehouse.com
-	EnableCustomBrand                *bool
-	CustomBrandText                  *string
-	CustomDescriptionText            *string
-	RestrictDirectMessage            *string
-	RestrictTeamInvite               *string
-	RestrictPublicChannelManagement  *string
-	RestrictPrivateChannelManagement *string
-	RestrictPublicChannelCreation    *string
-	RestrictPrivateChannelCreation   *string
-	RestrictPublicChannelDeletion    *string
-	RestrictPrivateChannelDeletion   *string
-	UserStatusAwayTimeout            *int64
-	MaxChannelsPerTeam               *int64
-	MaxNotificationsPerChannel       *int64
+	SiteName                            string
+	MaxUsersPerTeam                     int
+	EnableTeamCreation                  bool
+	EnableUserCreation                  bool
+	EnableOpenServer                    *bool
+	RestrictCreationToDomains           string
+	AutoJoinAllChannels                 *bool   // battlehouse.com
+	DefaultNameDisplayFormat            *string // battlehouse.com
+	EnableCustomBrand                   *bool
+	CustomBrandText                     *string
+	CustomDescriptionText               *string
+	RestrictDirectMessage               *string
+	RestrictTeamInvite                  *string
+	RestrictPublicChannelManagement     *string
+	RestrictPrivateChannelManagement    *string
+	RestrictPublicChannelCreation       *string
+	RestrictPrivateChannelCreation      *string
+	RestrictPublicChannelDeletion       *string
+	RestrictPrivateChannelDeletion      *string
+	RestrictPrivateChannelManageMembers *string
+	UserStatusAwayTimeout               *int64
+	MaxChannelsPerTeam                  *int64
+	MaxNotificationsPerChannel          *int64
 }
 
 type LdapSettings struct {
@@ -478,7 +481,7 @@ func (o *Config) SetDefaults() {
 		*o.FileSettings.MaxFileSize = 52428800 // 50 MB
 	}
 
-	if len(*o.FileSettings.PublicLinkSalt) == 0 {
+	if o.FileSettings.PublicLinkSalt == nil || len(*o.FileSettings.PublicLinkSalt) == 0 {
 		o.FileSettings.PublicLinkSalt = new(string)
 		*o.FileSettings.PublicLinkSalt = NewRandomString(32)
 	}
@@ -499,6 +502,10 @@ func (o *Config) SetDefaults() {
 	if o.ServiceSettings.SiteURL == nil {
 		o.ServiceSettings.SiteURL = new(string)
 		*o.ServiceSettings.SiteURL = SERVICE_SETTINGS_DEFAULT_SITE_URL
+	}
+
+	if o.ServiceSettings.LicenseFileLocation == nil {
+		o.ServiceSettings.LicenseFileLocation = new(string)
 	}
 
 	if o.ServiceSettings.EnableLinkPreviews == nil {
@@ -630,6 +637,11 @@ func (o *Config) SetDefaults() {
 		*o.TeamSettings.RestrictPrivateChannelDeletion = *o.TeamSettings.RestrictPrivateChannelManagement
 	}
 
+	if o.TeamSettings.RestrictPrivateChannelManageMembers == nil {
+		o.TeamSettings.RestrictPrivateChannelManageMembers = new(string)
+		*o.TeamSettings.RestrictPrivateChannelManageMembers = PERMISSIONS_ALL
+	}
+
 	if o.TeamSettings.UserStatusAwayTimeout == nil {
 		o.TeamSettings.UserStatusAwayTimeout = new(int64)
 		*o.TeamSettings.UserStatusAwayTimeout = TEAM_SETTINGS_DEFAULT_USER_STATUS_AWAY_TIMEOUT
@@ -693,6 +705,11 @@ func (o *Config) SetDefaults() {
 	if o.EmailSettings.EmailBatchingInterval == nil {
 		o.EmailSettings.EmailBatchingInterval = new(int)
 		*o.EmailSettings.EmailBatchingInterval = EMAIL_BATCHING_INTERVAL
+	}
+
+	if o.EmailSettings.SkipServerCertificateVerification == nil {
+		o.EmailSettings.SkipServerCertificateVerification = new(bool)
+		*o.EmailSettings.SkipServerCertificateVerification = false
 	}
 
 	if !IsSafeLink(o.SupportSettings.TermsOfServiceLink) {

@@ -4,7 +4,10 @@
 package app
 
 import (
+	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"regexp"
 	"time"
 
@@ -17,12 +20,34 @@ import (
 )
 
 var (
-	c = &http.Client{
-		Timeout: 5 * time.Second,
-	}
+	httpClient *http.Client
 
+	httpTimeout       = time.Duration(5 * time.Second)
 	linkWithTextRegex = regexp.MustCompile(`<([^<\|]+)\|([^>]+)>`)
 )
+
+func dialTimeout(network, addr string) (net.Conn, error) {
+	return net.DialTimeout(network, addr, httpTimeout)
+}
+
+func init() {
+	p, ok := os.LookupEnv("HTTP_PROXY")
+	if ok {
+		if u, err := url.Parse(p); err == nil {
+			httpClient = &http.Client{
+				Transport: &http.Transport{
+					Proxy: http.ProxyURL(u),
+					Dial:  dialTimeout,
+				},
+			}
+			return
+		}
+	}
+
+	httpClient = &http.Client{
+		Timeout: httpTimeout,
+	}
+}
 
 func CreatePostAsUser(post *model.Post) (*model.Post, *model.AppError) {
 	// Check that channel has not been deleted
@@ -180,40 +205,20 @@ func handlePostEvents(post *model.Post, teamId string, triggerWebhooks bool) *mo
 
 // This method only parses and processes the attachments,
 // all else should be set in the post which is passed
-func parseSlackAttachment(post *model.Post, attachments interface{}) {
+func parseSlackAttachment(post *model.Post, attachments []*model.SlackAttachment) {
 	post.Type = model.POST_SLACK_ATTACHMENT
 
-	if list, success := attachments.([]interface{}); success {
-		for i, aInt := range list {
-			attachment := aInt.(map[string]interface{})
-			if aText, ok := attachment["text"].(string); ok {
-				aText = linkWithTextRegex.ReplaceAllString(aText, "[${2}](${1})")
-				attachment["text"] = aText
-				list[i] = attachment
-			}
-			if aText, ok := attachment["pretext"].(string); ok {
-				aText = linkWithTextRegex.ReplaceAllString(aText, "[${2}](${1})")
-				attachment["pretext"] = aText
-				list[i] = attachment
-			}
-			if fVal, ok := attachment["fields"]; ok {
-				if fields, ok := fVal.([]interface{}); ok {
-					// parse attachment field links into Markdown format
-					for j, fInt := range fields {
-						field := fInt.(map[string]interface{})
-						if fValue, ok := field["value"].(string); ok {
-							fValue = linkWithTextRegex.ReplaceAllString(fValue, "[${2}](${1})")
-							field["value"] = fValue
-							fields[j] = field
-						}
-					}
-					attachment["fields"] = fields
-					list[i] = attachment
-				}
+	for _, attachment := range attachments {
+		attachment.Text = parseSlackLinksToMarkdown(attachment.Text)
+		attachment.Pretext = parseSlackLinksToMarkdown(attachment.Pretext)
+
+		for _, field := range attachment.Fields {
+			if value, ok := field.Value.(string); ok {
+				field.Value = parseSlackLinksToMarkdown(value)
 			}
 		}
-		post.AddProp("attachments", list)
 	}
+	post.AddProp("attachments", attachments)
 }
 
 func parseSlackLinksToMarkdown(text string) string {
@@ -242,11 +247,10 @@ func SendEphemeralPost(teamId, userId string, post *model.Post) *model.Post {
 	return post
 }
 
-func UpdatePost(post *model.Post) (*model.Post, *model.AppError) {
+func UpdatePost(post *model.Post, safeUpdate bool) (*model.Post, *model.AppError) {
 	if utils.IsLicensed {
 		if *utils.Cfg.ServiceSettings.AllowEditPost == model.ALLOW_EDIT_POST_NEVER {
-			err := model.NewLocAppError("updatePost", "api.post.update_post.permissions_denied.app_error", nil, "")
-			err.StatusCode = http.StatusForbidden
+			err := model.NewAppError("UpdatePost", "api.post.update_post.permissions_denied.app_error", nil, "", http.StatusForbidden)
 			return nil, err
 		}
 	}
@@ -258,33 +262,28 @@ func UpdatePost(post *model.Post) (*model.Post, *model.AppError) {
 		oldPost = result.Data.(*model.PostList).Posts[post.Id]
 
 		if oldPost == nil {
-			err := model.NewLocAppError("updatePost", "api.post.update_post.find.app_error", nil, "id="+post.Id)
-			err.StatusCode = http.StatusBadRequest
+			err := model.NewAppError("UpdatePost", "api.post.update_post.find.app_error", nil, "id="+post.Id, http.StatusBadRequest)
 			return nil, err
 		}
 
 		if oldPost.UserId != post.UserId {
-			err := model.NewLocAppError("updatePost", "api.post.update_post.permissions.app_error", nil, "oldUserId="+oldPost.UserId)
-			err.StatusCode = http.StatusBadRequest
+			err := model.NewAppError("UpdatePost", "api.post.update_post.permissions.app_error", nil, "oldUserId="+oldPost.UserId, http.StatusBadRequest)
 			return nil, err
 		}
 
 		if oldPost.DeleteAt != 0 {
-			err := model.NewLocAppError("updatePost", "api.post.update_post.permissions_details.app_error", map[string]interface{}{"PostId": post.Id}, "")
-			err.StatusCode = http.StatusBadRequest
+			err := model.NewAppError("UpdatePost", "api.post.update_post.permissions_details.app_error", map[string]interface{}{"PostId": post.Id}, "", http.StatusBadRequest)
 			return nil, err
 		}
 
 		if oldPost.IsSystemMessage() {
-			err := model.NewLocAppError("updatePost", "api.post.update_post.system_message.app_error", nil, "id="+post.Id)
-			err.StatusCode = http.StatusBadRequest
+			err := model.NewAppError("UpdatePost", "api.post.update_post.system_message.app_error", nil, "id="+post.Id, http.StatusBadRequest)
 			return nil, err
 		}
 
 		if utils.IsLicensed {
 			if *utils.Cfg.ServiceSettings.AllowEditPost == model.ALLOW_EDIT_POST_TIME_LIMIT && model.GetMillis() > oldPost.CreateAt+int64(*utils.Cfg.ServiceSettings.PostEditTimeLimit*1000) {
-				err := model.NewLocAppError("updatePost", "api.post.update_post.permissions_time_limit.app_error", map[string]interface{}{"timeLimit": *utils.Cfg.ServiceSettings.PostEditTimeLimit}, "")
-				err.StatusCode = http.StatusBadRequest
+				err := model.NewAppError("UpdatePost", "api.post.update_post.permissions_time_limit.app_error", map[string]interface{}{"timeLimit": *utils.Cfg.ServiceSettings.PostEditTimeLimit}, "", http.StatusBadRequest)
 				return nil, err
 			}
 		}
@@ -297,20 +296,50 @@ func UpdatePost(post *model.Post) (*model.Post, *model.AppError) {
 	newPost.EditAt = model.GetMillis()
 	newPost.Hashtags, _ = model.ParseHashtags(post.Message)
 
+	if !safeUpdate {
+		newPost.IsPinned = post.IsPinned
+		newPost.HasReactions = post.HasReactions
+		newPost.FileIds = post.FileIds
+		newPost.Props = post.Props
+	}
+
 	if result := <-Srv.Store.Post().Update(newPost, oldPost); result.Err != nil {
 		return nil, result.Err
 	} else {
 		rpost := result.Data.(*model.Post)
 
-		message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_POST_EDITED, "", rpost.ChannelId, "", nil)
-		message.Add("post", rpost.ToJson())
-
-		go Publish(message)
+		sendUpdatedPostEvent(rpost)
 
 		InvalidateCacheForChannelPosts(rpost.ChannelId)
 
 		return rpost, nil
 	}
+}
+
+func PatchPost(postId string, patch *model.PostPatch) (*model.Post, *model.AppError) {
+	post, err := GetSinglePost(postId)
+	if err != nil {
+		return nil, err
+	}
+
+	post.Patch(patch)
+
+	updatedPost, err := UpdatePost(post, false)
+	if err != nil {
+		return nil, err
+	}
+
+	sendUpdatedPostEvent(updatedPost)
+	InvalidateCacheForChannelPosts(updatedPost.ChannelId)
+
+	return updatedPost, nil
+}
+
+func sendUpdatedPostEvent(post *model.Post) {
+	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_POST_EDITED, "", post.ChannelId, "", nil)
+	message.Add("post", post.ToJson())
+
+	go Publish(message)
 }
 
 func GetPostsPage(channelId string, page int, perPage int) (*model.PostList, *model.AppError) {
@@ -365,6 +394,14 @@ func GetFlaggedPosts(userId string, offset int, limit int) (*model.PostList, *mo
 	}
 }
 
+func GetFlaggedPostsForTeam(userId, teamId string, offset int, limit int) (*model.PostList, *model.AppError) {
+	if result := <-Srv.Store.Post().GetFlaggedPostsForTeam(userId, teamId, offset, limit); result.Err != nil {
+		return nil, result.Err
+	} else {
+		return result.Data.(*model.PostList), nil
+	}
+}
+
 func GetPermalinkPost(postId string, userId string) (*model.PostList, *model.AppError) {
 	if result := <-Srv.Store.Post().Get(postId); result.Err != nil {
 		return nil, result.Err
@@ -387,6 +424,22 @@ func GetPermalinkPost(postId string, userId string) (*model.PostList, *model.App
 		}
 
 		return list, nil
+	}
+}
+
+func GetPostsBeforePost(channelId, postId string, page, perPage int) (*model.PostList, *model.AppError) {
+	if result := <-Srv.Store.Post().GetPostsBefore(channelId, postId, perPage, page*perPage); result.Err != nil {
+		return nil, result.Err
+	} else {
+		return result.Data.(*model.PostList), nil
+	}
+}
+
+func GetPostsAfterPost(channelId, postId string, page, perPage int) (*model.PostList, *model.AppError) {
+	if result := <-Srv.Store.Post().GetPostsAfter(channelId, postId, perPage, page*perPage); result.Err != nil {
+		return nil, result.Err
+	} else {
+		return result.Data.(*model.PostList), nil
 	}
 }
 
@@ -504,14 +557,15 @@ func GetFileInfosForPost(postId string, readFromMaster bool) ([]*model.FileInfo,
 func GetOpenGraphMetadata(url string) *opengraph.OpenGraph {
 	og := opengraph.NewOpenGraph()
 
-	res, err := c.Get(url)
+	res, err := httpClient.Get(url)
 	if err != nil {
+		l4g.Error(err.Error())
 		return og
 	}
 	defer CloseBody(res)
 
 	if err := og.ProcessHTML(res.Body); err != nil {
-		return og
+		l4g.Error(err.Error())
 	}
 
 	return og

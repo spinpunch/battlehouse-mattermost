@@ -148,6 +148,10 @@
     "translation": "Konnte Benutzer zu Berechtigungsüberprüfung nicht abrufen."
   },
   {
+    "id": "api.brand.init.debug",
+    "translation": "Initialisiere Marken-API-Routen"
+  },
+  {
     "id": "api.channel.add_member.added",
     "translation": "%v wurde von %v zum Kanal hinzugefügt"
   },
@@ -181,11 +185,11 @@
   },
   {
     "id": "api.channel.can_manage_channel.private_restricted_system_admin.app_error",
-    "translation": "Verwaltung und Erstellung von privaten Gruppen ist auf Systemadministratoren begrenzt."
+    "translation": "Verwaltung und Erstellung von öffentlichen Kanälen ist auf Systemadministratoren begrenzt."
   },
   {
     "id": "api.channel.can_manage_channel.private_restricted_team_admin.app_error",
-    "translation": "Verwaltung und Erstellung von privaten Gruppen ist auf Team- und Systemadministratoren begrenzt."
+    "translation": "Verwaltung und Erstellung von öffentlichen Kanälen ist auf Team- und Systemadministratoren begrenzt."
   },
   {
     "id": "api.channel.can_manage_channel.public_restricted_system_admin.app_error",
@@ -221,11 +225,11 @@
   },
   {
     "id": "api.channel.create_group.bad_size.app_error",
-    "translation": "Group message channels must contain at least 3 and no more than 8 users"
+    "translation": "Gruppennachrichtenkanäle müssen aus mindestens 3 und nicht mehr als 8 Benutzer bestehen"
   },
   {
     "id": "api.channel.create_group.bad_user.app_error",
-    "translation": "One of the provided users does not exist"
+    "translation": "Einer der angegebenen Benutzer existiert nicht"
   },
   {
     "id": "api.channel.delete_channel.archived",
@@ -282,6 +286,10 @@
   {
     "id": "api.channel.init.debug",
     "translation": "Initialisiere Kanal-API-Routen"
+  },
+  {
+    "id": "api.channel.join_channel.already_deleted.app_error",
+    "translation": "Der Kanal ist bereits gelöscht"
   },
   {
     "id": "api.channel.join_channel.permissions.app_error",
@@ -380,8 +388,12 @@
     "translation": "Versuch einer ungültigen Änderung am Standardkanal {{.Channel}} durchzuführen"
   },
   {
-    "id": "api.channel.update_last_viewed_at.get_unread_count_for_channel.errord",
+    "id": "api.channel.update_last_viewed_at.get_unread_count_for_channel.error",
     "translation": "Konnte die Ungelesen-Zahl für user_id=%v und channel_id=%v nicht abrufen, err=%v"
+  },
+  {
+    "id": "api.cluster.init.debug",
+    "translation": "Initialisiere Cluster-API-Routen"
   },
   {
     "id": "api.command.admin_only.app_error",
@@ -800,6 +812,14 @@
     "translation": "zucken"
   },
   {
+    "id": "api.compliance.init.debug",
+    "translation": "Initialisiere Compliance-API-Routen"
+  },
+  {
+    "id": "api.config.client.old_format.app_error",
+    "translation": "Das neue Format für die Clientkonfiguration wird noch nicht unterstützt. Bitte geben Sie format=old in der Anfrage an."
+  },
+  {
     "id": "api.context.404.app_error",
     "translation": "Entschuldigung, wir können die Seite nicht finden."
   },
@@ -868,6 +888,10 @@
     "translation": "Ein unbekannter Fehler ist aufgetreten. Bitte kontaktieren Sie den Support."
   },
   {
+    "id": "api.deprecated.init.debug",
+    "translation": "Initialisiere veraltete API-Routen"
+  },
+  {
     "id": "api.email_batching.add_notification_email_to_batch.channel_full.app_error",
     "translation": "Eingehender Kanal für E-Mail-Stapelverarbeitungs-Job war voll. Bitte erhöhen Sie EmailBatchingBufferSize."
   },
@@ -901,7 +925,7 @@
   },
   {
     "id": "api.email_batching.render_batched_post.group_message",
-    "translation": "Group Message"
+    "translation": "Gruppennachricht"
   },
   {
     "id": "api.email_batching.render_batched_post.sender.app_error",
@@ -1010,7 +1034,7 @@
     "translation": "Der öffentliche Link scheint nicht gültig zu sein"
   },
   {
-    "id": "api.file.get_file_preview.no_thumbnail.app_error",
+    "id": "api.file.get_file_preview.no_preview.app_error",
     "translation": "Datei hat kein Vorschaubild"
   },
   {
@@ -1230,6 +1254,10 @@
     "translation": "Eingehende Webhooks wurden vom Systemadministrator deaktiviert."
   },
   {
+    "id": "api.ldap.init.debug",
+    "translation": "Initialisiere LDAP-API-Routen"
+  },
+  {
     "id": "api.license.add_license.array.app_error",
     "translation": "Leeres Array unterhalb von 'Lizenz' in der Anfrage"
   },
@@ -1264,6 +1292,10 @@
   {
     "id": "api.license.add_license.unique_users.app_error",
     "translation": "Diese Lizenz unterstützt maximal {{.Users}}, wobei ihr System derzeit {{.Count}} eindeutige Benutzer umfasst. Eindeutige Benutzer werden anhand der E-Mail-Adresse gezählt. Die Anzahl der Benutzer lässt sich unter Seiten Berichte -> Statistiken anzeigen einsehen."
+  },
+  {
+    "id": "api.license.client.old_format.app_error",
+    "translation": "Das neue Format für die Clientlizenz wird nocht nicht unterstützt. Bitte geben Sie format=old in der Anfrage an."
   },
   {
     "id": "api.license.init.debug",
@@ -1514,6 +1546,10 @@
   {
     "id": "api.post.init.debug",
     "translation": "Initialisiere API-Routen für Nachrichten"
+  },
+  {
+    "id": "api.post.link_preview_disabled.app_error",
+    "translation": "Link-Vorschauen wurden vom Systemadministrator deaktiviert."
   },
   {
     "id": "api.post.make_direct_channel_visible.get_2_members.error",
@@ -1817,11 +1853,11 @@
   },
   {
     "id": "api.slackimport.slack_add_users.missing_email_address",
-    "translation": "User {{.Username}} does not have an email address in the Slack export. Using {{.Email}} as a placeholder. The user should update their email address once logged in to the system.\r\n"
+    "translation": "Der Benutzer {{.Username}} hat keine E-Mail-Adresse im Slack Export. Verwende {{.Email}} als Platzhalter. Der Benutzer sollte seine E-Mail-Adresse aktualisieren sobald er sich angemeldet hat.\r\n"
   },
   {
     "id": "api.slackimport.slack_add_users.missing_email_address.warn",
-    "translation": "User {{.Username}} does not have an email address in the Slack export. Using {{.Email}} as a placeholder. The user should update their email address once logged in to the system."
+    "translation": "Der Benutzer {{.Username}} hat keine E-Mail-Adresse im Slack Export. Verwende {{.Email}} als Platzhalter. Der Benutzer sollte seine E-Mail-Adresse aktualisieren sobald er sich angemeldet hat."
   },
   {
     "id": "api.slackimport.slack_add_users.unable_import",
@@ -1904,12 +1940,32 @@
     "translation": "Initialisiere Status-API-Routen"
   },
   {
+    "id": "api.status.init.debug",
+    "translation": "Initialisiere Status-API-Routen"
+  },
+  {
     "id": "api.status.last_activity.error",
     "translation": "Fehler beim Update von LastActivityAt für user_id=%v und session_id=%v, err=%v"
   },
   {
     "id": "api.status.save_status.error",
     "translation": "Fehler beim Speichern des Status für user_id=%v, err=%v"
+  },
+  {
+    "id": "api.status.user_not_found.app_error",
+    "translation": "Benutzer nicht gefunden"
+  },
+  {
+    "id": "api.team.add_user_to_team.invalid_data.app_error",
+    "translation": "Ungültige Daten"
+  },
+  {
+    "id": "api.team.add_user_to_team.invalid_invite_id.app_error",
+    "translation": "Ungültige Einladungs-ID. Kein Team entspricht dieser Einladungs-ID"
+  },
+  {
+    "id": "api.team.add_user_to_team.missing_parameter.app_error",
+    "translation": "Parameter um Benutzer zu Team hinzuzufügen erforderlich."
   },
   {
     "id": "api.team.create_team.email_disabled.app_error",
@@ -2037,7 +2093,7 @@
   },
   {
     "id": "api.templates.channel_name.group",
-    "translation": "Group Message"
+    "translation": "Gruppennachricht"
   },
   {
     "id": "api.templates.email_change_body.info",
@@ -2169,11 +2225,11 @@
   },
   {
     "id": "api.templates.post_subject_in_direct_message",
-    "translation": "{{.SubjectText}} bei {{.TeamDisplayName}} von {{.SenderDisplayName}} am {{.Day}}.{{.Month}}.{{.Year}}"
+    "translation": "{{.SubjectText}} von {{.SenderDisplayName}} am {{.Day}}.{{.Month}}.{{.Year}}"
   },
   {
     "id": "api.templates.post_subject_in_group_message",
-    "translation": "{{.SubjectText}} bei {{.TeamDisplayName}} von {{.SenderDisplayName}} am {{.Day}}.{{.Month}}.{{.Year}}"
+    "translation": "Neue Gruppennachricht von {{.SenderDisplayName}} am {{.Day}}.{{.Month}}.{{.Year}}"
   },
   {
     "id": "api.templates.reset_body.button",
@@ -2953,7 +3009,7 @@
   },
   {
     "id": "app.import.validate_post_import_data.message_length.error",
-    "translation": "Post Message property is longer than the maximum permitted length."
+    "translation": "Message Eigenschaft der Nachricht ist länger als die maximal erlaubte Länge."
   },
   {
     "id": "app.import.validate_post_import_data.message_missing.error",
@@ -3081,11 +3137,11 @@
   },
   {
     "id": "authentication.permissions.create_group_channel.description",
-    "translation": "Ability to create new group message channels"
+    "translation": "Die Möglichkeit, neue Gruppennachrichtenkanäle zu erstellen"
   },
   {
     "id": "authentication.permissions.create_group_channel.name",
-    "translation": "Create Group Message"
+    "translation": "Gruppennachrichten erstellen"
   },
   {
     "id": "authentication.permissions.create_team_roles.description",
@@ -3102,6 +3158,14 @@
   {
     "id": "authentication.permissions.manage_team_roles.name",
     "translation": "Teamrollen verwalten"
+  },
+  {
+    "id": "authentication.permissions.read_public_channel.description",
+    "translation": "Möglichkeit öffentliche Kanäle zu lesen"
+  },
+  {
+    "id": "authentication.permissions.read_public_channel.name",
+    "translation": "Öffentliche Kanäle lesen"
   },
   {
     "id": "authentication.permissions.team_invite_user.description",
@@ -3424,22 +3488,6 @@
     "translation": "Seite nicht gefunden"
   },
   {
-    "id": "leave_team_modal.desc",
-    "translation": "Sie werden von allen öffentlichen Kanälen und privaten Gruppen entfernt.  Wenn das Team privat ist können Sie nicht erneut beitreten.  Sind Sie sich sicher?"
-  },
-  {
-    "id": "leave_team_modal.no",
-    "translation": "Nein"
-  },
-  {
-    "id": "leave_team_modal.title",
-    "translation": "Dieses Team verlassen?"
-  },
-  {
-    "id": "leave_team_modal.yes",
-    "translation": "Ja"
-  },
-  {
     "id": "manaultesting.get_channel_id.no_found.debug",
     "translation": "Konnte Kanal nicht finden: %v, %v Möglichkeiten gesucht"
   },
@@ -3670,6 +3718,30 @@
   {
     "id": "model.client.set_profile_user.writer.app_error",
     "translation": "Problem beim Schreiben der Anfrage"
+  },
+  {
+    "id": "model.client.upload_post_attachment.channel_id.app_error",
+    "translation": "Error writing channel id to multipart form"
+  },
+  {
+    "id": "model.client.upload_post_attachment.file.app_error",
+    "translation": "Error writing file to multipart form"
+  },
+  {
+    "id": "model.client.upload_post_attachment.file_size.app_error",
+    "translation": "Error writing fileSize to multipart form"
+  },
+  {
+    "id": "model.client.upload_post_attachment.import_from.app_error",
+    "translation": "Error writing importFrom to multipart form"
+  },
+  {
+    "id": "model.client.upload_post_attachment.writer.app_error",
+    "translation": "Error closing multipart writer"
+  },
+  {
+    "id": "model.client.upload_saml_cert.app_error",
+    "translation": "Fehler bei der Erstellung der SAML Zertifikat Multipart Form Anfrage"
   },
   {
     "id": "model.command.is_valid.create_at.app_error",
@@ -4652,6 +4724,14 @@
     "translation": "Es wurden keine Kanäle gefunden"
   },
   {
+    "id": "store.sql_channel.get_channels_by_ids.get.app_error",
+    "translation": "Die Kanäle konnten nicht abgerufen werden"
+  },
+  {
+    "id": "store.sql_channel.get_channels_by_ids.not_found.app_error",
+    "translation": "Kein Kanal gefunden"
+  },
+  {
     "id": "store.sql_channel.get_deleted_by_name.existing.app_error",
     "translation": "Der bestehende gelöschte Kanal konnte nicht gefunden werden"
   },
@@ -4696,6 +4776,14 @@
     "translation": "Es konnten nicht alle Kanäle abgerufen werden"
   },
   {
+    "id": "store.sql_channel.get_public_channels.get.app_error",
+    "translation": "Die öffentlichen Kanäle konnten nicht abgerufen werden"
+  },
+  {
+    "id": "store.sql_channel.get_unread.app_error",
+    "translation": "Die ungelesenen Mitteilungen des Kanals konnten nicht abgerufen werden"
+  },
+  {
     "id": "store.sql_channel.increment_mention_count.app_error",
     "translation": "Konnte Erwähnungenanzahl nicht erhöhen"
   },
@@ -4710,6 +4798,10 @@
   {
     "id": "store.sql_channel.permanent_delete_members_by_user.app_error",
     "translation": "Die Kanalmitglieder konnten nicht entfernt werden"
+  },
+  {
+    "id": "store.sql_channel.pinned_posts.app_error",
+    "translation": "Die angepinnten Nachrichten konnten nicht gefunden werden"
   },
   {
     "id": "store.sql_channel.remove_member.app_error",
@@ -5097,7 +5189,7 @@
   },
   {
     "id": "store.sql_post.search.warn",
-    "translation": "Query error searching posts: %v"
+    "translation": "Abfragefehler bei der Suche nach Nachrichten: %v"
   },
   {
     "id": "store.sql_post.update.app_error",
@@ -5402,6 +5494,14 @@
   {
     "id": "store.sql_team.save_member.save.app_error",
     "translation": "Das Teammitglied konnte nicht gespeichert werden"
+  },
+  {
+    "id": "store.sql_team.search_all_team.app_error",
+    "translation": "Es trat ein Fehler beim Suchen nach Kanälen auf"
+  },
+  {
+    "id": "store.sql_team.search_open_team.app_error",
+    "translation": "Es trat ein Fehler beim Suchen nach Kanälen auf"
   },
   {
     "id": "store.sql_team.update.app_error",
@@ -5974,5 +6074,21 @@
   {
     "id": "web.watcher_fail.error",
     "translation": "Fehler beim Erstellen der Ordner Überwachung %v"
+  },
+  {
+    "id": "wsapi.status.init.debug",
+    "translation": "Initialisiere Status WebSocket-API-Routen"
+  },
+  {
+    "id": "wsapi.system.init.debug",
+    "translation": "Initialisiere System WebSocket-API-Routen"
+  },
+  {
+    "id": "wsapi.user.init.debug",
+    "translation": "Initialisiere Benutzer WebSocket-API-Routen"
+  },
+  {
+    "id": "wsapi.webrtc.init.debug",
+    "translation": "Initialisiere webrtc WebSocket-API-Routen"
   }
 ]
