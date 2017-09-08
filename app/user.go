@@ -565,7 +565,8 @@ func GetUsersNotInChannelPage(teamId string, channelId string, page int, perPage
 }
 
 func GetUsersByIds(userIds []string, asAdmin bool) ([]*model.User, *model.AppError) {
-	if result := <-Srv.Store.User().GetProfileByIds(userIds, true); result.Err != nil {
+	// battlehouse.com: do not use cache for asAdmin queries, since that results in sanitized output (lacking email addresses etc)
+	if result := <-Srv.Store.User().GetProfileByIds(userIds, !asAdmin); result.Err != nil {
 		return nil, result.Err
 	} else {
 		users := result.Data.([]*model.User)
