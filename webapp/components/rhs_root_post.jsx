@@ -17,6 +17,7 @@ import * as GlobalActions from 'actions/global_actions.jsx';
 import {flagPost, unflagPost, pinPost, unpinPost, addReaction} from 'actions/post_actions.jsx';
 
 import * as Utils from 'utils/utils.jsx';
+import * as ChannelUtils from 'utils/channel_utils.jsx'; // battlehouse.com
 import * as PostUtils from 'utils/post_utils.jsx';
 
 import EmojiPicker from 'components/emoji_picker/emoji_picker.jsx';
@@ -313,6 +314,9 @@ export default class RhsRootPost extends React.Component {
                 </li>
             );
 
+            // battlehouse.com: hide pin/unpin post GUI unless you are channel admin
+            if (ChannelUtils.showPinOptions(channel)) {
+
             if (post.is_pinned) {
                 dropdownContents.push(
                     <li
@@ -348,6 +352,9 @@ export default class RhsRootPost extends React.Component {
                     </li>
                 );
             }
+
+            } // battlehouse.com: END check for admin before showing pin/unpin post GUI
+
         }
 
         if (this.canDelete) {

@@ -9,7 +9,10 @@ import PostTime from './post_time.jsx';
 import * as GlobalActions from 'actions/global_actions.jsx';
 import * as PostActions from 'actions/post_actions.jsx';
 
+import ChannelStore from 'stores/channel_store.jsx'; // battlehouse.com
+
 import * as Utils from 'utils/utils.jsx';
+import * as ChannelUtils from 'utils/channel_utils.jsx'; // battlehouse.com
 import * as PostUtils from 'utils/post_utils.jsx';
 import Constants from 'utils/constants.jsx';
 import DelayedAction from 'utils/delayed_action.jsx';
@@ -153,6 +156,9 @@ export default class PostInfo extends React.Component {
                 </li>
             );
 
+            // battlehouse.com: hide pin/unpin post GUI unless you are channel admin
+            if (ChannelUtils.showPinOptions(ChannelStore.get(this.props.post.channel_id))) {
+
             if (this.props.post.is_pinned) {
                 dropdownContents.push(
                     <li
@@ -188,6 +194,9 @@ export default class PostInfo extends React.Component {
                     </li>
                 );
             }
+
+            } // battlehouse.com: END check for admin before showing pin/unpin post GUI
+
         }
 
         if (this.canDelete) {

@@ -4,6 +4,8 @@ const Preferences = Constants.Preferences;
 
 import * as Utils from 'utils/utils.jsx';
 
+import TeamStore from 'stores/team_store.jsx'; // battlehouse.com
+import ChannelStore from 'stores/channel_store.jsx'; // battlehouse.com
 import UserStore from 'stores/user_store.jsx';
 import PreferenceStore from 'stores/preference_store.jsx';
 import LocalizationStore from 'stores/localization_store.jsx';
@@ -178,6 +180,14 @@ export function showManagementOptions(channel, isAdmin, isSystemAdmin, isChannel
     return true;
 }
 
+// battlehouse.com: hide pin/unpin post GUI unless you are channel admin
+export function showPinOptions(channel) {
+    const isAdmin = TeamStore.isTeamAdminForCurrentTeam() || UserStore.isSystemAdminForCurrentUser();
+    const isSystemAdmin = UserStore.isSystemAdminForCurrentUser();
+    const isChannelAdmin = ChannelStore.isChannelAdminForCurrentChannel();
+    return showManagementOptions(channel, isAdmin, isSystemAdmin, isChannelAdmin);
+}
+
 export function showDeleteOption(channel, isAdmin, isSystemAdmin, isChannelAdmin) {
     if (false /* battlehouse.com global.window.mm_license.IsLicensed !== 'true' */) {
         return true;
@@ -221,6 +231,16 @@ export function canManageMembers(channel, isSystemAdmin, isTeamAdmin, isChannelA
             return false;
         }
         if (global.window.mm_config.RestrictPrivateChannelManageMembers === Constants.PERMISSIONS_CHANNEL_ADMIN && !isChannelAdmin && !isTeamAdmin && !isSystemAdmin) {
+            return false;
+        }
+    } else if (channel.type === Constants.OPEN_CHANNEL) { // battlehouse.com: hide "add/remove member" options in GUI unless you are channel manager
+        if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_SYSTEM_ADMIN && !isSystemAdmin) {
+            return false;
+        }
+        if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_TEAM_ADMIN && !isTeamAdmin && !isSystemAdmin) {
+            return false;
+        }
+        if (global.window.mm_config.RestrictPublicChannelManagement === Constants.PERMISSIONS_CHANNEL_ADMIN && !isChannelAdmin && !isTeamAdmin && !isSystemAdmin) {
             return false;
         }
     }

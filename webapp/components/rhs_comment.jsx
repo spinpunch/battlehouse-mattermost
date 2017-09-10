@@ -11,8 +11,10 @@ import RhsDropdown from 'components/rhs_dropdown.jsx';
 
 import * as GlobalActions from 'actions/global_actions.jsx';
 import {flagPost, unflagPost, pinPost, unpinPost, addReaction} from 'actions/post_actions.jsx';
+import * as ChannelUtils from 'utils/channel_utils.jsx'; // battlehouse.com
 
 import TeamStore from 'stores/team_store.jsx';
+import ChannelStore from 'stores/channel_store.jsx'; // battlehouse.com
 
 import * as Utils from 'utils/utils.jsx';
 import * as PostUtils from 'utils/post_utils.jsx';
@@ -219,6 +221,9 @@ export default class RhsComment extends React.Component {
                 </li>
             );
 
+            // battlehouse.com: hide pin/unpin post GUI unless you are channel admin
+            if (ChannelUtils.showPinOptions(ChannelStore.get(post.channel_id))) {
+
             if (post.is_pinned) {
                 dropdownContents.push(
                     <li
@@ -254,6 +259,9 @@ export default class RhsComment extends React.Component {
                     </li>
                 );
             }
+
+            } // battlehouse.com: END check for admin before showing pin/unpin post GUI
+
         }
 
         if (this.canDelete) {
